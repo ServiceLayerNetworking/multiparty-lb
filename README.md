@@ -137,10 +137,9 @@ Server Version: v1.28.3
 ```
 
 
-I tried to debug the HotelReservation issue, but to no success yet. I will now move to another application -- [Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo) (by Google)
+I tried to debug the HotelReservation issue, but to no success yet. I will now move to another application -- [Online Boutique](https://github.com/GoogleCloudPlatform/microservices-demo) (by Google). I again moved to hotelReservation. hotelReservation works with this commit of DeathStarBench: f971f0ed687ce2403437dd97302029d1ed391c2c
 ```
 # we are in the main directory of the repo
-cd 
-kubectl apply -Rf hotelReservation/kubernetes/
 kubectl label namespace default istio-injection=enabled
+kubectl apply -Rf hotelReservation/kubernetes/
 ```
