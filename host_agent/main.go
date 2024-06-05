@@ -46,7 +46,7 @@ func startServer() {
 
 	fmt.Println("Server Running...")
 
-	server, err := net.Listen(SERVER_TYPE, SERVER_HOST+":"+SERVER_PORT)
+	server, err := net.Listen(SERVER_TYPE, ":"+SERVER_PORT)
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)

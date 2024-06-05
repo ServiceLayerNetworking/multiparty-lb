@@ -143,3 +143,16 @@ I tried to debug the HotelReservation issue, but to no success yet. I will now m
 kubectl label namespace default istio-injection=enabled
 kubectl apply -Rf hotelReservation/kubernetes/
 ```
+
+To build the host agent docker image:
+```
+cd host_agent
+docker build . -t talhawaheed/hostagent:latest --push
+```
+
+To build and run the central controller:
+```
+cd centralcontroller
+go build -o ./centralcontroller .
+./centralcontroller 
+```
