@@ -146,26 +146,26 @@ func applyCPUQuotas(podUIDs map[string]string, msg string) bool {
 
 	for podName, share := range podQuotas {
 
-		fileName := "/sys/fs/cgroup/cpu/kubepods/burstable/" +
+		fileName := "/host/sys/fs/cgroup/cpu/kubepods/" +
 			podUIDs[podName] + "/cpu.cfs_quota_us"
 		// fileName := "/Users/twaheed2/go/src/host_agent/" +
 		// 	podUIDs[podName]
 
-		err := os.WriteFile(fileName, []byte(share+"\n"), 0644)
-		if err != nil {
-			slog.Warn(err.Error())
-			return false
-		}
-
-		// slog.Info(fmt.Sprintf("%s %s %s %s",
-		// 	"bash", "./writetofile.sh", share, fileName))
-
-		// cmd := exec.Command("bash", "./writetofile.sh", share, fileName)
-		// _, err := cmd.Output()
+		// err := os.WriteFile(fileName, []byte(share+"\n"), 0644)
 		// if err != nil {
 		// 	slog.Warn(err.Error())
 		// 	return false
 		// }
+
+		slog.Info(fmt.Sprintf("%s %s %s %s",
+			"bash", "./writetofile.sh", share, fileName))
+
+		cmd := exec.Command("bash", "./writetofile.sh", share, fileName)
+		_, err := cmd.Output()
+		if err != nil {
+			slog.Warn(err.Error())
+			return false
+		}
 	}
 
 	slog.Info("Applied CPU shares: " + fmt.Sprintf("%v", podQuotas))
@@ -184,7 +184,7 @@ func applyCPUShares(podUIDs map[string]string, msg string) bool {
 
 	for podName, share := range podShares {
 
-		fileName := "/sys/fs/cgroup/cpu/kubepods/burstable/" +
+		fileName := "/host/sys/fs/cgroup/cpu/kubepods/" +
 			podUIDs[podName] + "/cpu.shares"
 		// fileName := "/Users/twaheed2/go/src/host_agent/" +
 		// 	podUIDs[podName]
@@ -232,6 +232,48 @@ func parsePodShares(msg string) (map[string]string, bool) {
 	return podShares, true
 }
 
+func getOSFile(readPath string) (string, error) {
+
+	// Reliable, but really really slow.
+	out, err := exec.Command("cat", readPath).Output()
+	return string(out), err
+
+	// file, err := os.Open(readPath)
+	// if err != nil {
+	// 	fmt.Printf("Error opening file: %v\n", err)
+	// 	return "", err
+	// }
+	// defer file.Close()
+
+	// readBuf := make([]byte, 4096)
+	// readFile := file
+
+	// // Seek should tell us the new offset (0) and no err.
+	// bytesRead := 0
+	// _, err = readFile.Seek(0, 0)
+
+	// // Loop until N > 0 AND err != EOF && err != timeout.
+	// if err == nil {
+	// 	n := 0
+	// 	for {
+	// 		n, err = readFile.Read(readBuf)
+	// 		bytesRead += n
+	// 		if os.IsTimeout(err) {
+	// 			// bail out.
+	// 			bytesRead = 0
+	// 			break
+	// 		}
+	// 		if err == io.EOF {
+	// 			// Success!
+	// 			break
+	// 		}
+	// 		// Any other err means 'keep trying to read.'
+	// 	}
+	// }
+
+	// return string(readBuf), err
+}
+
 func getCPUUtilizations(podUIDs map[string]string) string {
 
 	response := "utils:"
@@ -261,23 +303,45 @@ func getCPUUtilizations(podUIDs map[string]string) string {
 	return response
 }
 
+// // pathExists checks if a given path exists and is either a file or a directory.
+// func pathExists(path string) bool {
+// 	_, err := os.Stat(path)
+// 	if os.IsNotExist(err) {
+// 		return false
+// 	}
+// 	return err == nil
+// }
+
+// func getPodcgroupFilePath(uid string) string {
+// 	qosClass := []string{"burstable/", "besteffort/", ""}
+// 	for _, class := range qosClass {
+// 		fileName := "/sys/fs/cgroup/cpu/kubepods/" + class + "pod" + uid
+// 		if pathExists(fileName) {
+// 			return fileName
+// 		} else {
+// 			slog.Warn("No cgroup path found: " + fileName)
+// 		}
+// 	}
+// 	slog.Warn("No cgroup file found for pod: " + uid)
+// 	return "/sys/fs/cgroup/cpu/kubepods/" + qosClass[0] + "pod" + uid
+// }
+
 func getPodCPUUtil(uid string) int64 {
 	// get the CPU utilization of the pod
 	// return the CPU utilization
 
 	// read the file and return the value
-	// fileName := "/Users/twaheed2/go/src/host_agent/" + uid
-	fileName := "/sys/fs/cgroup/cpu/kubepods/burstable/" + uid + "/cpuacct.usage"
+	fileName := "/host/sys/fs/cgroup/cpu/kubepods/" + uid + "/cpuacct.usage"
 
-	cpuUtil, err := os.ReadFile(fileName)
+	cpuUtil, err := getOSFile(fileName)
 	if err != nil {
 		slog.Warn(err.Error())
 		return -1
 	}
 
-	slog.Info("CPU Utilization: " + string(cpuUtil))
+	slog.Info("CPU Utilization [" + uid + "]: \"" + cpuUtil + "\"")
 
-	cpuUtilStr := strings.Trim(string(cpuUtil), "\n")
+	cpuUtilStr := strings.Trim(cpuUtil, "\n")
 
 	cpuUtilInt64, err := strconv.ParseInt(cpuUtilStr, 10, 64)
 	if err != nil {

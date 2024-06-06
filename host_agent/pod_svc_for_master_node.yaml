@@ -15,6 +15,14 @@ spec:
       securityContext:
         allowPrivilegeEscalation: false
         runAsUser: 0
+      volumeMounts:
+        - mountPath: /host
+          name: host-filesystem
+  volumes:
+  - name: host-filesystem
+    hostPath:
+      path: /         # This will mount the root filesystem of the host
+      type: Directory
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
