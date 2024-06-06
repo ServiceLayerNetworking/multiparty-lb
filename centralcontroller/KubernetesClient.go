@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -53,11 +54,19 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]stri
 
 	// Iterate through the pods and print the UIDs of pods on the specified node
 	for _, pod := range pods.Items {
+
+		parentCgroupFolder := strings.ToLower(string(pod.Status.QOSClass)) + "/"
+		if parentCgroupFolder == "guaranteed/" {
+			parentCgroupFolder = ""
+		}
+
 		if nodeToPods[pod.Spec.NodeName] != nil {
-			nodeToPods[pod.Spec.NodeName][pod.Name] = string(pod.UID)
+			nodeToPods[pod.Spec.NodeName][pod.Name] =
+				parentCgroupFolder + "pod" + string(pod.UID)
 		} else {
 			nodeToPods[pod.Spec.NodeName] = make(map[string]string)
-			nodeToPods[pod.Spec.NodeName][pod.Name] = string(pod.UID)
+			nodeToPods[pod.Spec.NodeName][pod.Name] =
+				parentCgroupFolder + "pod" + string(pod.UID)
 		}
 	}
 
