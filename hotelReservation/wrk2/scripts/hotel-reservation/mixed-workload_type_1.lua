@@ -2,7 +2,7 @@ local socket = require("socket")
 math.randomseed(socket.gettime()*1000)
 math.random(); math.random(); math.random()
 
-local url = "http://localhost:5000"
+local url = "http://192.168.59.103:30767"
 
 local function get_user()
   local id = math.random(0, 500)
@@ -111,10 +111,10 @@ end
 
 request = function()
   cur_time = math.floor(socket.gettime())
-  local search_ratio      = 0.6
-  local recommend_ratio   = 0.39
-  local user_ratio        = 0.005
-  local reserve_ratio     = 0.005
+  local search_ratio      = 0
+  local recommend_ratio   = 1
+  local user_ratio        = 0
+  local reserve_ratio     = 0
 
   local coin = math.random()
   if coin < search_ratio then

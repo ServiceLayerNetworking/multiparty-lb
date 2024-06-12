@@ -156,3 +156,51 @@ cd centralcontroller
 go build -o ./centralcontroller .
 ./centralcontroller 
 ```
+
+Next, I've used a gateway called istio-ingress applied through
+istio-configs/istio
+```
+k apply -Rf istio-configs/hotelReservation.yaml
+```
+
+Apply the addons in the istio cluster through:
+```
+kubectl apply -f ~/go/src/istio-1.22.0/samples/addons
+kubectl port-forward svc/kiali -n istio-system 20001
+```
+
+Now we are going to run the wrk2 to see if we get the changes in the CPU
+utilizations
+```
+cd ./hotelReservation/wrk2/scripts/hotel-reservation/
+wrk -D exp -t 2 -c 2 -d 15 -L -s ./wrk2_lua_scripts/mixed-workload_type_1.lua 192.168.59.103:31449 -R 2 
+
+
+```
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
+istioctl install --set meshConfig.defaultConfig.tracing.zipkin.address=$(kubectl get svc jaeger-collector -n istio-system -o jsonpath='{.spec.clusterIP}'):9411
+```
+
+```
+hit/hit -d 10 -rps 400 -url http://192.168.59.103:30767/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -l "logs/hit_12"
+```
+
+```
+wrk -c 30 -t 10 -d 10 -L http://192.168.59.103:30767/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 400
+```
+
+```
+./wrk -c 500 -t 15 -d 10 -L http://192.168.59.103:30767/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 5000
+```
+
+```
+./wrk -c 700 -t 15 -d 10 -L http://192.168.59.103:30767/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 5000
+```
+
+```
+./wrk -c 100 -t 15 -d 30 -L http://192.168.59.103:30767/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 4000
+```
+
+```
+./wrk -c 100 -t 15 -d 30 -L http://192.168.59.103:30767/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 4000
+```

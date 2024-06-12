@@ -34,8 +34,15 @@ spec:
             - containerPort: 8085
           resources:
             requests:
-              cpu: 100m
-            limits:
-              cpu: 1000m
+              cpu: 250m
       restartPolicy: Always
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/worker
+                operator: In
+                values:
+                - node1
 status: {}
