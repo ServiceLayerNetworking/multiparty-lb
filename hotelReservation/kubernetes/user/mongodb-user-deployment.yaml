@@ -33,9 +33,7 @@ spec:
             - containerPort: 27017
           resources:
             requests:
-              cpu: 100m
-            limits:
-              cpu: 1000m
+              cpu: 10m
           volumeMounts:
             - mountPath: /data/db
               name: user

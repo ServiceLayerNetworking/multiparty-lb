@@ -9,7 +9,7 @@ metadata:
     io.kompose.service: profile
   name: profile
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       io.kompose.service: profile
@@ -34,8 +34,17 @@ spec:
             - containerPort: 8081
           resources:
             requests:
-              cpu: 100m
-            limits:
-              cpu: 1000m
+              cpu: 250m
       restartPolicy: Always
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/worker
+                operator: In
+                values:
+                - node1
+                - node2
+
 status: {}

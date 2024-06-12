@@ -15,6 +15,9 @@ spec:
       securityContext:
         allowPrivilegeEscalation: false
         runAsUser: 0
+      resources:
+        requests:
+          cpu: 150m
       volumeMounts:
       - mountPath: /host
         name: host-filesystem
