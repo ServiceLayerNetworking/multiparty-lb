@@ -26,8 +26,8 @@ NODES=3
 # kubectl label namespace default istio-injection=enabled
 # # kubectl rollout restart deploy
 
-echo "[SCRIPT] Starting HotelReservation..."
-kubectl apply -Rf hotelReservation/kubernetes
+# echo "[SCRIPT] Starting HotelReservation..."
+# kubectl apply -Rf hotelReservation/kubernetes
 
 # echo "[SCRIPT] Applying istio configs for hotelReservation..."
 # kubectl apply -f istio-configs/hotelReservation.yaml

@@ -13,7 +13,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: geo
-  strategy: {}
   template:
     metadata:
       annotations:

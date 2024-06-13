@@ -13,8 +13,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: mongodb-rate
-  strategy:
-    type: Recreate
   template:
     metadata:
       annotations:

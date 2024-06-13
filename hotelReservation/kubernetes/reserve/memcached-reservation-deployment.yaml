@@ -13,7 +13,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: memcached-reserve
-  strategy: {}
   template:
     metadata:
       annotations:

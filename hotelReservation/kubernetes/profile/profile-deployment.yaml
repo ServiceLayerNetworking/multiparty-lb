@@ -13,7 +13,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: profile
-  strategy: {}
   template:
     metadata:
       annotations:
