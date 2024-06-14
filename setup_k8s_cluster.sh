@@ -15,6 +15,10 @@ NODES=3
 # echo "[SCRIPT] Sleeping for $SLEEP_TIME seconds..."
 # sleep $SLEEP_TIME
 
+# # set metrics-server
+# minikube addons enable metrics-server
+# kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
 # echo "[SCRIPT] Setting labels on each node..."
 # for i in $(seq 1 $NODES);
 # do
