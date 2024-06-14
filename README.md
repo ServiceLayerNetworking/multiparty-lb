@@ -174,7 +174,7 @@ utilizations
 ```
 cd ./hotelReservation/wrk2/scripts/hotel-reservation/
 wrk -D exp -t 2 -c 2 -d 15 -L -s ./wrk2_lua_scripts/mixed-workload_type_1.lua 192.168.59.103:31449 -R 2 
-
+```
 
 ```
 kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
@@ -202,5 +202,61 @@ wrk -c 30 -t 10 -d 10 -L http://192.168.59.103:30767/recommendations\?require\=r
 ```
 
 ```
-./wrk -c 100 -t 15 -d 30 -L http://192.168.59.103:30767/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 4000
+./wrk -c 100 -t 15 -d 30 -L http://192.168.59.103:31368/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 4000
 ```
+
+## Towards a working LB solution:
+
+I made the following changes to deployments in `hotelReservation/kubernetes/`:
+- `kind: Deployment` -> `kind: StatefulSet`
+- `status: <something>` -> `<nothing>`
+
+Everything is working... yayy!
+
+Now we need to write the virtual service and destination rules for the service
+
+### Plan of action:
+
+First, begin by setting virtual service and destination rules yourself for a service through yaml, and then ensuring that the request reaches the particular replica you want.
+
+To do this we will apply dstrules/vsvsc for the profile service repicas and send which hits the svcs frontend, profile, recommendation, and some mongodb/memcached svc
+```
+./centralcontroller/centralcontroller
+```
+```
+FRONTEND_IP=$(kubectl get svc frontend -o jsonpath='{.spec.ports[?(@.nodePort)].nodePort}')
+./wrk -c 100 -t 15 -d 30 -L http://192.168.59.103:$FRONTEND_IP/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 4000 <add headers here>
+```
+
+Modified the hotelReservation.yaml to have an istio ingress that points to the frontend service and then have dst rules and virt svcs to direct it based on the podname provided in the header `x-lb-endpt`:
+./wrk -c 100 -t 15 -d 30 -L 
+```
+INGRESS_PORT=$(kubectl get svc istio-ingressgateway -n istio-system -o=jsonpath='{.spec.ports[?(@.name=="http2")].nodePort}')
+CLUSTER_IP=$(minikube ip)
+curl --header "x-lb-endpt: frontend-1" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099
+
+error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header "x-lb-endpt: frontend-0" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 100."
+error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header "x-lb-endpt: frontend-1" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 100."
+error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header "x-lb-endpt: frontend-2" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 100."
+error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header "x-lb-endpt: frontend-3" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 100."
+
+wrk2/wrk -H "x-lb-endpt: frontend-0" -c 100 -t 15 -d 30 -L http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 2000
+```
+Everything works as expected! Yayy! Only frontend-0 was being utilized. Frontend-1 was not being utilized
+
+_Ensure that only the replica you specified in the header was utilizing CPU_
+
+Write the dstrule/vscv for each svc in hotelreservation <br>
+Done
+_Ensure everything is working by doing the validation check above, but with a different svc_
+Turns out, headers are not propogated to the subsequent sevices, so profile, a different svc, did not follow the header specified in the original request
+
+Once this is done, write the WASM proxy to put in headers for each request according to some predefined weights <br>
+_Ensure everything is working by doing the validation check above, but by not assigning headers explicitly in the workload generator_
+
+
+Then modify the proxy to get the weights from an external controller <br>
+_Ensure everything is working by doing the validation check above_
+
+Modify the controller to give weights based on the CPU usages and topology of svc replicas <br>
+_Ensure our system is working_
