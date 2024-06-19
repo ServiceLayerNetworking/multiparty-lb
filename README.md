@@ -254,6 +254,27 @@ Turns out, headers are not propogated to the subsequent sevices, so profile, a d
 Once this is done, write the WASM proxy to put in headers for each request according to some predefined weights <br>
 _Ensure everything is working by doing the validation check above, but by not assigning headers explicitly in the workload generator_
 
+What am I doing to do this:
+- I've changed the code of wasm proxy used for slate (essentially )
+- To build, I used build-and-push.sh
+- I used instructions from [here](https://tinygo.org/getting-started/install/linux/) to get tinygo:
+  ```
+  wget https://github.com/tinygo-org/tinygo/releases/download/v0.32.0/tinygo_0.32.0_amd64.deb
+  sudo dpkg -i tinygo_0.32.0_amd64.deb
+  ```
+- There were a syntax errors in hostcall_utils_tinygo.go:
+  ```
+  twaheed2@ocean3:~/go/src/multiparty-lb/slate-wasm-plugin$ bash build-and-push.sh 
+  # github.com/tetratelabs/proxy-wasm-go-sdk/proxywasm/internal
+  ../../../pkg/mod/github.com/tetratelabs/proxy-wasm-go-sdk@v0.18.0/proxywasm/internal/hostcall_utils_tinygo.go:31:9: cannot use uintptr(size) (value of type uintptr) as int value in struct literal
+  ../../../pkg/mod/github.com/tetratelabs/proxy-wasm-go-sdk@v0.18.0/proxywasm/internal/hostcall_utils_tinygo.go:32:9: cannot use uintptr(size) (value of type uintptr) as int value in struct literal
+  ../../../pkg/mod/github.com/tetratelabs/proxy-wasm-go-sdk@v0.18.0/proxywasm/internal/hostcall_utils_tinygo.go:39:9: cannot use uintptr(size) (value of type uintptr) as int value in struct literal
+  ../../../pkg/mod/github.com/tetratelabs/proxy-wasm-go-sdk@v0.18.0/proxywasm/internal/hostcall_utils_tinygo.go:40:9: cannot use uintptr(size) (value of type uintptr) as int value in struct literal
+  ```
+  I fixed these by changing `uintptr(size)` to `size` 
+
+- I generated a PAT from github, set it equal to PAT, and ran `echo $PAT | docker login ghcr.io -u talha-waheed --password-stdin` to login to ghcr for docker.
+(I had to do this because I hit the limit of pulls from DockerHub)
 
 Then modify the proxy to get the weights from an external controller <br>
 _Ensure everything is working by doing the validation check above_
