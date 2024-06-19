@@ -44,3 +44,7 @@ do
   kubectl apply -f host_agent/pod_svc.yaml
   sed -i "s/node$i/node0/g" host_agent/pod_svc.yaml
 done
+
+# echo "[SCRIPT] installing WASM plugins.."
+# kubectl apply -f mplb-wasm-plugin/wasm.yaml
+
