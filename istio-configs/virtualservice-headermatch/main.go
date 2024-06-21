@@ -4,6 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
+	"strings"
+
 	v1alpha32 "istio.io/api/networking/v1alpha3"
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	versionedistioclient "istio.io/client-go/pkg/clientset/versioned"
@@ -11,8 +14,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"log"
-	"strings"
 )
 
 func main() {
@@ -22,7 +23,8 @@ func main() {
 		2. Create destinationrules for every service, subsetted by region
 		3. Create virtualservices for every service, performing header match based on x-slate-routeto header, keyed by region
 	*/
-	regions := flag.String("regions", "us-east-1,us-west-1", "regions to check (comma separated, no spaces, like us-east-1,us-west-1)")
+	// regions := flag.String("regions", "us-east-1,us-west-1", "regions to check (comma separated, no spaces, like us-east-1,us-west-1)")
+	numReplicas := flag.Int("replicas", 3, "max number of replicas for each service")
 	services := flag.String("services", "", "services to create vs/drs for. use -exclude to do all except these.")
 	exclude := flag.Bool("exclude", false, "exclude the deployments specified in -deployments instead of including them")
 	ns := flag.String("namespace", "default", "namespace to check")
@@ -59,6 +61,8 @@ func main() {
 		svcList = strings.Split(*services, ",")
 	}
 
+	fmt.Printf("Creating DR/VS for %s\n", svcList)
+
 	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		log.Fatalf("Failed to create k8s rest client: %s", err)
@@ -70,8 +74,6 @@ func main() {
 	}
 	drClient := istioclient.NetworkingV1alpha3().DestinationRules(*ns)
 	vsClient := istioclient.NetworkingV1alpha3().VirtualServices(*ns)
-
-	regionList := strings.Split(*regions, ",")
 
 	// Get the list of services
 	fmt.Printf("Processing for %s\n", svcList)
@@ -87,10 +89,12 @@ func main() {
 				Host: svc,
 			},
 		}
-		for _, region := range regionList {
+		for replicaNum := range *numReplicas {
+			replicaName := fmt.Sprintf("%s-%d", svc, replicaNum)
 			dr.Spec.Subsets = append(dr.Spec.Subsets, &v1alpha32.Subset{
-				Name:   region,
-				Labels: map[string]string{"region": region},
+				Name: replicaName,
+				Labels: map[string]string{
+					"statefulset.kubernetes.io/pod-name": replicaName},
 			})
 		}
 		_, err := drClient.Create(context.Background(), dr, v1.CreateOptions{})
@@ -106,14 +110,17 @@ func main() {
 				Hosts: []string{svc},
 			},
 		}
-		for _, region := range regionList {
+		headerName := fmt.Sprintf("x-%s-lb-endpt", svc)
+		for replicaNum := range *numReplicas {
+			replicaName := fmt.Sprintf("%s-%d", svc, replicaNum)
 			// route based on header
 			vs.Spec.Http = append(vs.Spec.Http, &v1alpha32.HTTPRoute{
 				Match: []*v1alpha32.HTTPMatchRequest{
 					{
 						Headers: map[string]*v1alpha32.StringMatch{
-							"x-slate-routeto": {
-								MatchType: &v1alpha32.StringMatch_Exact{Exact: region},
+							headerName: {
+								MatchType: &v1alpha32.StringMatch_Exact{
+									Exact: replicaName},
 							},
 						},
 					},
@@ -122,19 +129,20 @@ func main() {
 					{
 						Destination: &v1alpha32.Destination{
 							Host:   svc,
-							Subset: region,
+							Subset: replicaName,
 						},
 					},
 				},
 			})
 		}
 		// source label rules, keep traffic local if no header match
-		for _, region := range regionList {
+		for replicaNum := range *numReplicas {
+			replicaName := fmt.Sprintf("%s-%d", svc, replicaNum)
 			vs.Spec.Http = append(vs.Spec.Http, &v1alpha32.HTTPRoute{
 				Match: []*v1alpha32.HTTPMatchRequest{
 					{
 						SourceLabels: map[string]string{
-							"region": region,
+							headerName: replicaName,
 						},
 					},
 				},
@@ -142,7 +150,7 @@ func main() {
 					{
 						Destination: &v1alpha32.Destination{
 							Host:   svc,
-							Subset: region,
+							Subset: replicaName,
 						},
 					},
 				},
@@ -151,7 +159,7 @@ func main() {
 				Match: []*v1alpha32.L4MatchAttributes{
 					{
 						SourceLabels: map[string]string{
-							"region": region,
+							headerName: replicaName,
 						},
 					},
 				},
@@ -159,19 +167,20 @@ func main() {
 					{
 						Destination: &v1alpha32.Destination{
 							Host:   svc,
-							Subset: region,
+							Subset: replicaName,
 						},
 					},
 				},
 			})
 		}
 		// final catchall route
+		defaultReplicaName := svc + "-0"
 		vs.Spec.Http = append(vs.Spec.Http, &v1alpha32.HTTPRoute{
 			Route: []*v1alpha32.HTTPRouteDestination{
 				{
 					Destination: &v1alpha32.Destination{
 						Host:   svc,
-						Subset: "us-west-1",
+						Subset: defaultReplicaName,
 					},
 				},
 			},
@@ -181,7 +190,7 @@ func main() {
 				{
 					Destination: &v1alpha32.Destination{
 						Host:   svc,
-						Subset: "us-west-1",
+						Subset: defaultReplicaName,
 					},
 				},
 			},
@@ -194,4 +203,5 @@ func main() {
 		}
 	}
 	fmt.Printf("Done\n")
+
 }

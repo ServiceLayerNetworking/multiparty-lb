@@ -104,7 +104,7 @@ spec:
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: profile-destination
+  name: profile-dr
   namespace: default
 spec:
   host: profile

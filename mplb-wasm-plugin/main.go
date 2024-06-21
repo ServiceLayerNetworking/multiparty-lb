@@ -328,8 +328,8 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		proxywasm.AddHttpRequestHeader("x-lb-endpt", endPt)
 
 		endPt = "profile-0"
-		proxywasm.LogCriticalf("Setting x-lb-profile-endpt to %s", endPt)
-		proxywasm.AddHttpRequestHeader("x-lb-profile-endpt", endPt)
+		proxywasm.LogCriticalf("Setting x-profile-lb-endpt to %s", endPt)
+		proxywasm.AddHttpRequestHeader("x-profile-lb-endpt", endPt)
 
 		// SLATE Logic
 		// endpointDistribution, _, err := proxywasm.GetSharedData(endpointDistributionKey(dst, reqMethod, reqPath))

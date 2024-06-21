@@ -1,0 +1,247 @@
+2024-06-20T22:50:10.889830Z	info	FLAG: --concurrency="0"
+2024-06-20T22:50:10.889913Z	info	FLAG: --domain="default.svc.cluster.local"
+2024-06-20T22:50:10.889943Z	info	FLAG: --help="false"
+2024-06-20T22:50:10.889955Z	info	FLAG: --log_as_json="false"
+2024-06-20T22:50:10.889966Z	info	FLAG: --log_caller=""
+2024-06-20T22:50:10.889976Z	info	FLAG: --log_output_level="default:info"
+2024-06-20T22:50:10.889986Z	info	FLAG: --log_rotate=""
+2024-06-20T22:50:10.889996Z	info	FLAG: --log_rotate_max_age="30"
+2024-06-20T22:50:10.890006Z	info	FLAG: --log_rotate_max_backups="1000"
+2024-06-20T22:50:10.890017Z	info	FLAG: --log_rotate_max_size="104857600"
+2024-06-20T22:50:10.890027Z	info	FLAG: --log_stacktrace_level="default:none"
+2024-06-20T22:50:10.890054Z	info	FLAG: --log_target="[stdout]"
+2024-06-20T22:50:10.890067Z	info	FLAG: --meshConfig="./etc/istio/config/mesh"
+2024-06-20T22:50:10.890077Z	info	FLAG: --outlierLogPath=""
+2024-06-20T22:50:10.890087Z	info	FLAG: --profiling="true"
+2024-06-20T22:50:10.890097Z	info	FLAG: --proxyComponentLogLevel="misc:error"
+2024-06-20T22:50:10.890107Z	info	FLAG: --proxyLogLevel="warning"
+2024-06-20T22:50:10.890118Z	info	FLAG: --serviceCluster="istio-proxy"
+2024-06-20T22:50:10.890128Z	info	FLAG: --stsPort="0"
+2024-06-20T22:50:10.890137Z	info	FLAG: --templateFile=""
+2024-06-20T22:50:10.890151Z	info	FLAG: --tokenManagerPlugin="GoogleTokenExchange"
+2024-06-20T22:50:10.890164Z	info	FLAG: --vklog="0"
+2024-06-20T22:50:10.890174Z	info	Version 1.22.0-aaf597fbfae607adf4bb4e77538a7ea98995328a-Clean
+2024-06-20T22:50:10.890190Z	info	Set max file descriptors (ulimit -n) to: 1048576
+2024-06-20T22:50:10.890965Z	info	Proxy role	ips=[10.244.3.95] type=sidecar id=frontend-0.default domain=default.svc.cluster.local
+2024-06-20T22:50:10.891533Z	info	Apply proxy config from env {}
+
+2024-06-20T22:50:10.901080Z	info	cpu limit detected as 2, setting concurrency
+2024-06-20T22:50:10.901555Z	info	Effective config: binaryPath: /usr/local/bin/envoy
+concurrency: 2
+configPath: ./etc/istio/proxy
+controlPlaneAuthPolicy: MUTUAL_TLS
+discoveryAddress: istiod.istio-system.svc:15012
+drainDuration: 45s
+proxyAdminPort: 15000
+serviceCluster: istio-proxy
+statNameLength: 189
+statusPort: 15020
+terminationDrainDuration: 5s
+
+2024-06-20T22:50:10.901587Z	info	JWT policy is third-party-jwt
+2024-06-20T22:50:10.901608Z	info	using credential fetcher of JWT type in cluster.local trust domain
+2024-06-20T22:50:11.107515Z	info	Workload SDS socket not found. Starting Istio SDS Server
+2024-06-20T22:50:11.107523Z	info	Opening status port 15020
+2024-06-20T22:50:11.107615Z	info	CA Endpoint istiod.istio-system.svc:15012, provider Citadel
+2024-06-20T22:50:11.108734Z	info	Using CA istiod.istio-system.svc:15012 cert with certs: var/run/secrets/istio/root-cert.pem
+2024-06-20T22:50:11.257600Z	info	ads	All caches have been synced up in 368.760802ms, marking server ready
+2024-06-20T22:50:11.260302Z	info	xdsproxy	Initializing with upstream address "istiod.istio-system.svc:15012" and cluster "Kubernetes"
+2024-06-20T22:50:11.271024Z	info	starting Http service at 127.0.0.1:15004
+2024-06-20T22:50:11.271116Z	info	sds	Starting SDS grpc server
+2024-06-20T22:50:11.272814Z	info	Pilot SAN: [istiod.istio-system.svc]
+2024-06-20T22:50:11.278812Z	info	Starting proxy agent
+2024-06-20T22:50:11.278905Z	info	Envoy command: [-c etc/istio/proxy/envoy-rev.json --drain-time-s 45 --drain-strategy immediate --local-address-ip-version v4 --file-flush-interval-msec 1000 --disable-hot-restart --allow-unknown-static-fields -l warning --component-log-level misc:error --concurrency 2]
+2024-06-20T22:50:11.819457Z	warning	envoy main external/envoy/source/server/server.cc:835	Usage of the deprecated runtime key overload.global_downstream_max_connections, consider switching to `envoy.resource_monitors.downstream_connections` instead.This runtime key will be removed in future.	thread=15
+2024-06-20T22:50:11.820328Z	warning	envoy main external/envoy/source/server/server.cc:928	There is no configured limit to the number of allowed active downstream connections. Configure a limit in `envoy.resource_monitors.downstream_connections` resource monitor.	thread=15
+2024-06-20T22:50:11.876788Z	info	xdsproxy	connected to delta upstream XDS server: istiod.istio-system.svc:15012	id=1
+2024-06-20T22:50:12.327761Z	info	cache	generated new workload certificate	latency=1.067984229s ttl=23h59m59.672247493s
+2024-06-20T22:50:12.327826Z	info	cache	Root cert has changed, start rotating root cert
+2024-06-20T22:50:12.327860Z	info	ads	XDS: Incremental Pushing ConnectedEndpoints:0 Version:
+2024-06-20T22:50:12.330020Z	info	cache	returned workload trust anchor from cache	ttl=23h59m59.669983642s
+2024-06-20T22:50:18.141165Z	info	ads	ADS: new connection for node:frontend-0.default-1
+2024-06-20T22:50:18.144258Z	info	ads	ADS: new connection for node:frontend-0.default-2
+2024-06-20T22:50:18.146508Z	info	cache	returned workload certificate from cache	ttl=23h59m53.853498577s
+2024-06-20T22:50:18.147727Z	info	ads	SDS: PUSH request for node:frontend-0.default resources:1 size:4.0kB resource:default
+2024-06-20T22:50:18.148205Z	info	cache	returned workload trust anchor from cache	ttl=23h59m53.851799597s
+2024-06-20T22:50:18.155753Z	info	ads	SDS: PUSH request for node:frontend-0.default resources:1 size:1.1kB resource:ROOTCA
+2024-06-20T22:50:19.673249Z	info	wasm	fetching image talha-waheed/routing-plugin from registry ghcr.io with tag latest
+2024-06-20T22:50:21.072030Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T22:50:21.093274Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T22:50:21.094434Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T22:50:21.096037Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T22:50:21.096882Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T22:50:21.107915Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T22:50:21.121031Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T22:50:21.121792Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T22:50:21.128058Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T22:50:21.131430Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T22:50:21.899200Z	info	Readiness succeeded in 11.050864065s
+2024-06-20T22:50:21.900552Z	info	Envoy proxy is ready
+2024-06-20T22:50:26.085087Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T22:50:45.143896Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T22:50:50.614405Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T22:51:03.866190Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T22:51:09.406766Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T22:51:11.030856Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=25
+2024-06-20T22:51:11.201113Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T22:51:19.613722Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T22:51:24.038676Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=25
+2024-06-20T22:51:26.529919Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T22:51:33.922944Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=25
+2024-06-20T22:51:42.414376Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T22:53:15.680066Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=24
+2024-06-20T22:53:39.758858Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=24
+2024-06-20T22:55:26.098844Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T22:56:03.878892Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T22:56:11.211029Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T22:56:19.624748Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T22:56:42.420952Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:00:26.110539Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:01:03.886961Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:01:11.222988Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:01:19.635530Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:01:42.429904Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:05:26.132822Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:06:03.897108Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:06:11.233796Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:06:19.648661Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:06:42.438216Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:10:26.141765Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:11:03.907342Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:11:11.247040Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:11:19.658352Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:11:42.449261Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:15:26.153168Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:16:03.920282Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:16:11.257331Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:16:19.667378Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:16:42.458057Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:20:26.165364Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:21:03.932920Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:21:11.265001Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:21:19.679321Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:21:42.471616Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:22:46.311330Z	info	xdsproxy	connected to delta upstream XDS server: istiod.istio-system.svc:15012	id=2
+2024-06-20T23:25:26.182548Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:26:03.946475Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:26:11.272179Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:26:19.689862Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:26:42.482962Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:30:26.200323Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:31:03.958507Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:31:11.286369Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:31:19.700134Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:31:42.489697Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:35:26.215190Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:36:03.971706Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:36:11.298228Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:36:19.709550Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:36:42.500923Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:40:26.225580Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:41:03.980355Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:41:11.310487Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:41:19.720698Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:41:42.512049Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:45:26.236910Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:46:03.993311Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:46:11.322354Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:46:19.739143Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:46:42.522914Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:50:26.250718Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:51:04.006519Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:51:11.330563Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:51:19.748616Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:51:42.538275Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-20T23:53:00.206435Z	info	xdsproxy	connected to delta upstream XDS server: istiod.istio-system.svc:15012	id=3
+2024-06-20T23:55:26.262568Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-20T23:56:04.016719Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-20T23:56:11.337217Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-20T23:56:19.756535Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-20T23:56:42.550044Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:00:26.273336Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:01:04.028283Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:01:11.350397Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:01:19.765926Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:01:42.561006Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:05:26.285695Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:06:04.039195Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:06:11.361925Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:06:19.777459Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:06:42.569949Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:10:26.296626Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:11:04.052558Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:11:11.372744Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:11:19.788004Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:11:42.580958Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:15:26.308301Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:16:04.067486Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:16:11.385078Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:16:19.800336Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:16:42.595657Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:20:26.323022Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:21:04.077658Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:21:11.395578Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:21:19.811293Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:21:42.608390Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:23:09.174779Z	info	xdsproxy	connected to delta upstream XDS server: istiod.istio-system.svc:15012	id=4
+2024-06-21T00:25:26.330933Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:26:04.091719Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:26:11.408317Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:26:19.819213Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:26:42.618533Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:30:26.342201Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:31:04.104444Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:31:11.417381Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:31:19.828378Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:31:42.632913Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:35:26.351197Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:36:04.119304Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:36:11.425694Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:36:19.842213Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:36:42.646259Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:40:26.359432Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:41:04.130386Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:41:11.434181Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:41:19.853282Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:41:42.657668Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:45:26.368747Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:46:04.137438Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:46:11.448120Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:46:19.860550Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:46:42.671684Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:50:26.376224Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:51:04.144405Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:51:11.457103Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:51:19.867157Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:51:42.681052Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T00:54:21.932055Z	info	xdsproxy	connected to delta upstream XDS server: istiod.istio-system.svc:15012	id=5
+2024-06-21T00:55:26.384058Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T00:56:04.151338Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T00:56:11.469484Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T00:56:19.877244Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T00:56:42.692393Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T01:00:26.393605Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T01:01:04.160624Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T01:01:11.481730Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T01:01:19.884965Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T01:01:42.702678Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T01:05:26.402565Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T01:06:04.169753Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T01:06:11.494569Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T01:06:19.898202Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T01:06:42.716167Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T01:10:26.413027Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T01:11:04.181682Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T01:11:11.508589Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T01:11:19.906699Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T01:11:42.728199Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T01:15:26.422200Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-search consul:8500	thread=25
+2024-06-21T01:16:04.193286Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-reservation consul:8500	thread=25
+2024-06-21T01:16:11.522242Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-recommendation consul:8500	thread=25
+2024-06-21T01:16:19.915510Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-user consul:8500	thread=25
+2024-06-21T01:16:42.741137Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T01:17:59.103583Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=25
+2024-06-21T01:18:00.393265Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=24
+2024-06-21T01:18:00.579348Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
+2024-06-21T01:18:01.145586Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /recommendations 192.168.59.100:32094	thread=25
+2024-06-21T01:18:01.721575Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.routing-plugin: Request: GET /v1/health/service/srv-profile consul:8500	thread=24
