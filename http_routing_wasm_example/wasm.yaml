@@ -1,0 +1,34 @@
+# default namespace services
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: routing-plugin
+  namespace: default
+spec:
+  url: oci://ghcr.io/talha-waheed/routing-plugin:latest
+  imagePullPolicy: Always
+  vmConfig:
+    env:
+    - name: HOSTNAME
+      valueFrom: HOST
+    - name: ISTIO_META_WORKLOAD_NAME
+      valueFrom: HOST
+---
+# ingressgw
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: routing-plugin
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  url: oci://ghcr.io/talha-waheed/routing-plugin:latest
+  imagePullPolicy: Always
+  vmConfig:
+    env:
+    - name: HOSTNAME
+      valueFrom: HOST
+    - name: ISTIO_META_WORKLOAD_NAME
+      valueFrom: HOST

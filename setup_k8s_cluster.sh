@@ -31,7 +31,7 @@ NODES=3
 # # kubectl rollout restart deploy
 
 # echo "[SCRIPT] Starting HotelReservation..."
-# kubectl apply -Rf hotelReservation/kubernetes
+# kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes
 
 # echo "[SCRIPT] Applying istio configs for hotelReservation..."
 # kubectl apply -f istio-configs/hotelReservation.yaml
