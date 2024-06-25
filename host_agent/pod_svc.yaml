@@ -12,6 +12,8 @@ spec:
       ports:
         - containerPort: 9988
           protocol: TCP
+        - containerPort: 9989
+          protocol: TCP
       securityContext:
         allowPrivilegeEscalation: false
         runAsUser: 0
@@ -47,5 +49,7 @@ spec:
   ports:
   - port: 9988
     targetPort: 9988
+  - port: 9989
+    targetPort: 9989
   selector:
     app: hostagent-node0

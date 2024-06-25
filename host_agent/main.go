@@ -5,17 +5,20 @@ import (
 	"log"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const (
-	SERVER_HOST                 = "localhost"
-	SERVER_PORT                 = "9988"
-	SERVER_TYPE                 = "tcp"
+	CC_SERVER_HOST              = "localhost"
+	CC_SERVER_PORT              = 9988
+	CC_SERVER_TYPE              = "tcp"
+	LB_SERVER_PORT              = 9989
 	CPU_UTILIZATION_INTERVAL_MS = 100
 )
 
@@ -35,18 +38,31 @@ What does this server do:
 6. Repeat from 3. indefinitely (until connection is closed)
 */
 
+type SafeLBWeights struct {
+	mu      sync.Mutex
+	weights string
+}
+
 func main() {
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	startServer()
+	// keep LB weights as a shared variable managed by a seperate go routine
+	lbWeights := &SafeLBWeights{}
+
+	// start the server that will communicate with the central controller
+	go startServerForCC(lbWeights)
+
+	// listen for requests from the load balancer for updating its weights
+	listenForReqsFromLB(lbWeights)
 }
 
-func startServer() {
+func startServerForCC(lbWeights *SafeLBWeights) {
 
 	fmt.Println("Server Running...")
 
-	server, err := net.Listen(SERVER_TYPE, ":"+SERVER_PORT)
+	server, err := net.Listen(
+		CC_SERVER_TYPE, fmt.Sprintf(":%d", CC_SERVER_PORT))
 	if err != nil {
 		fmt.Println("Error listening:", err.Error())
 		os.Exit(1)
@@ -54,7 +70,8 @@ func startServer() {
 
 	defer server.Close()
 
-	fmt.Println("Listening on " + SERVER_HOST + ":" + SERVER_PORT)
+	fmt.Println(
+		"Listening on " + CC_SERVER_HOST + fmt.Sprintf(":%d", CC_SERVER_PORT))
 	fmt.Println("Waiting for client...")
 
 	for {
@@ -64,12 +81,37 @@ func startServer() {
 			os.Exit(1)
 		}
 		fmt.Println("client connected")
-		go processClient(connection)
+		go processClient(connection, lbWeights)
 	}
 
 }
 
-func processClient(connection net.Conn) {
+func listenForReqsFromLB(lbWeights *SafeLBWeights) {
+	// listen for http requests at a specific port
+	// and update the LB weights
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Connection", "close")
+
+		lbWeights.mu.Lock()
+		currLBWeights := lbWeights.weights
+		lbWeights.mu.Unlock()
+
+		fmt.Fprint(w, currLBWeights)
+	})
+
+	fmt.Printf(
+		"Server running (port=%d), route: http://localhost:%d\n",
+		LB_SERVER_PORT, LB_SERVER_PORT)
+
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", LB_SERVER_PORT), nil); err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func processClient(connection net.Conn, lbWeights *SafeLBWeights) {
 
 	defer connection.Close()
 
@@ -91,6 +133,10 @@ func processClient(connection net.Conn) {
 			if ok {
 				podUIDs = newPodUIDs
 			}
+			sendSuccessOrFailResponse(connection, ok)
+
+		} else if msgType == "applyLBWeights" {
+			ok := updateLBWeights(podUIDs, msgFromCC, lbWeights)
 			sendSuccessOrFailResponse(connection, ok)
 
 		} else if msgType == "applyCPUShares" {
@@ -173,6 +219,25 @@ func applyCPUQuotas(podUIDs map[string]string, msg string) bool {
 	return true
 }
 
+func updateLBWeights(
+	podUIDs map[string]string, msg string, lbWeights *SafeLBWeights) bool {
+	// parse the message and update lb weights
+	// return true if successful, false otherwise
+
+	// newLBWeights, ok := parseLBWeights(msg)
+	// if !ok {
+	// 	return false
+	// }
+
+	lbWeights.mu.Lock()
+	lbWeights.weights = msg
+	lbWeights.mu.Unlock()
+
+	slog.Info("Updated LB weights: " + msg)
+
+	return true
+}
+
 func applyCPUShares(podUIDs map[string]string, msg string) bool {
 	// parse the message and apple CPU shares
 	// return true if successful, false otherwise
@@ -230,6 +295,27 @@ func parsePodShares(msg string) (map[string]string, bool) {
 	}
 
 	return podShares, true
+}
+
+func parseLBWeights(msg string) (map[string]float64, bool) {
+
+	// example message to parse: "updateLBWeights pod1:45.4 pod2:69.22"
+
+	weights := make(map[string]float64)
+	podStrs := strings.Split(msg, " ")[1:]
+	for _, podStr := range podStrs {
+		podNameToShare := strings.Split(podStr, ":")
+		if len(podNameToShare) != 2 {
+			return weights, false
+		}
+		share, err := strconv.ParseFloat(podNameToShare[1], 64)
+		if err != nil {
+			return weights, false
+		}
+		weights[podNameToShare[0]] = share
+	}
+
+	return weights, true
 }
 
 func getOSFile(readPath string) (string, error) {
