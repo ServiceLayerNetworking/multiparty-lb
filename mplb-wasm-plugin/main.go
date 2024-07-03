@@ -147,7 +147,7 @@ func (p *pluginContext) OnPluginStart(pluginConfigurationSize int) types.OnPlugi
 	return types.OnPluginStartStatusOK
 }
 
-/*// OnTick reports load to the controller every TICK_PERIOD milliseconds.
+// OnTick reports load to the controller every TICK_PERIOD milliseconds.
 func (p *pluginContext) OnTick() {
 
 	// KEY_LAST_RESET acts as a mutex to prevent multiple instances of the plugin from calling OnTick at the same time.
@@ -250,20 +250,20 @@ func (p *pluginContext) OnTick() {
 
 	controllerHeaders := [][2]string{
 		{":method", "POST"},
-		{":path", "/proxyLoad"},
-		{":authority", "slate-controller.default.svc.cluster.local"},
-		{"x-slate-podname", p.podName},
-		{"x-slate-servicename", p.serviceName},
-		{"x-slate-region", p.region},
+		{":path", "/"},
+		{":authority", "hostagent-node0.default.svc.cluster.local"},
+		// {"x-slate-podname", p.podName},
+		// {"x-slate-servicename", p.serviceName},
+		// {"x-slate-region", p.region},
 	}
 
 	reqBody := fmt.Sprintf("reqCount\n%d\n\ninflightStats\n%s\nrequestStats\n%s", reqCount, inflightStats, requestStatsStr)
 	proxywasm.LogCriticalf("<OnTick>\nreqBody:\n%s", reqBody)
 
-	proxywasm.DispatchHttpCall("outbound|8000||slate-controller.default.svc.cluster.local", controllerHeaders,
+	proxywasm.DispatchHttpCall("outbound|9989||hostagent-node0.default.svc.cluster.local", controllerHeaders,
 		[]byte(fmt.Sprintf("%d\n%s\n%s", reqCount, inflightStats, requestStatsStr)), make([][2]string, 0), 5000, OnTickHttpCallResponse)
 
-}*/
+}
 
 // Override types.DefaultPluginContext.
 func (p *pluginContext) NewHttpContext(contextID uint32) types.HttpContext {
@@ -305,8 +305,11 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 	}
 	dst := strings.Split(reqAuthority, ":")[0]
 
+	proxywasm.LogCriticalf("ServiceName: %s, dst: %s",
+		ctx.pluginContext.serviceName, dst)
+
 	proxywasm.LogCriticalf(
-		"Request: %s %s %s %s", reqMethod, reqPath, reqAuthority, traceId)
+		"--Request: %s %s %s %s", reqMethod, reqPath, reqAuthority, traceId)
 
 	// replicaZero := dst + "-0"
 	// proxywasm.LogCriticalf("Setting x-lb-endpt to %s for every request", replicaZero)
@@ -323,40 +326,51 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		// MP-LB logic:
 		// replicaZero := dst + "-0"
 		// endPt := replicaZero
-		endPt := "frontend-0"
-		proxywasm.LogCriticalf("Setting x-lb-endpt to %s", endPt)
-		proxywasm.AddHttpRequestHeader("x-lb-endpt", endPt)
+		// endPt := "frontend-0"
+		// proxywasm.LogCriticalf("Setting x-lb-endpt to %s", endPt)
+		// proxywasm.AddHttpRequestHeader("x-lb-endpt", endPt)
 
-		endPt = "profile-0"
-		proxywasm.LogCriticalf("Setting x-profile-lb-endpt to %s", endPt)
-		proxywasm.AddHttpRequestHeader("x-profile-lb-endpt", endPt)
+		// endPt = "profile-0"
+		// proxywasm.LogCriticalf("Setting x-profile-lb-endpt to %s", endPt)
+		// proxywasm.AddHttpRequestHeader("x-profile-lb-endpt", endPt)
 
 		// SLATE Logic
-		// endpointDistribution, _, err := proxywasm.GetSharedData(endpointDistributionKey(dst, reqMethod, reqPath))
-		// proxywasm.AddHttpRequestHeader("x-slate-routefrom", region)
-		// if err != nil {
-		// 	// no rules available yet.
-		// 	proxywasm.AddHttpRequestHeader("x-slate-routeto", region)
-		// } else {
-		// 	// draw from distribution
-		// 	coin := rand.Float64()
-		// 	total := 0.0
-		// 	distLines := strings.Split(string(endpointDistribution), "\n")
-		// 	for _, line := range distLines {
-		// 		lineS := strings.Split(line, " ")
-		// 		targetRegion := lineS[0]
-		// 		pct, err := strconv.ParseFloat(lineS[1], 64)
-		// 		if err != nil {
-		// 			proxywasm.LogCriticalf("Couldn't parse endpoint distribution line: %v", err)
-		// 			return types.ActionContinue
-		// 		}
-		// 		total += pct
-		// 		if coin <= total {
-		// 			proxywasm.AddHttpRequestHeader("x-slate-routeto", targetRegion)
-		// 			break
-		// 		}
-		// 	}
-		// }
+		weightsStr, _, err := proxywasm.GetSharedData(dst)
+		headerErr := proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
+		if headerErr != nil {
+			proxywasm.LogCriticalf("Error adding header: %v", headerErr)
+		}
+		if err != nil {
+			// no rules available yet.
+			proxywasm.LogCriticalf(
+				"Setting default x-lb-endpt: %s-0, %v", dst, err)
+			headerErr = proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
+			if headerErr != nil {
+				proxywasm.LogCriticalf("Error adding header: %v", headerErr)
+			}
+		} else {
+			// draw from distribution
+			coin := rand.Float64()
+			total := 0.0
+			weights := strings.Split(string(weightsStr), "|")
+			for endpointNum, weight := range weights {
+				pct, err := strconv.ParseFloat(weight, 64)
+				if err != nil {
+					proxywasm.LogCriticalf("Couldn't parse weight: %v", err)
+					return types.ActionContinue
+				}
+				total += pct
+				if coin <= total {
+					header := fmt.Sprintf("%s-%d", dst, endpointNum)
+					proxywasm.LogCriticalf("Setting x-lb-endpt:" + header)
+					headerErr = proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", header)
+					if headerErr != nil {
+						proxywasm.LogCriticalf("Error adding header: %v", headerErr)
+					}
+					break
+				}
+			}
+		}
 		return types.ActionContinue
 	}
 
@@ -458,7 +472,7 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	}
 }
 
-/*// callback for OnTick() http call response
+// callback for OnTick() http call response
 func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 	// receive RPS thresholds, set shared data accordingly
 	hdrs, err := proxywasm.GetHttpCallResponseHeaders()
@@ -490,64 +504,24 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 		proxywasm.LogCriticalf("Couldn't get http call response body: %v", err)
 		return
 	}
-	bodyLines := strings.Split(string(respBody), "\n")
 
-		// Example response body:
-		// 	metrics-fake-ingress@GET@/start, metrics-handler@GET@/detectAnomalies, us-west-1, us-west-1, 0.6
-		// 	metrics-fake-ingress@GET@/start, metrics-handler@GET@/detectAnomalies, us-west-1, us-east-1, 0.4
-		// 	metrics-fake-ingress@GET@/start, metrics-handler@GET@/detectAnomalies, us-east-1, us-east-1, 0.1
-		// 	metrics-fake-ingress@GET@/start, metrics-handler@GET@/detectAnomalies, us-east-1, us-west-1, 0.9
-
-	proxywasm.LogCriticalf("received http call response: %s", bodyLines)
-	distrs := map[string]map[string]string{}
-	for _, line := range bodyLines {
-		if line == "" {
+	body := string(respBody)
+	// example response body: svcA:45.5|69.22 svcB:54.7|44.1
+	svcInfos := strings.Split(body, " ")
+	for _, svcInfo := range svcInfos {
+		svcInfoSplit := strings.Split(svcInfo, ":")
+		if len(svcInfoSplit) != 2 {
+			proxywasm.LogCriticalf("received invalid http call response, svcInfo: %s", svcInfo)
 			continue
 		}
-		lineSplit := strings.Split(line, ",")
-		if len(lineSplit) != 5 {
-			proxywasm.LogCriticalf("received invalid http call response, line: %s", line)
-			continue
-		}
-		for i, lineItem := range lineSplit {
-			lineSplit[i] = strings.TrimSpace(lineItem)
-		}
-		if lineSplit[2] != region {
-			// disclude
-			continue
-		}
-		srcSvcMethodPath := strings.Split(lineSplit[0], "@")
-		if len(srcSvcMethodPath) != 3 {
-			proxywasm.LogCriticalf("received invalid http call response, line: %s", line)
-			continue
-		}
-		dstSvcMethodPath := strings.Split(lineSplit[1], "@")
-		if len(dstSvcMethodPath) != 3 {
-			proxywasm.LogCriticalf("received invalid http call response, line: %s", line)
-			continue
-		}
-		// assume we only get responses for our service
-		if !strings.HasPrefix(serviceName, srcSvcMethodPath[0]) {
-			// disclude
-			continue
-		}
-		if _, ok := distrs[lineSplit[1]]; !ok {
-			distrs[lineSplit[1]] = map[string]string{}
-		}
-		distrs[lineSplit[1]][lineSplit[3]] = lineSplit[4]
-	}
-	for methodPath, distr := range distrs {
-		distStr := ""
-		for region, pct := range distr {
-			distStr += fmt.Sprintf("%s %s\n", region, pct)
-		}
-		mp := strings.Split(methodPath, "@")
-		proxywasm.LogCriticalf("setting outbound request distribution %v: %v", endpointDistributionKey(mp[0], mp[1], mp[2]), distStr)
-		if err := proxywasm.SetSharedData(endpointDistributionKey(mp[0], mp[1], mp[2]), []byte(distStr), 0); err != nil {
-			proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", methodPath, err)
+		svcName := svcInfoSplit[0]
+		svcWeights := svcInfoSplit[1]
+		proxywasm.LogCriticalf("setting outbound request weights %v: %v", svcName, svcWeights)
+		if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
+			proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
 		}
 	}
-}*/
+}
 
 // IncrementSharedData increments the value of the shared data at the given key. The data is
 // stored as a little endian uint64. if the key doesn't exist, it is created with the value 1.

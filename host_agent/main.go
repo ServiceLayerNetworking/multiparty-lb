@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"log/slog"
 	"net"
@@ -48,7 +49,8 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	// keep LB weights as a shared variable managed by a seperate go routine
-	lbWeights := &SafeLBWeights{}
+	lbWeights := &SafeLBWeights{
+		weights: "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0"}
 
 	// start the server that will communicate with the central controller
 	go startServerForCC(lbWeights)
@@ -97,6 +99,15 @@ func listenForReqsFromLB(lbWeights *SafeLBWeights) {
 		lbWeights.mu.Lock()
 		currLBWeights := lbWeights.weights
 		lbWeights.mu.Unlock()
+
+		// get post body
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Error reading request body",
+				http.StatusInternalServerError)
+			return
+		}
+		fmt.Println("Received request: " + string(body))
 
 		fmt.Fprint(w, currLBWeights)
 	})
@@ -299,7 +310,7 @@ func parsePodShares(msg string) (map[string]string, bool) {
 
 func parseLBWeights(msg string) (map[string]float64, bool) {
 
-	// example message to parse: "updateLBWeights pod1:45.4 pod2:69.22"
+	// example message to parse: "updateLBWeights svcA:45.5|69.22 svcB:54.7|44.1"
 
 	weights := make(map[string]float64)
 	podStrs := strings.Split(msg, " ")[1:]
