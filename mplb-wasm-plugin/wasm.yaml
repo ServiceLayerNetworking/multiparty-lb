@@ -13,6 +13,10 @@ spec:
       valueFrom: HOST
     - name: ISTIO_META_WORKLOAD_NAME
       valueFrom: HOST
+    - name: MY_NODE_NAME
+      valueFrom: HOST
+    - name: MY_POD_NAME
+      valueFrom: HOST
 ---
 # ingressgw
 apiVersion: extensions.istio.io/v1alpha1
@@ -31,4 +35,8 @@ spec:
     - name: HOSTNAME
       valueFrom: HOST
     - name: ISTIO_META_WORKLOAD_NAME
+      valueFrom: HOST
+    - name: MY_NODE_NAME
+      valueFrom: HOST
+    - name: MY_POD_NAME
       valueFrom: HOST

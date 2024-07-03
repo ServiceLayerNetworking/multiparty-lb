@@ -7,13 +7,15 @@ metadata:
 spec:
   containers:
     - name: hostagent-node0
-      image: talhawaheed/hostagent:latest
+      image: ghcr.io/talha-waheed/hostagent:latest
       imagePullPolicy: Always
       ports:
         - containerPort: 9988
           protocol: TCP
+          name: cc
         - containerPort: 9989
           protocol: TCP
+          name: podproxy
       securityContext:
         allowPrivilegeEscalation: false
         runAsUser: 0
@@ -44,12 +46,15 @@ metadata:
   name: hostagent-node0
   labels:
     app: hostagent-node0
+    service: hostagent-node0
 spec:
   type: NodePort
   ports:
   - port: 9988
     targetPort: 9988
+    name: cc
   - port: 9989
     targetPort: 9989
+    name: podproxy
   selector:
     app: hostagent-node0

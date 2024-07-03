@@ -34,7 +34,8 @@ NODES=3
 # kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes
 
 # echo "[SCRIPT] Applying istio configs for hotelReservation..."
-# kubectl apply -f istio-configs/hotelReservation.yaml
+kubectl apply -f istio-configs/hotelReservation.yaml
+istio-configs/virtualservice-headermatch/vs-headermatch -services "consul,frontend" -exclude
 
 echo "[SCRIPT] Spawning host agents on each node..."
 kubectl apply -f host_agent/pod_svc_for_master_node.yaml
@@ -45,6 +46,7 @@ do
   sed -i "s/node$i/node0/g" host_agent/pod_svc.yaml
 done
 
+bash restart_wasm.sh
 # echo "[SCRIPT] installing WASM plugins.."
 # kubectl apply -f mplb-wasm-plugin/wasm.yaml
 

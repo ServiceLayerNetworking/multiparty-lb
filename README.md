@@ -278,6 +278,10 @@ What am I doing to do this:
 
 Then modify the proxy to get the weights from an external controller <br>
 _Ensure everything is working by doing the validation check above_
+Done
+Ran it, two problems:
+1. CPU usage stats for recommendation are not coming in logs -- problem diagnosed: the svc is on master node whose node agent is not being called
+2. The 
 
 Modify the controller to give weights based on the CPU usages and topology of svc replicas <br>
 _Ensure our system is working_

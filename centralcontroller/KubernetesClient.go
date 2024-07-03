@@ -123,14 +123,15 @@ func (k8sClient *KubernetesClient) getHostAgentNodePort(node v1.Node) int {
 	// Find and print the NodePort
 	nodePort := 0
 	for _, port := range service.Spec.Ports {
-		if port.NodePort != 0 {
+		if port.Name == "cc" {
 			nodePort = int(port.NodePort)
+			break
 		}
 	}
 
 	if nodePort == 0 {
 		slog.Error(
-			fmt.Sprintf("No NodePort found for service %s\n", serviceName))
+			fmt.Sprintf("No cc NodePort for service %s\n", serviceName))
 	}
 
 	return nodePort

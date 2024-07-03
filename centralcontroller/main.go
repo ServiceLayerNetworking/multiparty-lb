@@ -126,6 +126,7 @@ func main() {
 
 	// Initialize nodes
 	nodes := k8sClient.GetNodes()[1:]
+	fmt.Printf("Nodes: %v\n", nodes)
 
 	// Connect to all host agents
 	for i := range nodes {
@@ -155,6 +156,10 @@ func main() {
 	if ENFORCEMENT == "NONE" {
 
 		go ccWithNoEnforcement(cpuLogFile, nodes)
+
+	} else if ENFORCEMENT == "LB" {
+
+		go ccWithLBEnforcement(cpuLogFile, nodes)
 
 	} else {
 
@@ -204,6 +209,45 @@ func ccWithNoEnforcement(cpuLogFile *LogFile, nodes []Node) {
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(getLogFileFormatNoEnforcement(nodeCPUUtilizations))
+	}
+}
+
+func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
+
+	// Repeat the following:
+	// - Get CPU Utilizations from host agents
+	for {
+
+		// - Get CPU Utilizations from host agents
+		cpuUtilizationCh := make(chan CPUUtil)
+		for i := range nodes {
+			msg := "getCPUUtilizations"
+			go func(i int, node Node) {
+				cpuUtilizations := node.SendMessageAndGetResponse(msg)
+				cpuUtilizationCh <- CPUUtil{i, cpuUtilizations}
+			}(i, nodes[i])
+		}
+		nodeCPUUtilizations := make([]string, len(nodes))
+		for range nodes {
+			cpuUtil := <-cpuUtilizationCh
+			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
+			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
+				cpuUtil.Node, cpuUtil.CPUUtilizations))
+		}
+
+		// log the CPU Utilizations and CPU Shares
+		cpuLogFile.Writeln(getLogFileFormatNoEnforcement(nodeCPUUtilizations))
+
+		lbWeights := "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0"
+		// - Send the CPU Quotas to the host agents to be applied
+		for i := range nodes {
+			msg := "applyLBWeights " + lbWeights
+			response := nodes[i].SendMessageAndGetResponse(msg)
+			if response != "Success" {
+				slog.Warn("Failed to apply CPU Quotas on node: " +
+					nodes[i].IP)
+			}
+		}
 	}
 }
 

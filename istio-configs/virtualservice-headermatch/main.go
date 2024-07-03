@@ -110,7 +110,8 @@ func main() {
 				Hosts: []string{svc},
 			},
 		}
-		headerName := fmt.Sprintf("x-%s-lb-endpt", svc)
+		headerName := "x-lb-endpt"
+		// headerName := fmt.Sprintf("x-%s-lb-endpt", svc)
 		for replicaNum := range *numReplicas {
 			replicaName := fmt.Sprintf("%s-%d", svc, replicaNum)
 			// route based on header
