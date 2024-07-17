@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostagent-node0
+  labels:
+    app: hostagent-node0
+spec:
+  containers:
+    - name: hostagent-node0
+      image: ghcr.io/talha-waheed/hostagent:latest
+      imagePullPolicy: Always
+      ports:
+        - containerPort: 9988
+          protocol: TCP
+          name: cc
+        - containerPort: 9989
+          protocol: TCP
+          name: podproxy
+      securityContext:
+        allowPrivilegeEscalation: false
+        runAsUser: 0
+      # resources:
+      #   requests:
+      #     cpu: 150m
+      volumeMounts:
+      - mountPath: /host
+        name: host-filesystem
+  volumes:
+  - name: host-filesystem
+    hostPath:
+      path: /         # This will mount the root filesystem of the host
+      type: Directory
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: node-role.kubernetes.io/worker
+            operator: In
+            values:
+            - node0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostagent-node0
+  labels:
+    app: hostagent-node0
+    service: hostagent-node0
+spec:
+  type: NodePort
+  ports:
+  - port: 9988
+    targetPort: 9988
+    name: cc
+  - port: 9989
+    targetPort: 9989
+    name: podproxy
+  selector:
+    app: hostagent-node0

@@ -319,10 +319,10 @@ class Tenant:
     def __init__(self, name: str, load: float, fshare: float = 0.0):
         self.name: str = name
         self.load: float = load
-        self.fshare: float = fshare
+        self.fshareload: float = fshare
 
 class Worker:
-    def __init__(self, name, tenant, host):
+    def __init__(self, name: str, tenant: str, host: str):
         self.name: str = name
         self.tenant: str = tenant
         self.host: str = host
@@ -371,7 +371,7 @@ def run_generic_model(
     share = {}
     for tenant in _tenants:
         share[tenant.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
-                                 name=f"share_{tenant}")
+                                 name=f"share_{tenant.name}")
         
     fshare = {}
     for tenant in _tenants:
@@ -403,6 +403,12 @@ def run_generic_model(
                     + sp[host.name] == cap[host.name],
                     name=f"h_{host.name}")
     
+    for tenant in _tenants:
+        print()
+        print(tenant.name, [worker.name
+              for worker in _workers if worker.tenant == tenant.name])
+        print()
+        
     # at each tenant, sum(w) <= t
     for tenant in _tenants:
         m.addConstr(
@@ -414,7 +420,7 @@ def run_generic_model(
     
     # for each tenant, set fshare
     for tenant in _tenants:
-        m.addConstr(fshare[tenant.name] == tenant.fshare, 
+        m.addConstr(fshare[tenant.name] == tenant.fshareload, 
                     name=f"fshare_{tenant.name}")
     
     # for each tenant, share = min(fshare, t)
@@ -422,6 +428,14 @@ def run_generic_model(
         m.addGenConstrMin(share[tenant.name],
                           [fshare[tenant.name], t[tenant.name]],
                           name=f"share_{tenant.name}")
+    
+    # for each tenant, share(tenant) <= sum(w)
+    for tenant in _tenants:
+        m.addConstr(share[tenant.name] <= 
+                    gp.quicksum((w[worker.name] 
+                                 for worker in _workers 
+                                 if worker.tenant == tenant.name)), 
+                    name=f"share_{tenant}")
     
     # ============================== Optimize! =================================
     
@@ -433,30 +447,52 @@ def run_generic_model(
         vars = {v.varName: v.x for v in m.getVars()}
         print(vars)
         
-    if m.Status == GRB.OPTIMAL:
+    if m.Status == GRB.OPTIMAL:        
+        
         vars = {v.varName: v.x for v in m.getVars()}
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+            else:
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
         to_return = {
             "status": m.Status,
-            "t00": vars["w_10"] + 0.00001,
-            "t01": vars["w_11"] + 0.00001,
-            "t11": vars["w_21"] + 0.00001,
-            "t12": vars["w_22"] + 0.00001,
-            "t20": vars["w_00"] + 0.00001,
+            "result": results
         }
-        # print(to_return)
+        
+        print(to_return)
+        
         return to_return
+
     else:
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = 0.0
+            else:
+                results[worker.tenant][worker.name] = 0.0
         to_return = {
             "status": m.Status,
-            "t00": 0.0 + 0.00001,
-            "t01": 0.0 + 0.00001,
-            "t11": 0.0 + 0.00001,
-            "t12": 0.0 + 0.00001,
-            "t20": 0.0 + 0.00001,
+            "result": results
         }
-        # print(to_return)
+        
+        print(to_return)
+        
         return to_return
     
+# run generic model from json input (from cc)
+def run_from_json(hosts, tenants, workers):
+    hosts = [Host(h["name"], h["cap"]) for h in hosts]
+    tenants = [Tenant(t["name"], t["load"], t["fshareload"]) for t in tenants]
+    workers = [Worker(w["name"], w["tenant"], w["host"]) for w in workers]
+    return run_generic_model(hosts, tenants, workers)
+    
+# test run for the 3-node scenario on the newly written generic model func
 def test_3_node_run_generic_model(host_cap, tenant_loads):
     
     hosts = [
@@ -481,33 +517,58 @@ def test_3_node_run_generic_model(host_cap, tenant_loads):
     
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def gurobi_server():
-    print("reached here", request.args, request.args["host_cap"])
-    start_time = time()
-    variables = run_general_model(
-        float(request.args["host_cap"]), 
-        [float(request.args["t2"]),
-         float(request.args["t0"]),
-         float(request.args["t1"])])
-    time_taken = time() - start_time
-    print(f"{time_taken*1000:.2f} ms")
-    # return "Hello World!"
-    return dumps(variables)
-
-
     
+    print("======================reached here")
+    
+    if request.method == "GET":
+    
+        print("reached here", request.args, request.args["host_cap"])
+        start_time = time()
+        
+        variables = run_general_model(
+            float(request.args["host_cap"]), 
+            [float(request.args["t2"]),
+            float(request.args["t0"]),
+            float(request.args["t1"])])
+       
+        time_taken = time() - start_time
+        print(f"{time_taken*1000:.2f} ms")
+        
+        return dumps(variables)
+        
+    elif request.method == "POST":
+        
+        start_time = time()
+        print("reached here")
+        request_data = request.get_json(force=False)
+        print("Received:", request_data)
+        hosts, tenants, workers = request_data[0], request_data[1], request_data[2]
+        
+        variables = run_from_json(hosts, tenants, workers)
+        
+        time_taken = time() - start_time
+        print(f"{time_taken*1000:.2f} ms")
+        
+        return dumps(variables)  
 
 import sys
 
+import logging
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 if __name__ == '__main__':  
-    # app.run(host="localhost", port=5000)
+    print("======================reached here")
+    app.run(host="localhost", port=5000, debug=True)
     
-    a = run_general_model(200, [98, 251, 230])
-    b = test_3_node_run_generic_model(200, [98, 251, 230])
+    # a = run_general_model(200, [100, 300, 200])
+    # b = test_3_node_run_generic_model(200, [100, 300, 200])
     
-    print(a)
-    print(b)
+    # print(a)
+    # print(b)
     
     # # run_general_model(2, [89/100, 236/100, 185/100])
     # result = run_general_model(float(sys.argv[1]), [float(v) for v in sys.argv[2:]])
