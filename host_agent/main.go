@@ -21,6 +21,7 @@ const (
 	CC_SERVER_TYPE              = "tcp"
 	LB_SERVER_PORT              = 9989
 	CPU_UTILIZATION_INTERVAL_MS = 100
+	DEFAULT_LB_WEIGHTS          = ""
 )
 
 /*
@@ -50,7 +51,7 @@ func main() {
 
 	// keep LB weights as a shared variable managed by a seperate go routine
 	lbWeights := &SafeLBWeights{
-		weights: "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0"}
+		weights: DEFAULT_LB_WEIGHTS}
 
 	// start the server that will communicate with the central controller
 	go startServerForCC(lbWeights)

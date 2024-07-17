@@ -40,7 +40,18 @@ func (k8sClient *KubernetesClient) Initialize() {
 	k8sClient.clientset = clientset
 }
 
-func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]string {
+func getAppName(pod v1.Pod) string {
+	for _, owner := range pod.OwnerReferences {
+		if owner.Kind == "StatefulSet" ||
+			owner.Kind == "Deployment" ||
+			owner.Kind == "ReplicaSet" {
+			return owner.Name
+		}
+	}
+	return pod.Name
+}
+
+func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod {
 
 	// List all pods in the cluster
 	pods, err := k8sClient.clientset.CoreV1().Pods("default").List(
@@ -50,7 +61,7 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]stri
 			fmt.Sprintf("Error listing pods: %s\n", err.Error()))
 	}
 
-	nodeToPods := make(map[string]map[string]string)
+	nodeToPods := make(map[string]map[string]Pod)
 
 	// Iterate through the pods and print the UIDs of pods on the specified node
 	for _, pod := range pods.Items {
@@ -61,12 +72,30 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]stri
 		}
 
 		if nodeToPods[pod.Spec.NodeName] != nil {
-			nodeToPods[pod.Spec.NodeName][pod.Name] =
-				parentCgroupFolder + "pod" + string(pod.UID)
+			nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
+				Name:           pod.Name,
+				AppName:        getAppName(pod),
+				FShare:         0.0,
+				CGroupFilePath: parentCgroupFolder + "pod" + string(pod.UID),
+			}
 		} else {
-			nodeToPods[pod.Spec.NodeName] = make(map[string]string)
-			nodeToPods[pod.Spec.NodeName][pod.Name] =
-				parentCgroupFolder + "pod" + string(pod.UID)
+			nodeToPods[pod.Spec.NodeName] = make(map[string]Pod)
+			nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
+				Name:           pod.Name,
+				AppName:        getAppName(pod),
+				FShare:         0.0,
+				CGroupFilePath: parentCgroupFolder + "pod" + string(pod.UID),
+			}
+		}
+	}
+
+	for _, pod := range pods.Items {
+		numPods := len(nodeToPods[pod.Spec.NodeName])
+		nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
+			Name:           nodeToPods[pod.Spec.NodeName][pod.Name].Name,
+			AppName:        nodeToPods[pod.Spec.NodeName][pod.Name].AppName,
+			FShare:         1 / float64(numPods),
+			CGroupFilePath: nodeToPods[pod.Spec.NodeName][pod.Name].CGroupFilePath,
 		}
 	}
 
@@ -91,6 +120,8 @@ func (k8sClient *KubernetesClient) GetNodes() []Node {
 	for _, node := range nodes.Items {
 
 		nodeNum := getNodeNum(node)
+		cpuCapacity := node.Status.Capacity[v1.ResourceCPU]
+		cpuMilliCores := int(cpuCapacity.MilliValue())
 		nodeList = append(nodeList,
 			Node{
 				Num:               nodeNum,
@@ -98,6 +129,7 @@ func (k8sClient *KubernetesClient) GetNodes() []Node {
 				IP:                getNodeInternalIP(node),
 				HostAgentNodePort: k8sClient.getHostAgentNodePort(node),
 				Pods:              nodesToPods[node.Name],
+				MilliCores:        cpuMilliCores,
 			})
 	}
 

@@ -87,6 +87,13 @@ func main() {
 			},
 			Spec: v1alpha32.DestinationRule{
 				Host: svc,
+				TrafficPolicy: &v1alpha32.TrafficPolicy{
+					LoadBalancer: &v1alpha32.LoadBalancerSettings{
+						LbPolicy: &v1alpha32.LoadBalancerSettings_Simple{
+							Simple: v1alpha32.LoadBalancerSettings_LEAST_REQUEST,
+						},
+					},
+				},
 			},
 		}
 		for replicaNum := range *numReplicas {
@@ -175,13 +182,13 @@ func main() {
 			})
 		}
 		// final catchall route
-		defaultReplicaName := svc + "-0"
+		// defaultReplicaName := svc + "-0"
 		vs.Spec.Http = append(vs.Spec.Http, &v1alpha32.HTTPRoute{
 			Route: []*v1alpha32.HTTPRouteDestination{
 				{
 					Destination: &v1alpha32.Destination{
-						Host:   svc,
-						Subset: defaultReplicaName,
+						Host: svc,
+						// Subset: defaultReplicaName,
 					},
 				},
 			},
@@ -190,8 +197,8 @@ func main() {
 			Route: []*v1alpha32.RouteDestination{
 				{
 					Destination: &v1alpha32.Destination{
-						Host:   svc,
-						Subset: defaultReplicaName,
+						Host: svc,
+						// Subset: defaultReplicaName,
 					},
 				},
 			},

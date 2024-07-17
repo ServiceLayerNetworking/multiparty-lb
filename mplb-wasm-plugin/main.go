@@ -231,9 +231,9 @@ func (p *pluginContext) OnTick() {
 	}
 
 	// reset stats
-	if err := proxywasm.SetSharedData(KEY_TRACED_REQUESTS, make([]byte, 8), 0); err != nil {
-		proxywasm.LogCriticalf("Couldn't reset traced requests: %v", err)
-	}
+	// if err := proxywasm.SetSharedData(KEY_TRACED_REQUESTS, make([]byte, 8), 0); err != nil {
+	// 	proxywasm.LogCriticalf("Couldn't reset traced requests: %v", err)
+	// }
 	ResetEndpointCounts()
 	if err := proxywasm.SetSharedData(KEY_INFLIGHT_ENDPOINT_LIST, make([]byte, 8), 0); err != nil {
 		proxywasm.LogCriticalf("Couldn't reset inflight endpoint list: %v", err)
@@ -278,14 +278,30 @@ type httpContext struct {
 	pluginContext *pluginContext
 }
 
+func getRandomTraceId() string {
+	return fmt.Sprintf("%x", md5.Sum([]byte(strconv.Itoa(rand.Int()))))
+}
+
 func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 
 	// proxywasm.LogCriticalf("OnHttpRequestHeaders entered")
 
 	traceId, err := proxywasm.GetHttpRequestHeader("x-b3-traceid")
-	// if err != nil {
-	// 	return types.ActionContinue
-	// }
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get request header x-b3-traceid: %v", err)
+		traceId = getRandomTraceId()
+		header := traceId
+		proxywasm.LogCriticalf("Setting x-b3-traceid:" + header)
+		headerErr := proxywasm.ReplaceHttpRequestHeader(
+			"x-b3-traceid", header)
+		if headerErr != nil {
+			proxywasm.LogCriticalf(
+				"Error adding header: %v", headerErr)
+		}
+		// return types.ActionContinue
+	} else {
+		proxywasm.LogCriticalf("TraceId: %s", traceId)
+	}
 
 	reqMethod, err := proxywasm.GetHttpRequestHeader(":method")
 	if err != nil {
@@ -336,17 +352,16 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 
 		// SLATE Logic
 		weightsStr, _, err := proxywasm.GetSharedData(dst)
-		headerErr := proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
-		if headerErr != nil {
-			proxywasm.LogCriticalf("Error adding header: %v", headerErr)
-		}
+		// headerErr := proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
+		// if headerErr != nil {
+		// 	proxywasm.LogCriticalf("Error adding header: %v", headerErr)
+		// }
 		if err != nil {
 			// no rules available yet.
-			proxywasm.LogCriticalf(
-				"Setting default x-lb-endpt: %s-0, %v", dst, err)
-			headerErr = proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
+			proxywasm.LogCriticalf("Removing x-lb-endpt")
+			headerErr := proxywasm.RemoveHttpRequestHeader("x-lb-endpt")
 			if headerErr != nil {
-				proxywasm.LogCriticalf("Error adding header: %v", headerErr)
+				proxywasm.LogCriticalf("Error removing header: %v", headerErr)
 			}
 		} else {
 			// draw from distribution
@@ -359,19 +374,21 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 					proxywasm.LogCriticalf("Couldn't parse weight: %v", err)
 					return types.ActionContinue
 				}
-				total += pct
+				total += pct / 100.0
 				if coin <= total {
 					header := fmt.Sprintf("%s-%d", dst, endpointNum)
 					proxywasm.LogCriticalf("Setting x-lb-endpt:" + header)
-					headerErr = proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", header)
+					headerErr := proxywasm.ReplaceHttpRequestHeader(
+						"x-lb-endpt", header)
 					if headerErr != nil {
-						proxywasm.LogCriticalf("Error adding header: %v", headerErr)
+						proxywasm.LogCriticalf(
+							"Error adding header: %v", headerErr)
 					}
 					break
 				}
 			}
 		}
-		return types.ActionContinue
+		// return types.ActionContinue
 	}
 
 	// bookkeeping to make sure we don't double count requests. decremented in OnHttpStreamDone
@@ -388,6 +405,9 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 	if tracedRequest(traceId) {
 		spanId, _ := proxywasm.GetHttpRequestHeader("x-b3-spanid")
 		parentSpanId, _ := proxywasm.GetHttpRequestHeader("x-b3-parentspanid")
+
+		spanId = ""
+		parentSpanId = ""
 		bSizeStr, err := proxywasm.GetHttpRequestHeader("Content-Length")
 		if err != nil {
 			bSizeStr = "0"
@@ -406,6 +426,9 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		}
 		saveEndpointStatsForTrace(traceId, inflightStats)
 	}
+
+	proxywasm.LogCriticalf("OnHttpRequestHeaders done")
+
 	return types.ActionContinue
 }
 
@@ -418,8 +441,11 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	// get x-request-id from request headers and lookup entry time
 	traceId, err := proxywasm.GetHttpRequestHeader("x-b3-traceid")
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get request header x-b3-traceid: %v", err)
+		proxywasm.LogCriticalf("Couldn't get request header x-b3-traceid in the response: %v", err)
 		return
+	} else {
+		proxywasm.LogCriticalf("OnHttpStreamDone: TraceId: %s", traceId)
+		// return
 	}
 
 	// endtime should be recorded when the LAST response is received not the first response. It seems like it records the endtime on the first response.
@@ -429,17 +455,21 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 
-	reqAuth, err := proxywasm.GetHttpRequestHeader(":authority")
-	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get request header :authority : %v", err)
-		return
-	}
-	dst := strings.Split(reqAuth, ":")[0]
+	proxywasm.LogCriticalf("OnHttpStreamDone: 1")
 
-	// we don't care about outbound requests
-	if !strings.HasPrefix(ctx.pluginContext.serviceName, dst) && !strings.HasPrefix(dst, "node") {
-		return
-	}
+	// reqAuth, err := proxywasm.GetHttpRequestHeader(":authority")
+	// if err != nil {
+	// 	proxywasm.LogCriticalf("Couldn't get request header :authority : %v", err)
+	// 	return
+	// }
+	// dst := strings.Split(reqAuth, ":")[0]
+
+	// // we don't care about outbound requests
+	// if !strings.HasPrefix(ctx.pluginContext.serviceName, dst) && !strings.HasPrefix(dst, "node") {
+	// 	return
+	// }
+
+	proxywasm.LogCriticalf("OnHttpStreamDone: 2")
 
 	if inbound != 1 {
 		// doublecount, decrement and get out
@@ -447,7 +477,11 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 
+	proxywasm.LogCriticalf("OnHttpStreamDone: 3")
+
 	IncrementSharedData(KEY_INFLIGHT_REQ_COUNT, -1)
+
+	proxywasm.LogCriticalf("OnHttpStreamDone: 4")
 
 	reqMethod, err := proxywasm.GetHttpRequestHeader(":method")
 	if err != nil {
@@ -460,8 +494,12 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 
+	proxywasm.LogCriticalf("OnHttpStreamDone: 5")
+
 	reqPath = strings.Split(reqPath, "?")[0]
 	IncrementInflightCount(reqMethod, reqPath, -1)
+
+	proxywasm.LogCriticalf("OnHttpStreamDone: 6")
 
 	// record end time
 	currentTime := time.Now().UnixMilli()
@@ -469,7 +507,11 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	binary.LittleEndian.PutUint64(endTimeBytes, uint64(currentTime))
 	if err := proxywasm.SetSharedData(endTimeKey(traceId), endTimeBytes, 0); err != nil {
 		proxywasm.LogCriticalf("unable to set shared data for traceId %v endTime: %v %v", traceId, currentTime, err)
+	} else {
+		proxywasm.LogCriticalf("recorded end time for traceId %v: %v", traceId, currentTime)
 	}
+
+	proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
 }
 
 // callback for OnTick() http call response
@@ -506,7 +548,11 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 	}
 
 	body := string(respBody)
-	// example response body: svcA:45.5|69.22 svcB:54.7|44.1
+	// example response body: "svcA:45.5|69.22 svcB:54.7|44.1 "
+	body = strings.TrimSpace(body)
+	if body == "" {
+		return
+	}
 	svcInfos := strings.Split(body, " ")
 	for _, svcInfo := range svcInfos {
 		svcInfoSplit := strings.Split(svcInfo, ":")

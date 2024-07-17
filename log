@@ -1,0 +1,3981 @@
+2024-07-16T14:44:54.298833Z	info	FLAG: --concurrency="0"
+2024-07-16T14:44:54.298881Z	info	FLAG: --domain="default.svc.cluster.local"
+2024-07-16T14:44:54.298900Z	info	FLAG: --help="false"
+2024-07-16T14:44:54.298915Z	info	FLAG: --log_as_json="false"
+2024-07-16T14:44:54.298927Z	info	FLAG: --log_caller=""
+2024-07-16T14:44:54.298936Z	info	FLAG: --log_output_level="default:info"
+2024-07-16T14:44:54.298943Z	info	FLAG: --log_rotate=""
+2024-07-16T14:44:54.298951Z	info	FLAG: --log_rotate_max_age="30"
+2024-07-16T14:44:54.298960Z	info	FLAG: --log_rotate_max_backups="1000"
+2024-07-16T14:44:54.298968Z	info	FLAG: --log_rotate_max_size="104857600"
+2024-07-16T14:44:54.298975Z	info	FLAG: --log_stacktrace_level="default:none"
+2024-07-16T14:44:54.298988Z	info	FLAG: --log_target="[stdout]"
+2024-07-16T14:44:54.298999Z	info	FLAG: --meshConfig="./etc/istio/config/mesh"
+2024-07-16T14:44:54.299007Z	info	FLAG: --outlierLogPath=""
+2024-07-16T14:44:54.299015Z	info	FLAG: --profiling="true"
+2024-07-16T14:44:54.299023Z	info	FLAG: --proxyComponentLogLevel="misc:error"
+2024-07-16T14:44:54.299030Z	info	FLAG: --proxyLogLevel="warning"
+2024-07-16T14:44:54.299038Z	info	FLAG: --serviceCluster="istio-proxy"
+2024-07-16T14:44:54.299045Z	info	FLAG: --stsPort="0"
+2024-07-16T14:44:54.299059Z	info	FLAG: --templateFile=""
+2024-07-16T14:44:54.299083Z	info	FLAG: --tokenManagerPlugin="GoogleTokenExchange"
+2024-07-16T14:44:54.299094Z	info	FLAG: --vklog="0"
+2024-07-16T14:44:54.299102Z	info	Version 1.22.0-aaf597fbfae607adf4bb4e77538a7ea98995328a-Clean
+2024-07-16T14:44:54.299116Z	info	Set max file descriptors (ulimit -n) to: 1048576
+2024-07-16T14:44:54.299789Z	info	Proxy role	ips=[10.244.0.53] type=sidecar id=frontend-0.default domain=default.svc.cluster.local
+2024-07-16T14:44:54.299910Z	info	Apply proxy config from env {"tracing":{"sampling":100}}
+
+2024-07-16T14:44:54.309150Z	info	cpu limit detected as 2, setting concurrency
+2024-07-16T14:44:54.312105Z	info	Effective config: binaryPath: /usr/local/bin/envoy
+concurrency: 2
+configPath: ./etc/istio/proxy
+controlPlaneAuthPolicy: MUTUAL_TLS
+discoveryAddress: istiod.istio-system.svc:15012
+drainDuration: 45s
+proxyAdminPort: 15000
+serviceCluster: istio-proxy
+statNameLength: 189
+statusPort: 15020
+terminationDrainDuration: 5s
+tracing:
+  sampling: 100
+
+2024-07-16T14:44:54.312139Z	info	JWT policy is third-party-jwt
+2024-07-16T14:44:54.312149Z	info	using credential fetcher of JWT type in cluster.local trust domain
+2024-07-16T14:44:54.523811Z	info	Workload SDS socket not found. Starting Istio SDS Server
+2024-07-16T14:44:54.523875Z	info	CA Endpoint istiod.istio-system.svc:15012, provider Citadel
+2024-07-16T14:44:54.523915Z	info	Using CA istiod.istio-system.svc:15012 cert with certs: var/run/secrets/istio/root-cert.pem
+2024-07-16T14:44:54.526640Z	info	Opening status port 15020
+2024-07-16T14:44:54.786455Z	info	ads	All caches have been synced up in 488.34184ms, marking server ready
+2024-07-16T14:44:54.787385Z	info	xdsproxy	Initializing with upstream address "istiod.istio-system.svc:15012" and cluster "Kubernetes"
+2024-07-16T14:44:54.809598Z	info	sds	Starting SDS grpc server
+2024-07-16T14:44:54.821906Z	info	starting Http service at 127.0.0.1:15004
+2024-07-16T14:44:54.823398Z	info	Pilot SAN: [istiod.istio-system.svc]
+2024-07-16T14:44:54.888094Z	info	Starting proxy agent
+2024-07-16T14:44:54.898868Z	info	Envoy command: [-c etc/istio/proxy/envoy-rev.json --drain-time-s 45 --drain-strategy immediate --local-address-ip-version v4 --file-flush-interval-msec 1000 --disable-hot-restart --allow-unknown-static-fields -l warning --component-log-level misc:error --concurrency 2]
+2024-07-16T14:44:56.124249Z	warning	envoy main external/envoy/source/server/server.cc:835	Usage of the deprecated runtime key overload.global_downstream_max_connections, consider switching to `envoy.resource_monitors.downstream_connections` instead.This runtime key will be removed in future.	thread=13
+2024-07-16T14:44:56.128613Z	warning	envoy main external/envoy/source/server/server.cc:928	There is no configured limit to the number of allowed active downstream connections. Configure a limit in `envoy.resource_monitors.downstream_connections` resource monitor.	thread=13
+2024-07-16T14:44:56.184267Z	info	xdsproxy	connected to delta upstream XDS server: istiod.istio-system.svc:15012	id=1
+2024-07-16T14:44:56.690393Z	info	cache	generated new workload certificate	latency=1.901617178s ttl=23h59m59.309617156s
+2024-07-16T14:44:56.695573Z	info	cache	Root cert has changed, start rotating root cert
+2024-07-16T14:44:56.696044Z	info	ads	XDS: Incremental Pushing ConnectedEndpoints:0 Version:
+2024-07-16T14:44:56.696279Z	info	cache	returned workload trust anchor from cache	ttl=23h59m59.30372343s
+2024-07-16T14:45:06.567726Z	info	ads	ADS: new connection for node:frontend-0.default-1
+2024-07-16T14:45:06.568023Z	info	cache	returned workload certificate from cache	ttl=23h59m49.431983027s
+2024-07-16T14:45:06.568800Z	info	ads	SDS: PUSH request for node:frontend-0.default resources:1 size:4.0kB resource:default
+2024-07-16T14:45:06.573356Z	info	ads	ADS: new connection for node:frontend-0.default-2
+2024-07-16T14:45:06.573779Z	info	cache	returned workload trust anchor from cache	ttl=23h59m49.426225195s
+2024-07-16T14:45:06.574169Z	info	ads	SDS: PUSH request for node:frontend-0.default resources:1 size:1.1kB resource:ROOTCA
+2024-07-16T14:45:09.030619Z	info	wasm	fetching image talha-waheed/mplb-plugin from registry ghcr.io with tag latest
+2024-07-16T14:45:11.080674Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=13
+2024-07-16T14:45:11.361343Z	info	Readiness succeeded in 17.165228936s
+2024-07-16T14:45:11.362404Z	info	Envoy proxy is ready
+2024-07-16T14:45:11.884207Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:12.885363Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:13.886822Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:14.887555Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:15.888000Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:16.887944Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:17.888955Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:18.889980Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:19.891288Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:20.892899Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:21.893623Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:22.894167Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:23.894753Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:24.895120Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:25.895931Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:26.896231Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:27.901911Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=22
+2024-07-16T14:45:28.903284Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:29.902632Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:30.903932Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:31.904125Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:32.905395Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:33.906728Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:34.907657Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:35.908707Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:36.908466Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:37.910518Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:38.910221Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:39.910990Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:40.911814Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:41.911762Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:42.912014Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:43.912886Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:44.912517Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:45.913708Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:46.913529Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:47.914697Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:48.913666Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:49.914462Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:50.915327Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:51.916959Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:52.919017Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:53.918244Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:54.919186Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:55.919217Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:56.920057Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:57.920268Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:58.922674Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:45:59.921991Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:00.922870Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:01.923152Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:02.923981Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:03.927897Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:04.928150Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:05.929078Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:06.929838Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:07.929260Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:08.930539Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:09.931416Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:10.931849Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:11.930522Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:12.026679Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: TraceId: 9332b73d2b6d11fce71ce3566a424850	thread=22
+2024-07-16T14:46:12.026808Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: ServiceName: frontend, dst: 192.168.59.100	thread=22
+2024-07-16T14:46:12.026846Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: --Request: GET /recommendations 192.168.59.100:30566 9332b73d2b6d11fce71ce3566a424850	thread=22
+2024-07-16T14:46:12.027286Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpRequestHeaders done	thread=22
+2024-07-16T14:46:12.029668Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: TraceId: 9332b73d2b6d11fce71ce3566a424850	thread=23
+2024-07-16T14:46:12.029908Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: ServiceName: frontend, dst: recommendation	thread=23
+2024-07-16T14:46:12.029931Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: --Request: POST /recommendation.Recommendation/GetRecommendations recommendation:8085 9332b73d2b6d11fce71ce3566a424850	thread=23
+2024-07-16T14:46:12.029954Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: Removing x-lb-endpt	thread=23
+2024-07-16T14:46:12.030129Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpRequestHeaders done	thread=23
+2024-07-16T14:46:12.093382Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: TraceId: 9332b73d2b6d11fce71ce3566a424850	thread=23
+2024-07-16T14:46:12.093467Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 1	thread=23
+2024-07-16T14:46:12.093489Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 2	thread=23
+2024-07-16T14:46:12.102441Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: TraceId: 9332b73d2b6d11fce71ce3566a424850	thread=23
+2024-07-16T14:46:12.102776Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: ServiceName: frontend, dst: profile	thread=23
+2024-07-16T14:46:12.102932Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: --Request: POST /profile.Profile/GetProfiles profile:8081 9332b73d2b6d11fce71ce3566a424850	thread=23
+2024-07-16T14:46:12.102967Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: Removing x-lb-endpt	thread=23
+2024-07-16T14:46:12.103039Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpRequestHeaders done	thread=23
+2024-07-16T14:46:12.168530Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: TraceId: 9332b73d2b6d11fce71ce3566a424850	thread=23
+2024-07-16T14:46:12.168925Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 1	thread=23
+2024-07-16T14:46:12.169209Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 2	thread=23
+2024-07-16T14:46:12.178753Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: TraceId: 9332b73d2b6d11fce71ce3566a424850	thread=22
+2024-07-16T14:46:12.178905Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 1	thread=22
+2024-07-16T14:46:12.178920Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 2	thread=22
+2024-07-16T14:46:12.178930Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 3	thread=22
+2024-07-16T14:46:12.178949Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 4	thread=22
+2024-07-16T14:46:12.179141Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 5	thread=22
+2024-07-16T14:46:12.179326Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 6	thread=22
+2024-07-16T14:46:12.179445Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: recorded end time for traceId 9332b73d2b6d11fce71ce3566a424850: 1721141172179	thread=22
+2024-07-16T14:46:12.179459Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: Completed	thread=22
+2024-07-16T14:46:12.931301Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+3
+
+inflightStats
+GET@/recommendations,0,-1|
+requestStats
+	thread=23
+2024-07-16T14:46:13.931206Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:14.932225Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:15.935739Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:16.936391Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:17.937742Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:18.936905Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:19.937649Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:20.941981Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:21.942457Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:22.942178Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:23.943602Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:24.944049Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:25.945511Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:26.946937Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:27.949463Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:28.950673Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:29.950984Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:30.951751Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:31.951895Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:32.952001Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:33.953646Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:34.954790Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:35.954081Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:36.955042Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:37.955288Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:38.957067Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:39.957875Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:40.958959Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:41.960228Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:42.961784Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:43.961060Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:44.961596Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:45.962976Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:46.963518Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:47.964079Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:48.964514Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:49.965018Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:50.965393Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:51.966239Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:52.966458Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:53.966230Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:54.966680Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:55.966108Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:56.967038Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:57.968673Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:58.968979Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:46:59.969049Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:00.969476Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:01.970212Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:02.971923Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:03.972380Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:04.972221Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:05.972715Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:06.973077Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:07.974214Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:08.974863Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:09.976148Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:10.978259Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:11.978658Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:12.978409Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:13.978994Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:14.979164Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:15.979243Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:16.979487Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:17.978569Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:18.979238Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:19.980029Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:20.980696Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:21.981231Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:22.981819Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:23.981272Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:24.980620Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:25.981703Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:26.982449Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:27.982224Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:28.981921Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:29.982291Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:30.981743Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:31.983013Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:32.982954Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:33.983345Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:34.983365Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:35.982934Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:36.983220Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:37.984454Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:38.985267Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:39.987131Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:40.988350Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:41.989133Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:42.989481Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:43.991039Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:44.991772Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:45.991235Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:46.991272Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:47.992049Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:48.991949Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:49.991696Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:50.993209Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:51.993689Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:52.993934Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:53.994601Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:54.994461Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:55.995968Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:56.997090Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:57.997250Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:58.997822Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:47:59.998522Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:00.998678Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:01.999663Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:03.001839Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:04.001701Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:05.006045Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:06.005194Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:07.006444Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:08.006731Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:09.007243Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:10.007876Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:11.007359Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:12.007672Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:13.007605Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:14.006826Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:15.007341Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:16.008320Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:17.008126Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:18.008215Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:19.008546Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:20.008231Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:21.008427Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:22.008231Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:23.009026Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:24.009120Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:25.011454Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:26.012695Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:27.011650Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:28.012912Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:29.013305Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:30.013625Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:31.014983Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:32.015016Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:33.016014Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:34.016678Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:35.016068Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:36.017478Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:37.018411Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:38.018749Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:39.018252Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:40.018884Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:41.018415Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:42.018567Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:43.018448Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:44.017814Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:45.018638Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:46.019339Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:47.020797Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:48.020414Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:49.019982Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:50.021035Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:51.021731Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:52.022599Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:53.023133Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:54.024259Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:55.024114Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:56.024184Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:57.025453Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:58.025949Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:48:59.026893Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:00.026167Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:01.026909Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:02.026804Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:03.028145Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:04.028961Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:05.028012Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:06.028415Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:07.029177Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:08.032443Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:09.032322Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:10.033441Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:11.033798Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:12.034278Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:13.034999Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:14.035195Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:15.035744Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:16.035930Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:17.036021Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:18.036988Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:19.036731Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:20.037785Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:21.038284Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:22.039233Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:23.040297Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:24.041133Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:25.040376Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:26.041761Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:27.041572Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:28.042148Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:29.043845Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:30.043740Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:31.044059Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:32.043902Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:33.044176Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:34.044922Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:35.045637Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:36.047136Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:37.047507Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:38.048111Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:39.049580Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:40.049239Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:41.049627Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:42.049441Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:43.000795Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: TraceId: 2bd5c23a806e9d28575fc6fa14167172	thread=22
+2024-07-16T14:49:43.001013Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: ServiceName: frontend, dst: 192.168.59.100	thread=22
+2024-07-16T14:49:43.001119Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: --Request: GET /recommendations 192.168.59.100:30566 2bd5c23a806e9d28575fc6fa14167172	thread=22
+2024-07-16T14:49:43.001823Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpRequestHeaders done	thread=22
+2024-07-16T14:49:43.003707Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: TraceId: 2bd5c23a806e9d28575fc6fa14167172	thread=23
+2024-07-16T14:49:43.003892Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: ServiceName: frontend, dst: recommendation	thread=23
+2024-07-16T14:49:43.003919Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: --Request: POST /recommendation.Recommendation/GetRecommendations recommendation:8085 2bd5c23a806e9d28575fc6fa14167172	thread=23
+2024-07-16T14:49:43.003945Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: Removing x-lb-endpt	thread=23
+2024-07-16T14:49:43.004361Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpRequestHeaders done	thread=23
+2024-07-16T14:49:43.011606Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: TraceId: 2bd5c23a806e9d28575fc6fa14167172	thread=23
+2024-07-16T14:49:43.011703Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 1	thread=23
+2024-07-16T14:49:43.011715Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 2	thread=23
+2024-07-16T14:49:43.012759Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: TraceId: 2bd5c23a806e9d28575fc6fa14167172	thread=23
+2024-07-16T14:49:43.012849Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: ServiceName: frontend, dst: profile	thread=23
+2024-07-16T14:49:43.012936Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: --Request: POST /profile.Profile/GetProfiles profile:8081 2bd5c23a806e9d28575fc6fa14167172	thread=23
+2024-07-16T14:49:43.012949Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: Removing x-lb-endpt	thread=23
+2024-07-16T14:49:43.013088Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpRequestHeaders done	thread=23
+2024-07-16T14:49:43.024964Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: TraceId: 2bd5c23a806e9d28575fc6fa14167172	thread=23
+2024-07-16T14:49:43.025028Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 1	thread=23
+2024-07-16T14:49:43.025052Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 2	thread=23
+2024-07-16T14:49:43.026488Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: TraceId: 2bd5c23a806e9d28575fc6fa14167172	thread=22
+2024-07-16T14:49:43.026664Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 1	thread=22
+2024-07-16T14:49:43.026708Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 2	thread=22
+2024-07-16T14:49:43.026762Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 3	thread=22
+2024-07-16T14:49:43.026841Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 4	thread=22
+2024-07-16T14:49:43.026887Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 5	thread=22
+2024-07-16T14:49:43.026921Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: 6	thread=22
+2024-07-16T14:49:43.026942Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: recorded end time for traceId 2bd5c23a806e9d28575fc6fa14167172: 1721141383026	thread=22
+2024-07-16T14:49:43.026972Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log default.mplb-wasm-plugin: OnHttpStreamDone: Completed	thread=22
+2024-07-16T14:49:43.050000Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+3
+
+inflightStats
+GET@/recommendations,1,-2|
+requestStats
+	thread=23
+2024-07-16T14:49:44.050259Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:45.050599Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:46.051206Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:47.051533Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:48.052507Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:49.057050Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:50.057669Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:51.058175Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:52.059007Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:53.060049Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:54.060978Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:55.061090Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:56.062712Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:57.063120Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:58.063628Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:49:59.064203Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:00.064404Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:01.064683Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:02.063957Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:03.064400Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:04.063915Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:05.064581Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:06.064440Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:07.065815Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:08.065495Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:09.065439Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:10.066445Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:11.066692Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:12.067861Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:13.067329Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:14.068499Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:15.069054Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:16.067841Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:17.068208Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:18.069795Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:19.072222Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:20.074140Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:21.074668Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:22.074095Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:23.073622Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:24.074372Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:25.074719Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:26.075996Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:27.076919Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:28.081191Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:29.079000Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:30.079621Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:31.079816Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:32.079820Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:33.079769Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:34.080434Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:35.080730Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:36.080821Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:37.080163Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:38.080486Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:39.080445Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:40.081007Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:41.081390Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:42.085984Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:43.086248Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:44.088005Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:45.088840Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:46.089313Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:47.089255Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:48.090162Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:49.090953Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:50.090717Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:51.092028Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:52.093103Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:53.093677Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:54.094125Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:55.094341Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:56.095116Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:57.095381Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:58.095311Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:50:59.096425Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:00.097992Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:01.098309Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:02.098324Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:03.099738Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:04.100972Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:05.101801Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:06.102432Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:07.104029Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:08.104951Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:09.105723Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:10.106052Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:11.106794Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:12.106574Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:13.106306Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:14.106855Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:15.107143Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:16.108361Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:17.113246Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:18.114311Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:19.117047Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:20.118275Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:21.121410Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:22.122641Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:23.125548Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:24.126070Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:25.129082Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:26.129745Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:27.129772Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:28.129459Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:29.130794Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:30.131416Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:31.131264Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:32.132793Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:33.134058Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:34.135111Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:35.135778Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:36.136373Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:37.138022Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:38.138515Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:39.139284Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:40.140183Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:41.141516Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:42.142724Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:43.142290Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:44.142727Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:45.142688Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:46.141750Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:47.142374Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:48.142924Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:49.142878Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:50.143331Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:51.143544Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:52.144244Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:53.144666Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:54.144049Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:55.144654Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:56.144719Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:57.145658Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:58.145841Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:51:59.144974Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:00.146162Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:01.146125Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:02.146641Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:03.146132Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:04.146777Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:05.149281Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:06.150036Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:07.150471Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:08.151594Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:09.151943Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:10.152840Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:11.152832Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:12.153808Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:13.154013Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:14.154545Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:15.154300Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:16.155102Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:17.156201Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
+2024-07-16T14:52:18.156880Z	critical	envoy wasm external/envoy/source/extensions/common/wasm/context.cc:1204	wasm log: <OnTick>
+reqBody:
+reqCount
+0
+
+inflightStats
+
+requestStats
+	thread=23
