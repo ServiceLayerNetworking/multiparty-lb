@@ -32,6 +32,8 @@ const (
 	KEY_RPS_SHARED_QUEUE      = "slate_rps_shared_queue"
 	KEY_RPS_SHARED_QUEUE_SIZE = "slate_rps_shared_queue_size"
 
+	TIMESTAMPS_SHARED_QUEUE = "slate_timestamps_shared_queue"
+
 	// this is the reporting period in millis
 	TICK_PERIOD = 1000
 
@@ -43,7 +45,8 @@ const (
 
 var (
 	ALL_KEYS = []string{KEY_INFLIGHT_REQ_COUNT, KEY_REQUEST_COUNT, KEY_LAST_RESET, KEY_RPS_THRESHOLDS, KEY_HASH_MOD, AGGREGATE_REQUEST_LATENCY,
-		KEY_TRACED_REQUESTS, KEY_MATCH_DISTRIBUTION, KEY_INFLIGHT_ENDPOINT_LIST, KEY_ENDPOINT_RPS_LIST, KEY_RPS_SHARED_QUEUE, KEY_RPS_SHARED_QUEUE_SIZE}
+		KEY_TRACED_REQUESTS, KEY_MATCH_DISTRIBUTION, KEY_INFLIGHT_ENDPOINT_LIST, KEY_ENDPOINT_RPS_LIST, KEY_RPS_SHARED_QUEUE, KEY_RPS_SHARED_QUEUE_SIZE,
+		TIMESTAMPS_SHARED_QUEUE}
 	cur_idx      int
 	latency_list []int64
 	ts_list      []int64
@@ -120,6 +123,8 @@ type pluginContext struct {
 	region string
 
 	startTime int64
+
+	nodeID int
 }
 
 func (p *pluginContext) OnPluginStart(pluginConfigurationSize int) types.OnPluginStartStatus {
@@ -139,9 +144,21 @@ func (p *pluginContext) OnPluginStart(pluginConfigurationSize int) types.OnPlugi
 	if regionName == "" {
 		regionName = "SLATE_UNKNOWN_REGION"
 	}
+	nodeName := os.Getenv("MY_NODE_NAME")
+	if nodeName == "" {
+		nodeName = "SLATE_UNKNOWN_NODE"
+	}
+
+	nodeID, err := getNodeID(nodeName)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get node ID: %v", err)
+		nodeID = 0
+	}
+
 	p.podName = pod
 	p.serviceName = svc
 	p.region = regionName
+	p.nodeID = nodeID
 	region = regionName
 	serviceName = svc
 	return types.OnPluginStartStatusOK
@@ -248,6 +265,13 @@ func (p *pluginContext) OnTick() {
 		return
 	}
 
+	data, cas, err = proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get shared data: %v", err)
+		return
+	}
+	tsListStr := string(data)
+
 	controllerHeaders := [][2]string{
 		{":method", "POST"},
 		{":path", "/"},
@@ -257,10 +281,11 @@ func (p *pluginContext) OnTick() {
 		// {"x-slate-region", p.region},
 	}
 
-	reqBody := fmt.Sprintf("reqCount\n%d\n\ninflightStats\n%s\nrequestStats\n%s", reqCount, inflightStats, requestStatsStr)
+	reqDest := fmt.Sprintf("outbound|9989||hostagent-node%d.default.svc.cluster.local", p.nodeID)
+	reqBody := fmt.Sprintf("reqCount\n%d\n\ninflightStats\n%s\nrequestStats\n%s\ntimestampstats%s\n", reqCount, inflightStats, requestStatsStr, tsListStr)
 	proxywasm.LogCriticalf("<OnTick>\nreqBody:\n%s", reqBody)
 
-	proxywasm.DispatchHttpCall("outbound|9989||hostagent-node0.default.svc.cluster.local", controllerHeaders,
+	proxywasm.DispatchHttpCall(reqDest, controllerHeaders,
 		[]byte(fmt.Sprintf("%d\n%s\n%s", reqCount, inflightStats, requestStatsStr)), make([][2]string, 0), 5000, OnTickHttpCallResponse)
 
 }
@@ -337,20 +362,13 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		// ensure the authority is a service, and not an ip address
 		!strings.HasPrefix(dst, "1") && !strings.HasPrefix(dst, "2") {
 		// the request is originating from this sidecar to another service, perform routing magic
-		// get endpoint distribution
 
-		// MP-LB logic:
-		// replicaZero := dst + "-0"
-		// endPt := replicaZero
-		// endPt := "frontend-0"
-		// proxywasm.LogCriticalf("Setting x-lb-endpt to %s", endPt)
-		// proxywasm.AddHttpRequestHeader("x-lb-endpt", endPt)
+		// before routing, log the start time and add it to request header
+		currentTime := time.Now().UnixMilli()
+		startTimeBytes := make([]byte, 8)
+		binary.LittleEndian.PutUint64(startTimeBytes, uint64(currentTime))
+		proxywasm.ReplaceHttpRequestHeader("x-start-time", string(startTimeBytes))
 
-		// endPt = "profile-0"
-		// proxywasm.LogCriticalf("Setting x-profile-lb-endpt to %s", endPt)
-		// proxywasm.AddHttpRequestHeader("x-profile-lb-endpt", endPt)
-
-		// SLATE Logic
 		weightsStr, _, err := proxywasm.GetSharedData(dst)
 		// headerErr := proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
 		// if headerErr != nil {
@@ -439,6 +457,45 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 // they come from upstream or downstream, we need to do some clever
 // bookkeeping and only record the end time for the last response.
 func (ctx *httpContext) OnHttpStreamDone() {
+
+	reqAuthority, err := proxywasm.GetHttpRequestHeader(":authority")
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get :authority request header: %v", err)
+		return types.ActionContinue
+	}
+	dstSvc := strings.Split(reqAuthority, ":")[0]
+	// get x-start-time from request headers
+	startTimeBytes, err := proxywasm.GetHttpRequestHeader("x-start-time")
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get request header x-start-time in the response: %v", err)
+		return
+	} else {
+		// log the end time and append start time and end time in an array in SharedData
+		currentTime := time.Now().UnixMilli()
+		endTimeBytes := make([]byte, 8)
+		binary.LittleEndian.PutUint64(endTimeBytes, uint64(currentTime))
+		proxywasm.LogCriticalf("OnHttpStreamDone: StartTime: %s, EndTime: %s", startTimeBytes, endTimeBytes)
+
+		// get the current array of timestamps
+		tsList, _, err := proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't get shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
+			return
+		}
+
+		timeStampStr := fmt.Sprintf("%s %s %s\n", dstSvc, startTimeBytes, endTimeBytes)
+
+		// append the new timestamp to the list
+		tsList = append(tsList, []byte(timeStampStr))
+
+		// set the new list
+		if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, tsList, 0); err != nil {
+			proxywasm.LogCriticalf("unable to set shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
+			return
+		}
+
+	}
+
 	// get x-request-id from request headers and lookup entry time
 	traceId, err := proxywasm.GetHttpRequestHeader("x-b3-traceid")
 	if err != nil {
@@ -1089,6 +1146,26 @@ func TimestampListGetRPS(method string, path string) uint64 {
 	writePos := binary.LittleEndian.Uint64(writePosBytes)
 	queueSize := writePos - readPos
 	return queueSize / 4
+}
+
+func getNodeID(nodeName string) (int, error) {
+	// example nodeName: "minikube-m02", or "minikube"
+
+	// check if nodename starts with "minikube"
+	if strings.HasPrefix(nodeName, "minikube") {
+		if nodeName == "minikube" {
+			return 0, nil
+		}
+
+		// get the number after "minikube"
+		nodeNum, err := strconv.Atoi(nodeName[10:])
+		if err != nil {
+			return -1, err
+		}
+		return nodeNum - 1, nil
+	}
+
+	return -1, nil
 }
 
 func inboundCountKey(traceId string) string {
