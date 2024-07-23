@@ -289,15 +289,15 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 	traceId, err := proxywasm.GetHttpRequestHeader("x-b3-traceid")
 	if err != nil {
 		proxywasm.LogCriticalf("Couldn't get request header x-b3-traceid: %v", err)
-		traceId = getRandomTraceId()
-		header := traceId
-		proxywasm.LogCriticalf("Setting x-b3-traceid:" + header)
-		headerErr := proxywasm.ReplaceHttpRequestHeader(
-			"x-b3-traceid", header)
-		if headerErr != nil {
-			proxywasm.LogCriticalf(
-				"Error adding header: %v", headerErr)
-		}
+		// traceId = getRandomTraceId()
+		// header := traceId
+		// proxywasm.LogCriticalf("Setting x-b3-traceid:" + header)
+		// headerErr := proxywasm.ReplaceHttpRequestHeader(
+		// 	"x-b3-traceid", header)
+		// if headerErr != nil {
+		// 	proxywasm.LogCriticalf(
+		// 		"Error adding header: %v", headerErr)
+		// }
 		// return types.ActionContinue
 	} else {
 		proxywasm.LogCriticalf("TraceId: %s", traceId)
@@ -384,7 +384,8 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 						proxywasm.LogCriticalf(
 							"Error adding header: %v", headerErr)
 					}
-					break
+					// break
+					return types.ActionContinue
 				}
 			}
 		}
