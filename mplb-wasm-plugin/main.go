@@ -272,6 +272,11 @@ func (p *pluginContext) OnTick() {
 	}
 	tsListStr := string(data)
 
+	//reset TIMESTAMP_SHARED_QUEUE
+	if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, make([]byte, 8), 0); err != nil {
+		proxywasm.LogCriticalf("Couldn't reset timestamps shared queue: %v", err)
+	}
+
 	controllerHeaders := [][2]string{
 		{":method", "POST"},
 		{":path", "/"},
