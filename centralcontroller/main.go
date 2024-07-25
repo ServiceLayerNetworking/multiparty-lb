@@ -68,6 +68,15 @@ type Node struct {
 	connection *net.Conn
 }
 
+type ReqStat struct {
+	SrcSvc      string `json:"srcSvc"`
+	SrcPod      string `json:"srcPod"`
+	DstSvc      string `json:"dstSvc"`
+	DstPod      string `json:"dstPod"`
+	StartTimeMs int64  `json:"startTimeMs"`
+	EndTimeMs   int64  `json:"endTimeMs"`
+}
+
 func (n *Node) Connect() {
 	connection, err := net.Dial(SERVER_TYPE,
 		fmt.Sprintf("%s:%d", n.IP, n.HostAgentNodePort))
@@ -122,9 +131,10 @@ func (l *LogFile) Writeln(msg string) {
 	l.logWriter.Flush()
 }
 
-type CPUUtil struct {
+type NodeStats struct {
 	Node            int
 	CPUUtilizations string
+	ReqStats        string
 }
 
 func main() {
@@ -209,25 +219,66 @@ func ccWithNoEnforcement(cpuLogFile *LogFile, nodes []Node) {
 	for {
 
 		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan CPUUtil)
+		cpuUtilizationCh := make(chan NodeStats)
 		for i := range nodes {
-			msg := "getCPUUtilizations"
+			msg := "getCPUUtilsAndReqStats"
 			go func(i int, node Node) {
-				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- CPUUtil{i, cpuUtilizations}
+				resp := node.SendMessageAndGetResponse(msg)
+				cpuUtils, reqStats := parseCPUUtilsAndReqStats(resp)
+				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
 			}(i, nodes[i])
 		}
+		reqStats := make([]ReqStat, 0)
 		nodeCPUUtilizations := make([]string, len(nodes))
 		for range nodes {
 			cpuUtil := <-cpuUtilizationCh
 			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
+			reqStats = append(reqStats, parseReqStats(cpuUtil.ReqStats)...)
 			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
 				cpuUtil.Node, cpuUtil.CPUUtilizations))
 		}
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(getLogFileFormatNoEnforcement(nodeCPUUtilizations))
+
+		// log the request stats
+		cpuLogFile.Writeln(
+			fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
 	}
+}
+
+func parseCPUUtilsAndReqStats(resp string) (string, string) {
+	parts := strings.Split(resp, "---")
+	if len(parts) != 2 {
+		panic(errors.New("invalid response from host agent"))
+	}
+	return parts[0], parts[1]
+}
+
+func parseReqStats(reqStatsStr string) []ReqStat {
+	reqStats := make([]ReqStat, 0)
+	if reqStatsStr == "" {
+		return reqStats
+	}
+	reqStatsStrs := strings.Split(reqStatsStr, "\n")
+	for _, reqStatStr := range reqStatsStrs[1:] {
+		reqStatParts := strings.Split(reqStatStr, " ")
+		reqStats = append(reqStats, ReqStat{
+			SrcSvc:      reqStatParts[0],
+			SrcPod:      reqStatParts[1],
+			DstSvc:      reqStatParts[2],
+			DstPod:      reqStatParts[3],
+			StartTimeMs: stringToInt64(reqStatParts[4]),
+			EndTimeMs:   stringToInt64(reqStatParts[5]),
+		})
+	}
+	return reqStats
+}
+
+func stringToInt64(str string) int64 {
+	i, err := strconv.ParseInt(str, 10, 64)
+	check(err)
+	return i
 }
 
 func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
@@ -240,18 +291,21 @@ func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
 	for {
 
 		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan CPUUtil)
+		cpuUtilizationCh := make(chan NodeStats)
 		for i := range nodes {
-			msg := "getCPUUtilizations"
+			msg := "getCPUUtilsAndReqStats"
 			go func(i int, node Node) {
-				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- CPUUtil{i, cpuUtilizations}
+				resp := node.SendMessageAndGetResponse(msg)
+				cpuUtils, reqStats := parseCPUUtilsAndReqStats(resp)
+				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
 			}(i, nodes[i])
 		}
+		reqStats := make([]ReqStat, 0)
 		nodeCPUUtilizations := make([]string, len(nodes))
 		for range nodes {
 			cpuUtil := <-cpuUtilizationCh
 			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
+			reqStats = append(reqStats, parseReqStats(cpuUtil.ReqStats)...)
 			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
 				cpuUtil.Node, cpuUtil.CPUUtilizations))
 		}
@@ -264,6 +318,10 @@ func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(
 			getLogFileFormatLBEnforcement(nodeCPUUtilizations, lbWeights))
+
+		// log the request stats
+		cpuLogFile.Writeln(
+			fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
 
 		// lbWeights := getLBWeights()
 		// lbWeights := "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0"
@@ -279,6 +337,12 @@ func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
 	}
 }
 
+func getReqStatsJSON(reqStats []ReqStat) string {
+	reqStatsJSON, err := json.Marshal(reqStats)
+	check(err)
+	return string(reqStatsJSON)
+}
+
 func ccWithCPUShares(cpuLogFile *LogFile, nodes []Node) {
 
 	// Initialize past CPU Utilizations
@@ -291,12 +355,12 @@ func ccWithCPUShares(cpuLogFile *LogFile, nodes []Node) {
 	for {
 
 		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan CPUUtil)
+		cpuUtilizationCh := make(chan NodeStats)
 		for i := range nodes {
 			msg := "getCPUUtilizations"
 			go func(i int, node Node) {
 				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- CPUUtil{i, cpuUtilizations}
+				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, ""}
 			}(i, nodes[i])
 		}
 		nodeCPUUtilizations := make([]string, len(nodes))
@@ -343,12 +407,12 @@ func ccWithCPUQuotas(cpuLogFile *LogFile, nodes []Node) {
 	for {
 
 		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan CPUUtil)
+		cpuUtilizationCh := make(chan NodeStats)
 		for i := range nodes {
 			msg := "getCPUUtilizations"
 			go func(i int, node Node) {
 				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- CPUUtil{i, cpuUtilizations}
+				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, ""}
 			}(i, nodes[i])
 		}
 		nodeCPUUtilizations := make([]string, len(nodes))
@@ -396,12 +460,12 @@ func ccWithBoth(cpuLogFile *LogFile, nodes []Node) {
 	for {
 
 		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan CPUUtil)
+		cpuUtilizationCh := make(chan NodeStats)
 		for i := range nodes {
 			msg := "getCPUUtilizations"
 			go func(i int, node Node) {
 				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- CPUUtil{i, cpuUtilizations}
+				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, ""}
 			}(i, nodes[i])
 		}
 		nodeCPUUtilizations := make([]string, len(nodes))

@@ -45,22 +45,37 @@ type SafeLBWeights struct {
 	weights string
 }
 
+type ReqStat struct {
+	SrcSvc      string `json:"srcSvc"`
+	SrcPod      string `json:"srcPod"`
+	DstSvc      string `json:"dstSvc"`
+	DstPod      string `json:"dstPod"`
+	StartTimeMs int64  `json:"startTimeMs"`
+	EndTimeMs   int64  `json:"endTimeMs"`
+}
+
+type SafeReqStats struct {
+	ReqStats []ReqStat `json:"reqStats"`
+	mu       sync.Mutex
+}
+
 func main() {
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	// keep LB weights as a shared variable managed by a seperate go routine
 	lbWeights := &SafeLBWeights{
 		weights: DEFAULT_LB_WEIGHTS}
+	reqStats := &SafeReqStats{
+		ReqStats: make([]ReqStat, 0)}
 
 	// start the server that will communicate with the central controller
-	go startServerForCC(lbWeights)
+	go startServerForCC(lbWeights, reqStats)
 
 	// listen for requests from the load balancer for updating its weights
-	listenForReqsFromLB(lbWeights)
+	listenForReqsFromLB(lbWeights, reqStats)
 }
 
-func startServerForCC(lbWeights *SafeLBWeights) {
+func startServerForCC(lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
 
 	fmt.Println("Server Running...")
 
@@ -84,12 +99,12 @@ func startServerForCC(lbWeights *SafeLBWeights) {
 			os.Exit(1)
 		}
 		fmt.Println("client connected")
-		go processClient(connection, lbWeights)
+		go processClient(connection, lbWeights, reqStats)
 	}
 
 }
 
-func listenForReqsFromLB(lbWeights *SafeLBWeights) {
+func listenForReqsFromLB(lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
 	// listen for http requests at a specific port
 	// and update the LB weights
 
@@ -110,6 +125,9 @@ func listenForReqsFromLB(lbWeights *SafeLBWeights) {
 		}
 		fmt.Println("Received request: " + string(body))
 
+		// update the request stats
+		updateRequestStats(reqStats, string(body))
+
 		fmt.Fprint(w, currLBWeights)
 	})
 
@@ -123,7 +141,77 @@ func listenForReqsFromLB(lbWeights *SafeLBWeights) {
 
 }
 
-func processClient(connection net.Conn, lbWeights *SafeLBWeights) {
+func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
+
+	/* Example reqStatsStr
+	profile profile-0
+	reqCount
+	8
+	timestampstats
+	........
+	profile 1721841927366 1721841927374
+	profile 1721841927415 1721841927422
+	profile 1721841927463 1721841927470
+	profile 1721841927510 1721841927515
+	profile 1721841927552 1721841927559
+	profile 1721841927593 1721841927599
+	profile 1721841927636 1721841927644
+	profile 1721841927682 1721841927688
+	profile 1721841927724 1721841927728
+	*/
+
+	//
+
+	// parse the request stats and update the state
+
+	newStats := make([]ReqStat, 0)
+
+	// trim the string
+	reqStatsStr = strings.TrimSpace(reqStatsStr)
+	// get lines
+	lines := strings.Split(reqStatsStr, "\n")
+	if len(lines) < 5 {
+		// no request stats to parse
+		return nil
+	}
+	// get the src
+	src := strings.Split(lines[0], " ")
+	srcSvc := src[0]
+	srcPod := src[1]
+	// get the reqStats
+	for _, line := range lines[5:] {
+		lineStats := strings.Split(line, " ")
+		dstSvc := lineStats[0]
+		startTimeStr := lineStats[1]
+		endTimeStr := lineStats[2]
+		startTime, err := strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			fmt.Println("Error parsing startTime: ", err.Error())
+			return err
+		}
+		endTime, err := strconv.ParseInt(endTimeStr, 10, 64)
+		if err != nil {
+			fmt.Println("Error parsing endTime: ", err.Error())
+			return err
+		}
+		newStats = append(newStats, ReqStat{
+			SrcSvc:      srcSvc,
+			SrcPod:      srcPod,
+			DstSvc:      dstSvc,
+			DstPod:      "",
+			StartTimeMs: startTime,
+			EndTimeMs:   endTime,
+		})
+	}
+
+	reqStats.mu.Lock()
+	reqStats.ReqStats = append(reqStats.ReqStats, newStats...)
+	reqStats.mu.Unlock()
+
+	return nil
+}
+
+func processClient(connection net.Conn, lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
 
 	defer connection.Close()
 
@@ -163,6 +251,12 @@ func processClient(connection net.Conn, lbWeights *SafeLBWeights) {
 			cpuUtilizations := getCPUUtilizations(podUIDs)
 			sendMsgToConnection(connection, cpuUtilizations)
 
+		} else if msgType == "getCPUUtilsAndReqStats" {
+			cpuUtilizations := getCPUUtilizations(podUIDs)
+			reqStatsStr := getReqStatsStr(reqStats)
+			toSend := cpuUtilizations + "---" + reqStatsStr
+			sendMsgToConnection(connection, toSend)
+
 		} else {
 			// unknown message type
 			sendMsgToConnection(connection, "Unknown message type")
@@ -170,6 +264,25 @@ func processClient(connection net.Conn, lbWeights *SafeLBWeights) {
 	}
 
 	slog.Warn("Client disconnected")
+}
+
+func getReqStatsStr(reqStats *SafeReqStats) string {
+
+	reqStats.mu.Lock()
+	defer reqStats.mu.Unlock()
+
+	reqStatsStr := "reqStats:"
+	for _, reqStat := range reqStats.ReqStats {
+		reqStatsStr += fmt.Sprintf(
+			"\n%s %s %s %s %d %d",
+			reqStat.SrcSvc, reqStat.SrcPod,
+			reqStat.DstSvc, reqStat.DstPod,
+			reqStat.StartTimeMs, reqStat.EndTimeMs)
+	}
+
+	reqStats.ReqStats = make([]ReqStat, 0)
+
+	return reqStatsStr
 }
 
 func getNewPods(msg string) (map[string]string, bool) {

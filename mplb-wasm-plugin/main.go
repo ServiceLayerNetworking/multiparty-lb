@@ -153,6 +153,8 @@ func (p *pluginContext) OnPluginStart(pluginConfigurationSize int) types.OnPlugi
 	if err != nil {
 		proxywasm.LogCriticalf("Couldn't get node ID: %v", err)
 		nodeID = 0
+	} else {
+		proxywasm.LogCriticalf("Starting plugin with pod %s, service %s, region %s, nodeID %d", pod, svc, regionName, nodeID)
 	}
 
 	p.podName = pod
@@ -277,21 +279,24 @@ func (p *pluginContext) OnTick() {
 		proxywasm.LogCriticalf("Couldn't reset timestamps shared queue: %v", err)
 	}
 
+	authority := fmt.Sprintf("hostagent-node%d.default.svc.cluster.local", p.nodeID)
+
 	controllerHeaders := [][2]string{
 		{":method", "POST"},
 		{":path", "/"},
-		{":authority", "hostagent-node0.default.svc.cluster.local"},
+		{":authority", authority},
 		// {"x-slate-podname", p.podName},
 		// {"x-slate-servicename", p.serviceName},
 		// {"x-slate-region", p.region},
 	}
 
-	reqDest := fmt.Sprintf("outbound|9989||hostagent-node%d.default.svc.cluster.local", p.nodeID)
-	reqBody := fmt.Sprintf("reqCount\n%d\n\ninflightStats\n%s\nrequestStats\n%s\ntimestampstats%s\n", reqCount, inflightStats, requestStatsStr, tsListStr)
-	proxywasm.LogCriticalf("<OnTick>\nreqBody:\n%s", reqBody)
+	reqDest := fmt.Sprintf("outbound|9989||%s", authority)
+	// reqBody := fmt.Sprintf("reqCount\n%d\n\ninflightStats\n%s\nrequestStats\n%s\ntimestampstats\n%s\n", reqCount, inflightStats, requestStatsStr, tsListStr)
+	reqBody := fmt.Sprintf("%s %s\nreqCount\n%d\ntimestampstats\n%s\n", p.serviceName, p.podName, reqCount, tsListStr)
+	proxywasm.LogCriticalf("<OnTick>\nreqDest:%s\nreqBody:\n%s", reqDest, reqBody)
 
 	proxywasm.DispatchHttpCall(reqDest, controllerHeaders,
-		[]byte(fmt.Sprintf("%d\n%s\n%s", reqCount, inflightStats, requestStatsStr)), make([][2]string, 0), 5000, OnTickHttpCallResponse)
+		[]byte(reqBody), make([][2]string, 0), 5000, OnTickHttpCallResponse)
 
 }
 
@@ -370,9 +375,16 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 
 		// before routing, log the start time and add it to request header
 		currentTime := time.Now().UnixMilli()
-		startTimeBytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(startTimeBytes, uint64(currentTime))
-		proxywasm.ReplaceHttpRequestHeader("x-start-time", string(startTimeBytes))
+		currentTimeStr := fmt.Sprintf("%d", currentTime)
+		proxywasm.LogCriticalf("Setting x-slate-start-time: " + currentTimeStr)
+		// startTimeBytes := make([]byte, 8)
+		// binary.LittleEndian.PutUint64(startTimeBytes, uint64(currentTime))
+		headerErr := proxywasm.ReplaceHttpRequestHeader(
+			"x-slate-start-time", currentTimeStr)
+		if headerErr != nil {
+			proxywasm.LogCriticalf(
+				"Error adding x-slate-start-time header: %v", headerErr)
+		}
 
 		weightsStr, _, err := proxywasm.GetSharedData(dst)
 		// headerErr := proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
@@ -466,20 +478,19 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	reqAuthority, err := proxywasm.GetHttpRequestHeader(":authority")
 	if err != nil {
 		proxywasm.LogCriticalf("Couldn't get :authority request header: %v", err)
-		return types.ActionContinue
+		return
 	}
 	dstSvc := strings.Split(reqAuthority, ":")[0]
-	// get x-start-time from request headers
-	startTimeBytes, err := proxywasm.GetHttpRequestHeader("x-start-time")
+	// get x-slate-start-time from request headers
+	startTimeStr, err := proxywasm.GetHttpRequestHeader("x-slate-start-time")
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get request header x-start-time in the response: %v", err)
+		proxywasm.LogCriticalf("Couldn't get request header x-slate-start-time in the response: %v", err)
 		return
 	} else {
 		// log the end time and append start time and end time in an array in SharedData
 		currentTime := time.Now().UnixMilli()
-		endTimeBytes := make([]byte, 8)
-		binary.LittleEndian.PutUint64(endTimeBytes, uint64(currentTime))
-		proxywasm.LogCriticalf("OnHttpStreamDone: StartTime: %s, EndTime: %s", startTimeBytes, endTimeBytes)
+		endTimeStr := fmt.Sprintf("%d", currentTime)
+		proxywasm.LogCriticalf("OnHttpStreamDone: StartTime: %s, EndTime: %s", startTimeStr, endTimeStr)
 
 		// get the current array of timestamps
 		tsList, _, err := proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
@@ -488,10 +499,10 @@ func (ctx *httpContext) OnHttpStreamDone() {
 			return
 		}
 
-		timeStampStr := fmt.Sprintf("%s %s %s\n", dstSvc, startTimeBytes, endTimeBytes)
+		timeStampStr := fmt.Sprintf("\n%s %s %s", dstSvc, startTimeStr, endTimeStr)
 
 		// append the new timestamp to the list
-		tsList = append(tsList, []byte(timeStampStr))
+		tsList = append(tsList, []byte(timeStampStr)...)
 
 		// set the new list
 		if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, tsList, 0); err != nil {
@@ -499,6 +510,17 @@ func (ctx *httpContext) OnHttpStreamDone() {
 			return
 		}
 
+	}
+
+	// get the response headers
+	respHeaders, err := proxywasm.GetHttpResponseHeaders()
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get response headers: %v", err)
+		return
+	}
+	//print all headers
+	for _, header := range respHeaders {
+		proxywasm.LogCriticalf("Header: %s: %s", header[0], header[1])
 	}
 
 	// get x-request-id from request headers and lookup entry time
@@ -1154,23 +1176,25 @@ func TimestampListGetRPS(method string, path string) uint64 {
 }
 
 func getNodeID(nodeName string) (int, error) {
+	return 0, nil
+
 	// example nodeName: "minikube-m02", or "minikube"
 
-	// check if nodename starts with "minikube"
-	if strings.HasPrefix(nodeName, "minikube") {
-		if nodeName == "minikube" {
-			return 0, nil
-		}
+	// // check if nodename starts with "minikube"
+	// if strings.HasPrefix(nodeName, "minikube") {
+	// 	if nodeName == "minikube" {
+	// 		return 0, nil
+	// 	}
 
-		// get the number after "minikube"
-		nodeNum, err := strconv.Atoi(nodeName[10:])
-		if err != nil {
-			return -1, err
-		}
-		return nodeNum - 1, nil
-	}
+	// 	// get the number after "minikube"
+	// 	nodeNum, err := strconv.Atoi(nodeName[10:])
+	// 	if err != nil {
+	// 		return -1, err
+	// 	}
+	// 	return nodeNum - 1, nil
+	// }
 
-	return -1, nil
+	// return -1, nil
 }
 
 func inboundCountKey(traceId string) string {
