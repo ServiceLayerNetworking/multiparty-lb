@@ -38,12 +38,12 @@ spec:
   - name: frontend-0
     labels:
       statefulset.kubernetes.io/pod-name: frontend-0
-  - name: frontend-1
-    labels:
-      statefulset.kubernetes.io/pod-name: frontend-1
-  - name: frontend-2
-    labels:
-      statefulset.kubernetes.io/pod-name: frontend-2
+  # - name: frontend-1
+  #   labels:
+  #     statefulset.kubernetes.io/pod-name: frontend-1
+  # - name: frontend-2
+  #   labels:
+  #     statefulset.kubernetes.io/pod-name: frontend-2
 ---
 # Subset routing: if x-lb-endpt is frontend-0, route to frontend-0, if frontend-1, route to frontend-1, if not set, random.
 apiVersion: networking.istio.io/v1alpha3
@@ -66,26 +66,26 @@ spec:
         subset: frontend-0
         port:
           number: 5000
-  - match:
-    - headers:
-        x-lb-endpt:
-          exact: frontend-1
-    route:
-    - destination:
-        host: frontend
-        subset: frontend-1
-        port:
-          number: 5000
-  - match:
-    - headers:
-        x-lb-endpt:
-          exact: frontend-2
-    route:
-    - destination:
-        host: frontend
-        subset: frontend-2
-        port:
-          number: 5000
+  # - match:
+  #   - headers:
+  #       x-lb-endpt:
+  #         exact: frontend-1
+  #   route:
+  #   - destination:
+  #       host: frontend
+  #       subset: frontend-1
+  #       port:
+  #         number: 5000
+  # - match:
+  #   - headers:
+  #       x-lb-endpt:
+  #         exact: frontend-2
+  #   route:
+  #   - destination:
+  #       host: frontend
+  #       subset: frontend-2
+  #       port:
+  #         number: 5000
   - route:
     - destination:
         host: frontend

@@ -1,4 +1,4 @@
-NODES=5
+NODES=4
 
 echo "[SCRIPT] Spawning host agents on each node..."
 kubectl apply -f host_agent/pod_svc_for_master_node.yaml
