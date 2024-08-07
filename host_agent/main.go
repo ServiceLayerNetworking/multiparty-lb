@@ -206,6 +206,7 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 
 	reqStats.mu.Lock()
 	reqStats.ReqStats = append(reqStats.ReqStats, newStats...)
+	slog.Info("Updated reqStats: " + fmt.Sprintf("%v", reqStats.ReqStats))
 	reqStats.mu.Unlock()
 
 	return nil
@@ -443,6 +444,13 @@ func parseLBWeights(msg string) (map[string]float64, bool) {
 	return weights, true
 }
 
+func getOSFileFirstLine(readPath string) (string, error) {
+
+	// Reliable, but really really slow.
+	out, err := exec.Command("head", "-1", readPath).Output()
+	return string(out), err
+}
+
 func getOSFile(readPath string) (string, error) {
 
 	// Reliable, but really really slow.
@@ -542,17 +550,19 @@ func getPodCPUUtil(uid string) int64 {
 	// return the CPU utilization
 
 	// read the file and return the value
-	fileName := "/host/sys/fs/cgroup/cpu/kubepods/" + uid + "/cpuacct.usage"
+	fileName := "/host/sys/fs/cgroup/kubepods/" + uid + "/cpu.stat"
 
-	cpuUtil, err := getOSFile(fileName)
+	cpuUtil, err := getOSFileFirstLine(fileName)
 	if err != nil {
-		slog.Warn(err.Error())
+		slog.Warn(
+			fmt.Sprintf("error in reading OS file %s: %s", fileName, err.Error()))
 		return -1
 	}
 
 	slog.Info("CPU Utilization [" + uid + "]: \"" + cpuUtil + "\"")
 
 	cpuUtilStr := strings.Trim(cpuUtil, "\n")
+	cpuUtilStr = strings.Split(cpuUtilStr, " ")[1]
 
 	cpuUtilInt64, err := strconv.ParseInt(cpuUtilStr, 10, 64)
 	if err != nil {

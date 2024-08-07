@@ -24,7 +24,7 @@ func main() {
 		3. Create virtualservices for every service, performing header match based on x-slate-routeto header, keyed by region
 	*/
 	// regions := flag.String("regions", "us-east-1,us-west-1", "regions to check (comma separated, no spaces, like us-east-1,us-west-1)")
-	numReplicas := flag.Int("replicas", 3, "max number of replicas for each service")
+	numReplicas := flag.Int("replicas", 1, "max number of replicas for each service")
 	services := flag.String("services", "", "services to create vs/drs for. use -exclude to do all except these.")
 	exclude := flag.Bool("exclude", false, "exclude the deployments specified in -deployments instead of including them")
 	ns := flag.String("namespace", "default", "namespace to check")

@@ -475,6 +475,8 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 // bookkeeping and only record the end time for the last response.
 func (ctx *httpContext) OnHttpStreamDone() {
 
+	defer proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
+
 	reqAuthority, err := proxywasm.GetHttpRequestHeader(":authority")
 	if err != nil {
 		proxywasm.LogCriticalf("Couldn't get :authority request header: %v", err)
@@ -596,7 +598,6 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		proxywasm.LogCriticalf("recorded end time for traceId %v: %v", traceId, currentTime)
 	}
 
-	proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
 }
 
 // callback for OnTick() http call response

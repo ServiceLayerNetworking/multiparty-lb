@@ -3,17 +3,17 @@
 # set -x
 set -e
 
-NODES=5
+NODES=4
 
-echo "[SCRIPT] Deleting any previous minikube cluster..."
-minikube delete --all
+# echo "[SCRIPT] Deleting any previous minikube cluster..."
+# minikube delete --all
 
-echo "[SCRIPT] Starting empty minikube cluster with $NODES nodes [2 CPU / 3072 MB] using VirtualBox..."
-minikube start --nodes $((NODES+1)) --cpus 2 --memory 3072 --driver=virtualbox
+# echo "[SCRIPT] Starting empty minikube cluster with $NODES nodes [2 CPU / 3072 MB] using VirtualBox..."
+# minikube start --nodes $((NODES+1)) --cpus 2 --memory 4096 --driver=virtualbox
 
-SLEEP_TIME=10
-echo "[SCRIPT] Sleeping for $SLEEP_TIME seconds..."
-sleep $SLEEP_TIME
+# SLEEP_TIME=10
+# echo "[SCRIPT] Sleeping for $SLEEP_TIME seconds..."
+# sleep $SLEEP_TIME
 
 # set metrics-server
 minikube addons enable metrics-server

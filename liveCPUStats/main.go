@@ -253,19 +253,23 @@ func ccWithNoEnforcement(
 		// - Get CPU Utilizations from host agents
 		cpuUtilizationCh := make(chan NodeStats)
 		for i := range nodes {
-			msg := "getCPUUtilsAndReqStats"
+			msg := "getCPUUtilizations"
 			go func(i int, node Node) {
 				resp := node.SendMessageAndGetResponse(msg)
-				cpuUtils, reqStats := parseCPUUtilsAndReqStats(resp)
-				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
+				// cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
+				// if err != nil {
+				// 	slog.Warn(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
+				// 	panic(err)
+				// }
+				cpuUtilizationCh <- NodeStats{i, resp, ""}
 			}(i, nodes[i])
 		}
-		reqStats := make([]ReqStat, 0)
+		// reqStats := make([]ReqStat, 0)
 		nodeCPUUtilizations := make([]string, len(nodes))
 		for range nodes {
 			cpuUtil := <-cpuUtilizationCh
 			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
-			reqStats = append(reqStats, parseReqStats(cpuUtil.ReqStats)...)
+			// reqStats = append(reqStats, parseReqStats(cpuUtil.ReqStats)...)
 			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
 				cpuUtil.Node, cpuUtil.CPUUtilizations))
 		}
@@ -283,26 +287,57 @@ func ccWithNoEnforcement(
 		}
 		fmt.Printf("%s\n", toPrint)
 
-		// log the request stats
-		cpuLogFile.Writeln(
-			fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
+		// // log the request stats
+		// cpuLogFile.Writeln(
+		// 	fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
 	}
 }
 
-func parseCPUUtilsAndReqStats(resp string) (string, string) {
+func parseCPUUtilsAndReqStats(resp string) (string, string, error) {
 	parts := strings.Split(resp, "---")
 	if len(parts) != 2 {
-		panic(errors.New("invalid response from host agent"))
+		return "", "", errors.New("invalid response from host agent: " + resp)
 	}
-	return parts[0], parts[1]
+	return parts[0], parts[1], nil
+}
+
+// splitIntoParts splits the input string into exactly n parts
+func splitIntoParts(input string, n int) []string {
+	parts := make([]string, 0, n)
+	current := ""
+	count := 0
+
+	for _, char := range input {
+		if char == ' ' {
+			parts = append(parts, current)
+			current = ""
+			count++
+			if count == n-1 {
+				break
+			}
+		} else {
+			current += string(char)
+		}
+	}
+
+	parts = append(parts, current)
+	count++
+
+	for count < n {
+		parts = append(parts, "")
+		count++
+	}
+
+	return parts
 }
 
 func parseReqStats(reqStatsStr string) []ReqStat {
 	reqStats := make([]ReqStat, 0)
-	if reqStatsStr == "" {
+	reqStatsStr = strings.TrimSpace(reqStatsStr)
+	if reqStatsStr == "reqStats:" {
 		return reqStats
 	}
-	reqStatsStrs := strings.Split(reqStatsStr, "\n")
+	reqStatsStrs := splitIntoParts(reqStatsStr[10:], 6)
 	for _, reqStatStr := range reqStatsStrs[1:] {
 		reqStatParts := strings.Split(reqStatStr, " ")
 		reqStats = append(reqStats, ReqStat{
@@ -338,7 +373,7 @@ func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
 			msg := "getCPUUtilsAndReqStats"
 			go func(i int, node Node) {
 				resp := node.SendMessageAndGetResponse(msg)
-				cpuUtils, reqStats := parseCPUUtilsAndReqStats(resp)
+				cpuUtils, reqStats, _ := parseCPUUtilsAndReqStats(resp)
 				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
 			}(i, nodes[i])
 		}

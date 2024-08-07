@@ -240,7 +240,9 @@ error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header
 error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header "x-lb-endpt: frontend-2" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 100."
 error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header "x-lb-endpt: frontend-3" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 100."
 
-error_count=0; for i in {1..25}; do echo "Running attempt $i..."; curl http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 25."
+error_count=0; for i in {1..100}; do echo "Running attempt $i..."; curl --header "x-lb-endpt: frontend-0" http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 100."
+
+error_count=0; for i in {1..25}; do echo "Running attempt $i..."; curl http://10.99.109.32:80/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 || ((error_count++)); done; echo "The command failed $error_count times out of 25."
 
 
 wrk2/wrk -H "x-lb-endpt: frontend-0" -c 100 -t 15 -d 30 -L http://$CLUSTER_IP:$INGRESS_PORT/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099 -R 2000
@@ -586,3 +588,7 @@ kubectl taint nodes minikube-m04 node=node3:NoSchedule
 ```
 
 - Added tolerations to rate, search and worker
+
+https://github.com/kubernetes/kubernetes/issues/77508
+
+exec sudo su -l $USER
