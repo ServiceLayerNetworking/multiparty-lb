@@ -592,3 +592,6 @@ kubectl taint nodes minikube-m04 node=node3:NoSchedule
 https://github.com/kubernetes/kubernetes/issues/77508
 
 exec sudo su -l $USER
+
+checking to see if pushes from cloudlab node work
+
