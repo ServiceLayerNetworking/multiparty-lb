@@ -3,3 +3,4 @@ cri-dockerd-0.3.14.amd64.tgz
 custom-resources.yaml
 custom-resources.yamle
 tigera-operator.yaml
+istio-1.22.3

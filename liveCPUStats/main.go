@@ -40,7 +40,7 @@ const (
 	USE_PRESET_SHARES                   = false
 
 	DEFAULT_LB_WEIGHTS                  = ""
-	LOG_FILE_PREFIX                     = "/home/twaheed2/go/src/multiparty-lb/"
+	LOG_FILE_PREFIX                     = "/users/twaheed/multiparty-lb"
 	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 80_000
 )
 

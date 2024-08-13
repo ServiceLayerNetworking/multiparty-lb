@@ -39,6 +39,10 @@ spec:
         hostPath:
           path: /         # This will mount the root filesystem of the host
           type: Directory
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -47,7 +51,7 @@ spec:
               - key: kubernetes.io/hostname
                 operator: In
                 values:
-                - minikube
+                - node0.k8s-twaheed.mlnetwork.emulab.net
 ---
 apiVersion: v1
 kind: Service

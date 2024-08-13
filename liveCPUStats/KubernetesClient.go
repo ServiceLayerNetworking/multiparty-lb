@@ -66,25 +66,35 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 	// Iterate through the pods and print the UIDs of pods on the specified node
 	for _, pod := range pods.Items {
 
-		parentCgroupFolder := strings.ToLower(string(pod.Status.QOSClass)) + "/"
-		if parentCgroupFolder == "guaranteed/" {
+		qosClass := strings.ToLower(string(pod.Status.QOSClass))
+
+		parentCgroupFolder := "kubepods-" + qosClass + ".slice/"
+		if qosClass == "guaranteed" {
 			parentCgroupFolder = ""
 		}
 
 		if nodeToPods[pod.Spec.NodeName] != nil {
 			nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
-				Name:           pod.Name,
-				AppName:        getAppName(pod),
-				FShare:         0.0,
-				CGroupFilePath: parentCgroupFolder + "pod" + string(pod.UID),
+				Name:    pod.Name,
+				AppName: getAppName(pod),
+				FShare:  0.0,
+				CGroupFilePath: parentCgroupFolder +
+					"kubepods-" + qosClass +
+					"-pod" +
+					strings.ReplaceAll(string(pod.UID), "-", "_") +
+					".slice/",
 			}
 		} else {
 			nodeToPods[pod.Spec.NodeName] = make(map[string]Pod)
 			nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
-				Name:           pod.Name,
-				AppName:        getAppName(pod),
-				FShare:         0.0,
-				CGroupFilePath: parentCgroupFolder + "pod" + string(pod.UID),
+				Name:    pod.Name,
+				AppName: getAppName(pod),
+				FShare:  0.0,
+				CGroupFilePath: parentCgroupFolder +
+					"kubepods-" + qosClass +
+					"-pod" +
+					strings.ReplaceAll(string(pod.UID), "-", "_") +
+					".slice/",
 			}
 		}
 	}
