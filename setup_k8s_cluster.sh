@@ -19,24 +19,24 @@ NODES=5
 # minikube addons enable metrics-server
 # kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 
-# echo "[SCRIPT] Setting labels on each node..."
-# for i in $(seq 1 $NODES);
-# do
-#   kubectl label node node$i.k8s-twaheed.mlnetwork.emulab.net node-role.kubernetes.io/worker=node$i --overwrite
-# done
+echo "[SCRIPT] Setting labels on each node..."
+for i in $(seq 1 $NODES);
+do
+  kubectl label node node$i.k8s-twaheed.mlnetwork.emulab.net node-role.kubernetes.io/worker=node$i --overwrite
+done
 
-# echo "[SCRIPT] Installing istio..."
-# curl -L https://istio.io/downloadIstio | sh -
-# cd istio-1.22.3
-# export PATH=$PWD/bin:$PATH
-# cd ..
+echo "[SCRIPT] Installing istio..."
+curl -L https://istio.io/downloadIstio | sh -
+cd istio-1.22.3
+export PATH=$PWD/bin:$PATH
+cd ..
 
-# istioctl install -y
-# kubectl label namespace default istio-injection=enabled
-# kubectl rollout restart statefulset
+istioctl install -y
+kubectl label namespace default istio-injection=enabled
+kubectl rollout restart statefulset
 
-# echo "[SCRIPT] Applying jaeger..."
-# kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
+echo "[SCRIPT] Applying jaeger..."
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
 
 # bash restart_wasm.sh
 echo "[SCRIPT] installing WASM plugins.."
