@@ -550,7 +550,7 @@ func getPodCPUUtil(uid string) int64 {
 	// return the CPU utilization
 
 	// read the file and return the value
-	fileName := "/host/sys/fs/cgroup/kubepods/" + uid + "/cpu.stat"
+	fileName := "/host/sys/fs/cgroup/kubepods.slice/" + uid + "/cpu.stat"
 
 	cpuUtil, err := getOSFileFirstLine(fileName)
 	if err != nil {
