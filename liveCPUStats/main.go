@@ -41,7 +41,7 @@ const (
 
 	DEFAULT_LB_WEIGHTS                  = ""
 	LOG_FILE_PREFIX                     = "/users/twaheed/multiparty-lb"
-	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 80_000
+	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 15_000
 )
 
 /*
@@ -117,13 +117,7 @@ type LogFile struct {
 }
 
 func (l *LogFile) Initialize(logType string) {
-	var filename string
-	var runNum int
-	fmt.Println("Enter log folder's name and run number:")
-	fmt.Scan(&filename, &runNum)
-
-	logFileName := fmt.Sprintf(
-		"%s/%s/none_%s_%d", LOG_FILE_PREFIX, filename, logType, runNum)
+	logFileName := getLogFileName(logType)
 
 	logFile, err := os.Create(logFileName)
 	check(err)
@@ -141,7 +135,30 @@ type NodeStats struct {
 	ReqStats        string
 }
 
-func getPodsToLog() []string {
+func getLogFileName(logType string) string {
+	// get file name to log
+	logfile := flag.String("logfile", "", "Name of the log file")
+
+	// Parse the command line flags
+	flag.Parse()
+
+	logfileName := *logfile
+
+	// Check if the 'pods' flag is provided
+	if *logfile == "" {
+		var filename string
+		var runNum int
+		fmt.Println("Enter log folder's name and run number:")
+		fmt.Scan(&filename, &runNum)
+
+		logfileName = fmt.Sprintf(
+			"%s/%s/none_%s_%d", LOG_FILE_PREFIX, filename, logType, runNum)
+	}
+
+	return logfileName
+}
+
+func getPodsToLog(allPodNames []string) []string {
 	// Define the 'pods' flag
 	pods := flag.String("pods", "", "Comma-separated list of pod names")
 
@@ -150,8 +167,8 @@ func getPodsToLog() []string {
 
 	// Check if the 'pods' flag is provided
 	if *pods == "" {
-		fmt.Println("Error: 'pods' flag is required")
-		os.Exit(1)
+		fmt.Printf("Pods to print: %v\n", allPodNames)
+		return allPodNames
 	}
 
 	// Convert the comma-separated string to an array of names
@@ -227,11 +244,14 @@ func main() {
 		}
 	}()
 
+	podNames := make([]string, 0)
+
 	// Send messages to host agents to update pod state
 	for i := range nodes {
 		msg := "updatePods"
 		for podName, pod := range nodes[i].Pods {
 			msg += " " + podName + ":" + pod.CGroupFilePath
+			podNames = append(podNames, podName)
 		}
 		slog.Info("msg: " + msg)
 		response := nodes[i].SendMessageAndGetResponse(msg)
@@ -240,7 +260,9 @@ func main() {
 		}
 	}
 
-	ccWithNoEnforcement(cpuLogFile, nodes, getPodsToLog())
+	go ccWithNoEnforcement(cpuLogFile, nodes, getPodsToLog(podNames))
+
+	time.Sleep(DURATION_THAT_THIS_FILE_WILL_RUN_MS * time.Millisecond)
 }
 
 func ccWithNoEnforcement(
@@ -279,11 +301,16 @@ func ccWithNoEnforcement(
 
 		cpuUtilMap := getCPUUtilMap(nodeCPUUtilizations)
 		currentTimeStr := time.Now().Format("2006-01-02 15:04:05.000")
-		toPrint := fmt.Sprintf("%s:", currentTimeStr)
+		toPrint := "----------------------------------------\n"
+		toPrint += fmt.Sprintf("Time: %s:\n\n", currentTimeStr)
+		toPrint += fmt.Sprintf("%-30s %s\n", "PODNAME", "CPU (%)")
 		// fmt.Printf("Pods to log: %v\n", podsToLog)
 		// fmt.Printf("CPU Map: %v\n", cpuUtilMap)
-		for _, podName := range podsToLog {
-			toPrint += fmt.Sprintf("\t%s: %f", podName, cpuUtilMap[podName])
+		sortedPodsToLog := getKeysSortedByValue(cpuUtilMap, podsToLog)
+		// sort.Strings(podsToLog)
+		for _, podName := range sortedPodsToLog {
+			toPrint += fmt.Sprintf("%-30s %.2f\n",
+				podName, cpuUtilMap[podName])
 		}
 		fmt.Printf("%s\n", toPrint)
 
@@ -291,6 +318,15 @@ func ccWithNoEnforcement(
 		// cpuLogFile.Writeln(
 		// 	fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
 	}
+}
+
+func getKeysSortedByValue(m map[string]float64, keys []string) []string {
+	// Sort the keys based on the corresponding values in the map
+	sort.Slice(keys, func(i, j int) bool {
+		return m[keys[i]] > m[keys[j]]
+	})
+
+	return keys
 }
 
 func parseCPUUtilsAndReqStats(resp string) (string, string, error) {
@@ -800,6 +836,8 @@ func getCPUUtilMap(nodeCPUUtilizations []string) map[string]float64 {
 
 func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 
+	// fmt.Printf("Node CPU Utilizations: %v\n", nodeCPUUtilizations)
+
 	logFileFormat := LogFileFormat{
 		time.Now().UnixNano(),
 		make(map[string]string),
@@ -810,7 +848,9 @@ func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
 
-		podCPUtils := strings.Split(nodeCPUUtil, " ")[:1]
+		podCPUtils := strings.Split(nodeCPUUtil, " ")[1:]
+
+		// fmt.Printf("Pod CPU Utilizations: %v\n", podCPUtils)
 
 		for _, podCPUUtil := range podCPUtils {
 			podUtilMap := strings.Split(podCPUUtil, ":")

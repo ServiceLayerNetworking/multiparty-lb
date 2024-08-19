@@ -158,9 +158,9 @@ go build -o ./centralcontroller .
 ```
 
 Next, I've used a gateway called istio-ingress applied through
-istio-configs/istio
+dst-rules_virtual-svcs/istio
 ```
-k apply -Rf istio-configs/hotelReservation.yaml
+k apply -Rf dst-rules_virtual-svcs/hotelReservation.yaml
 ```
 
 Apply the addons in the istio cluster through:
@@ -220,7 +220,7 @@ Now we need to write the virtual service and destination rules for the service
 First, begin by setting virtual service and destination rules yourself for a service through yaml, and then ensuring that the request reaches the particular replica you want.
 
 To do this we will apply dstrules/vsvsc for the profile service repicas and send which hits the svcs frontend, profile, recommendation, and some mongodb/memcached svc
-```
+```q
 ./centralcontroller/centralcontroller
 ```
 ```
@@ -303,6 +303,9 @@ distribution=[exp|norm]
 wrk2/wrk -D exp -t50 -c50 -d30s -L -S -s wrk2/mixed_workload_hotel_reservation.lua http://$CLUSTER_IP:$INGRESS_PORT -R4000
 
 wrk2/wrk -D exp -t50 -c50 -d30s -L -S -s wrk2/mixed_workload_hotel_reservation.lua http://$CLUSTER_IP:$INGRESS_PORT -R8000
+
+
+wrk2/wrk -D exp -t50 -c50 -d30s -L -S -s wrk2/mixed_workload_hotel_reservation.lua http://10.108.145.100:80 -R4000
 
 twaheed2@ocean3:~/go/src/multiparty-lb$ wrk2/wrk -D exp -t50 -c50 -d30s -L -S -s wrk2/mixed_workload_hotel_reservation.lua http://$CLUSTER_IP:$INGRESS_PORT -R8000
 Running 30s test @ http://192.168.59.100:32094
@@ -595,3 +598,37 @@ exec sudo su -l $USER
 
 checking to see if pushes from cloudlab node work
 
+
+
+It is 3 dp off
+
+FRONTEND_IP=$(kubectl get svc frontend -n default -o jsonpath='{.spec.clusterIP}')
+GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath='{.spec.clusterIP}')
+
+curl http://$FRONTEND_IP:5000/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099
+curl http://$GATEWAY_IP:80/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099
+
+wrk2/wrk -c 100 -t 15 -d 30 -L -R4000 http://$GATEWAY_IP:80/recommendations\?require\=rate\&lat\=37.804\&lon\=-122.099
+
+wrk2/wrk -D exp -t 25 -c 25 -d 15 -L -s wrk2/wrk2_lua_scripts/mixed-workload_type_1.lua $GATEWAY_IP:80 -R500 
+
+wrk2/wrk -D exp -t 25 -c 25 -d 30 -L -s wrk2/recommend.lua $GATEWAY_IP:80 -R500
+
+wrk2/wrk -D exp -t 25 -c 25 -d 30 -L -s wrk2/recommend.lua http://$GATEWAY_IP:80 -R500
+
+
+wrk2/wrk -D exp -t 25 -c 25 -d 30 -L -s wrk2/scripts/reserve.lua http://$GATEWAY_IP:80 -R500
+
+
+To saturate the CPU 50% from user, use
+wrk2/wrk -D exp -t 25 -c 25 -d 30 -L -s wrk2/scripts/user_login.lua http://$GATEWAY_IP:80 -R300
+
+To saturate the CPU 50% from reservation, use
+wrk2/wrk -D exp -t 25 -c 25 -d 30 -L -s wrk2/scripts/search_hotel.lua http://$GATEWAY_IP:80 -R50
+
+
+-- Why is user-0 not using CPU available?
+
+1. Istio might have some concurrency constraints -- not the reason
+2. GPRC might have a max concurrent streams -- not the reason (changed defaultMaxConcurrentStreams from 1000 to 10000 in transport.go, but still the cap was 136%)
+3. GRPC might have a max on thread pool size -- 

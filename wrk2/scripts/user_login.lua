@@ -2,12 +2,14 @@ local socket = require("socket")
 math.randomseed(socket.gettime()*1000)
 math.random(); math.random(); math.random()
 
-local url = "http://192.168.59.100:32094"
+local url = "http://10.110.85.71:80"
+
 local function get_user()
   local id = math.random(0, 500)
   local user_name = "Cornell_" .. tostring(id)
   local pass_word = ""
-  for i = 0, 9, 1 do pass_word = pass_word .. tostring(id)
+  for i = 0, 9, 1 do 
+    pass_word = pass_word .. tostring(id)
   end
   return user_name, pass_word
 end
@@ -38,7 +40,7 @@ local function search_hotel()
     "&outDate=" .. out_date_str .. "&lat=" .. tostring(lat) .. "&lon=" .. tostring(lon)
 
   local headers = {}
-  headers["x-slate-destination"] = "west"
+  headers["x-slate-destination"] = "east"
   return wrk.format(method, path, headers, nil)
 end
 
@@ -60,8 +62,7 @@ local function recommend()
   local path = url .. "/recommendations?require=" .. req_param .. 
     "&lat=" .. tostring(lat) .. "&lon=" .. tostring(lon)
   local headers = {}
-  headers["x-slate-destination"] = "west"
-  -- headers["Content-Type"] = "application/x-www-form-urlencoded"
+  headers["x-slate-destination"] = "east"
   return wrk.format(method, path, headers, nil)
 end
 
@@ -95,7 +96,7 @@ local function reserve()
     "&hotelId=" .. hotel_id .. "&customerName=" .. cust_name .. "&username=" .. user_id ..
     "&password=" .. password .. "&number=" .. num_room
   local headers = {}
-  headers["x-slate-destination"] = "west"
+  headers["x-slate-destination"] = "east"
   -- headers["Content-Type"] = "application/x-www-form-urlencoded"
   return wrk.format(method, path, headers, nil)
 end
@@ -105,18 +106,17 @@ local function user_login()
   local method = "POST"
   local path = url .. "/user?username=" .. user_name .. "&password=" .. password
   local headers = {}
-  headers["x-slate-destination"] = "west"
+  headers["x-slate-destination"] = "east"
   -- headers["Content-Type"] = "application/x-www-form-urlencoded"
   return wrk.format(method, path, headers, nil)
 end
 
 request = function()
   cur_time = math.floor(socket.gettime())
-
-  local search_ratio      = 0.3
-  local recommend_ratio   = 0.3
-  local user_ratio        = 0.3
-  local reserve_ratio     = 0.1
+  local search_ratio      = 0.0
+  local recommend_ratio   = 0.0
+  local user_ratio        = 1.0
+  local reserve_ratio     = 0.0
 
   local coin = math.random()
   if coin < search_ratio then
