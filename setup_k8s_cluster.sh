@@ -17,7 +17,7 @@ NODES=5
 
 # set metrics-server
 # minikube addons enable metrics-server
-# kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl apply -f https://raw.githubusercontent.com/pythianarora/total-practice/master/sample-kubernetes-code/metrics-server.yaml
 
 echo "[SCRIPT] Setting labels on each node..."
 for i in $(seq 1 $NODES);
@@ -25,22 +25,22 @@ do
   kubectl label node node$i.k8s-twaheed.mlnetwork.emulab.net node-role.kubernetes.io/worker=node$i --overwrite
 done
 
-echo "[SCRIPT] Installing istio..."
-curl -L https://istio.io/downloadIstio | sh -
-cd istio-1.22.3
-export PATH=$PWD/bin:$PATH
-cd ..
+# echo "[SCRIPT] Installing istio..."
+# curl -L https://istio.io/downloadIstio | sh -
+# cd istio-1.22.3
+# echo "export PATH=$PWD/bin:$PATH" >> ~/.bashrc && source ~/.bashrc
+# cd ..
 
-istioctl install -y
-kubectl label namespace default istio-injection=enabled
-kubectl rollout restart statefulset
+# istioctl install -y
+# kubectl label namespace default istio-injection=enabled --overwrite
+# kubectl rollout restart statefulset
 
-echo "[SCRIPT] Applying jaeger..."
-kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
+# echo "[SCRIPT] Applying jaeger..."
+# kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
 
-# bash restart_wasm.sh
-echo "[SCRIPT] installing WASM plugins.."
-kubectl apply -f mplb-wasm-plugin/wasm.yaml
+# # bash restart_wasm.sh
+# echo "[SCRIPT] installing WASM plugins.."
+# kubectl apply -f mplb-wasm-plugin/wasm.yaml
 
 # echo "[SCRIPT] Applying taints to three nodes..."
 # kubectl taint nodes minikube-m02 node=node1:NoSchedule
@@ -59,9 +59,9 @@ do
   sed -i "s/node$i/node0/g" host_agent/pod_svc.yaml
 done
 
-echo "[SCRIPT] Applying istio configs for hotelReservation..."
-kubectl apply -f istio-configs/hotelReservation.yaml
-istio-configs/virtualservice-headermatch/vs-headermatch -services "consul,frontend" -exclude
+# echo "[SCRIPT] Applying istio configs for hotelReservation..."
+# kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
+# dst-rules_virtual-svcs/virtualservice-headermatch/vs-headermatch -services "consul,frontend" -exclude
 
 
 

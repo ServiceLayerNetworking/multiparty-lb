@@ -20,7 +20,7 @@ const (
 	CC_SERVER_PORT              = 9988
 	CC_SERVER_TYPE              = "tcp"
 	LB_SERVER_PORT              = 9989
-	CPU_UTILIZATION_INTERVAL_MS = 100
+	CPU_UTILIZATION_INTERVAL_MS = 2000
 	DEFAULT_LB_WEIGHTS          = ""
 )
 
@@ -503,14 +503,14 @@ func getCPUUtilizations(podUIDs map[string]string) string {
 	for podName, uid := range podUIDs {
 		initialCPUUtils[podName] = getPodCPUUtil(uid)
 	}
-	intialTime := time.Now().UnixNano()
+	intialTime := time.Now().UnixMicro()
 
 	time.Sleep(CPU_UTILIZATION_INTERVAL_MS * time.Millisecond)
 
 	for podName, uid := range podUIDs {
 		finalCPUUtils[podName] = getPodCPUUtil(uid)
 	}
-	timeElapsed := time.Now().UnixNano() - intialTime
+	timeElapsed := time.Now().UnixMicro() - intialTime
 
 	for podName := range podUIDs {
 		response += fmt.Sprintf(" %s:%f",
