@@ -632,3 +632,21 @@ wrk2/wrk -D exp -t 25 -c 25 -d 30 -L -s wrk2/scripts/search_hotel.lua http://$GA
 1. Istio might have some concurrency constraints -- not the reason
 2. GPRC might have a max concurrent streams -- not the reason (changed defaultMaxConcurrentStreams from 1000 to 10000 in transport.go, but still the cap was 136%)
 3. GRPC might have a max on thread pool size -- 
+
+Steps to repeat the experiment I showed in the slides
+This is a redo of the 3-node experiment with the current setup and hotelreservation
+
+1. Ensure that liveCPUStats is working with latency information (Done)
+2. Check the difference between liveCPUStats and central controller and try to make a single file from them that does both the tasks
+3. Run the experiment
+
+Step 1:
+1. Edit liveCPUStats to also log the request latencies
+2. Do curls to the Gateway and check if latency data is logged in the liveCPUStats program
+3. If not, debug where the issue is
+Done scene,
+
+
+But there is some problem due to which the lges
+
+Side work: Why is there a frontend-0 to frontend-0

@@ -41,7 +41,7 @@ const (
 
 	DEFAULT_LB_WEIGHTS                  = ""
 	LOG_FILE_PREFIX                     = "/users/twaheed/multiparty-lb"
-	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 15_000
+	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 500_000
 )
 
 /*
@@ -103,13 +103,31 @@ func (n *Node) SendMessageAndGetResponse(msg string) string {
 		slog.Warn("Error sending:" + err.Error())
 	}
 	slog.Info("Sent: " + msg)
-	buffer := make([]byte, 4096)
-	mLen, err := (*n.connection).Read(buffer)
-	if err != nil {
-		slog.Warn("Error reading:" + err.Error())
+
+	var buffer strings.Builder
+	delim := "<END>"
+	buf := make([]byte, 1024)
+
+	for {
+		n, err := (*n.connection).Read(buf)
+		if err != nil {
+			slog.Warn("Error sending:" + err.Error())
+			return ""
+		}
+
+		buffer.Write(buf[:n])
+
+		// Convert the accumulated buffer to a string
+		data := buffer.String()
+
+		// Check if the delimiter is in the accumulated data
+		if strings.Contains(data, delim) {
+			// Extract the message up to the delimiter
+			message := data[:strings.Index(data, delim)]
+			fmt.Println("Received message:", message)
+			return message
+		}
 	}
-	slog.Info("Received: " + string(buffer[:mLen]))
-	return string(buffer[:mLen])
 }
 
 type LogFile struct {
@@ -275,25 +293,25 @@ func ccWithNoEnforcement(
 		// - Get CPU Utilizations from host agents
 		cpuUtilizationCh := make(chan NodeStats)
 		for i := range nodes {
-			msg := "getCPUUtilizations"
+			msg := "getCPUUtilsAndReqStats"
 			go func(i int, node Node) {
 				resp := node.SendMessageAndGetResponse(msg)
-				// cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
-				// if err != nil {
-				// 	slog.Warn(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
-				// 	panic(err)
-				// }
-				cpuUtilizationCh <- NodeStats{i, resp, ""}
+				cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
+				if err != nil {
+					slog.Warn(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
+					panic(err)
+				}
+				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
 			}(i, nodes[i])
 		}
-		// reqStats := make([]ReqStat, 0)
+		reqStats := make([]ReqStat, 0)
 		nodeCPUUtilizations := make([]string, len(nodes))
 		for range nodes {
-			cpuUtil := <-cpuUtilizationCh
-			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
-			// reqStats = append(reqStats, parseReqStats(cpuUtil.ReqStats)...)
+			nodeStats := <-cpuUtilizationCh
+			nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
+			reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
 			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
-				cpuUtil.Node, cpuUtil.CPUUtilizations))
+				nodeStats.Node, nodeStats.CPUUtilizations))
 		}
 
 		// log the CPU Utilizations and CPU Shares
@@ -314,9 +332,9 @@ func ccWithNoEnforcement(
 		}
 		fmt.Printf("%s\n", toPrint)
 
-		// // log the request stats
-		// cpuLogFile.Writeln(
-		// 	fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
+		// log the request stats
+		cpuLogFile.Writeln(
+			fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
 	}
 }
 
@@ -330,7 +348,7 @@ func getKeysSortedByValue(m map[string]float64, keys []string) []string {
 }
 
 func parseCPUUtilsAndReqStats(resp string) (string, string, error) {
-	parts := strings.Split(resp, "---")
+	parts := strings.Split(resp, "\n<SEP>\n")
 	if len(parts) != 2 {
 		return "", "", errors.New("invalid response from host agent: " + resp)
 	}
@@ -368,14 +386,18 @@ func splitIntoParts(input string, n int) []string {
 }
 
 func parseReqStats(reqStatsStr string) []ReqStat {
+
+	fmt.Printf("ReqStatsStr: %s\n", reqStatsStr)
+
 	reqStats := make([]ReqStat, 0)
 	reqStatsStr = strings.TrimSpace(reqStatsStr)
 	if reqStatsStr == "reqStats:" {
 		return reqStats
 	}
-	reqStatsStrs := splitIntoParts(reqStatsStr[10:], 6)
-	for _, reqStatStr := range reqStatsStrs[1:] {
+	reqStatsStrs := strings.Split(reqStatsStr, "\n")[1:]
+	for _, reqStatStr := range reqStatsStrs {
 		reqStatParts := strings.Split(reqStatStr, " ")
+		fmt.Printf("reqStatParts: %s\n", reqStatParts)
 		reqStats = append(reqStats, ReqStat{
 			SrcSvc:      reqStatParts[0],
 			SrcPod:      reqStatParts[1],
