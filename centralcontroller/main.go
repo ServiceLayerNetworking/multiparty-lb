@@ -3,16 +3,20 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,8 +40,8 @@ const (
 	USE_PRESET_SHARES                   = false
 
 	DEFAULT_LB_WEIGHTS                  = ""
-	LOG_FILE_PREFIX                     = "/home/twaheed2/go/src/multiparty-lb/"
-	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 80_000
+	LOG_FILE_PREFIX                     = "/users/twaheed/multiparty-lb"
+	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 500_000
 )
 
 /*
@@ -92,20 +96,38 @@ func (n *Node) Disconnect() {
 
 func (n *Node) SendMessageAndGetResponse(msg string) string {
 
-	slog.Info(fmt.Sprintf("conn: %v", n.connection))
+	// slog.Info(fmt.Sprintf("conn: %v", n.connection))
 
 	_, err := (*n.connection).Write([]byte(msg))
 	if err != nil {
 		slog.Warn("Error sending:" + err.Error())
 	}
 	slog.Info("Sent: " + msg)
-	buffer := make([]byte, 4096)
-	mLen, err := (*n.connection).Read(buffer)
-	if err != nil {
-		slog.Warn("Error reading:" + err.Error())
+
+	var buffer strings.Builder
+	delim := "<END>"
+	buf := make([]byte, 1024)
+
+	for {
+		n, err := (*n.connection).Read(buf)
+		if err != nil {
+			slog.Warn("Error sending:" + err.Error())
+			return ""
+		}
+
+		buffer.Write(buf[:n])
+
+		// Convert the accumulated buffer to a string
+		data := buffer.String()
+
+		// Check if the delimiter is in the accumulated data
+		if strings.Contains(data, delim) {
+			// Extract the message up to the delimiter
+			message := data[:strings.Index(data, delim)]
+			fmt.Println("Received message:", message)
+			return message
+		}
 	}
-	slog.Info("Received: " + string(buffer[:mLen]))
-	return string(buffer[:mLen])
 }
 
 type LogFile struct {
@@ -113,13 +135,7 @@ type LogFile struct {
 }
 
 func (l *LogFile) Initialize(logType string) {
-	var filename string
-	var runNum int
-	fmt.Println("Enter log folder's name and run number:")
-	fmt.Scan(&filename, &runNum)
-
-	logFileName := fmt.Sprintf(
-		"%s/%s/none_%s_%d", LOG_FILE_PREFIX, filename, logType, runNum)
+	logFileName := getLogFileName(logType)
 
 	logFile, err := os.Create(logFileName)
 	check(err)
@@ -137,7 +153,87 @@ type NodeStats struct {
 	ReqStats        string
 }
 
+func getLogFileName(logType string) string {
+	// get file name to log
+	logfile := flag.String("logfile", "", "Name of the log file")
+
+	// Parse the command line flags
+	flag.Parse()
+
+	logfileName := *logfile
+
+	// Check if the 'pods' flag is provided
+	if *logfile == "" {
+		var filename string
+		var runNum int
+		fmt.Println("Enter log folder's name and run number:")
+		fmt.Scan(&filename, &runNum)
+
+		logfileName = fmt.Sprintf(
+			"%s/%s/none_%s_%d", LOG_FILE_PREFIX, filename, logType, runNum)
+	}
+
+	return logfileName
+}
+
+func getPodsToLog(allPodNames []string) []string {
+	// Define the 'pods' flag
+	pods := flag.String("pods", "", "Comma-separated list of pod names")
+
+	// Parse the command line flags
+	flag.Parse()
+
+	// Check if the 'pods' flag is provided
+	if *pods == "" {
+		fmt.Printf("Pods to print: %v\n", allPodNames)
+		return allPodNames
+	}
+
+	// Convert the comma-separated string to an array of names
+	podArray := strings.Split(*pods, ",")
+
+	return podArray
+}
+
+// handlerWriter is an io.Writer that calls an  slog.Handler.
+// It is used to link the default log.Logger to the default slog.Logger.
+type handlerWriter struct {
+	h         slog.Handler
+	level     slog.Level
+	capturePC bool
+}
+
+func (w *handlerWriter) Write(buf []byte) (int, error) {
+	if !w.h.Enabled(context.Background(), w.level) {
+		return 0, nil
+	}
+	var pc uintptr
+	if w.capturePC {
+		// skip [runtime.Callers, w.Write, Logger.Output, log.Print]
+		var pcs [1]uintptr
+		runtime.Callers(4, pcs[:])
+		pc = pcs[0]
+	}
+
+	// Remove final newline.
+	origLen := len(buf) // Report that the entire buf was written.
+	if len(buf) > 0 && buf[len(buf)-1] == '\n' {
+		buf = buf[:len(buf)-1]
+	}
+	r := slog.NewRecord(time.Now(), w.level, string(buf), pc)
+	return origLen, w.h.Handle(context.Background(), r)
+}
+
 func main() {
+
+	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	slog.SetDefault(l) // configures log package to print with LevelInfo
+
+	capturePC := log.Flags()&(log.Lshortfile|log.Llongfile) != 0
+	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelError, capturePC}) // configures log package to print with LevelError
 
 	// Initialize log file write
 	cpuLogFile := new(LogFile)
@@ -166,11 +262,14 @@ func main() {
 		}
 	}()
 
+	podNames := make([]string, 0)
+
 	// Send messages to host agents to update pod state
 	for i := range nodes {
 		msg := "updatePods"
 		for podName, pod := range nodes[i].Pods {
 			msg += " " + podName + ":" + pod.CGroupFilePath
+			podNames = append(podNames, podName)
 		}
 		slog.Info("msg: " + msg)
 		response := nodes[i].SendMessageAndGetResponse(msg)
@@ -179,40 +278,40 @@ func main() {
 		}
 	}
 
-	setDefaultLBWeights(nodes, cpuLogFile)
-
 	if ENFORCEMENT == "NONE" {
-
-		go ccWithNoEnforcement(cpuLogFile, nodes)
-
-	} else if ENFORCEMENT == "LB" {
-
-		go ccWithLBEnforcement(cpuLogFile, nodes)
+		go ccWithNoEnforcement(cpuLogFile, nodes, getPodsToLog(podNames))
 
 	} else {
 
-		// update with default values of the cpu quotas and shares
-		setDefaultCPUQuotas(nodes, cpuLogFile)
-		setDefaultCPUShares(nodes, cpuLogFile)
+		setDefaultLBWeights(nodes, cpuLogFile)
+		if ENFORCEMENT == "LB" {
+			go ccWithLBEnforcement(cpuLogFile, nodes, getPodsToLog(podNames))
 
-		if ENFORCEMENT == "CPU_QUOTA" {
-			slog.Info("Enforcing CPU Quotas")
-			go ccWithCPUQuotas(cpuLogFile, nodes)
-		} else if ENFORCEMENT == "CPU_SHARE" {
-			slog.Info("Enforcing CPU Shares")
-			go ccWithCPUShares(cpuLogFile, nodes)
-		} else if ENFORCEMENT == "BOTH" {
-			slog.Info("Enforcing CPU Quotas and Shares")
-			go ccWithBoth(cpuLogFile, nodes)
 		} else {
-			panic("Invalid enforcement type")
+			// update with default values of the cpu quotas and shares
+			setDefaultCPUQuotas(nodes, cpuLogFile)
+			setDefaultCPUShares(nodes, cpuLogFile)
+
+			if ENFORCEMENT == "CPU_QUOTA" {
+				slog.Info("Enforcing CPU Quotas")
+				go ccWithCPUQuotas(cpuLogFile, nodes)
+			} else if ENFORCEMENT == "CPU_SHARE" {
+				slog.Info("Enforcing CPU Shares")
+				go ccWithCPUShares(cpuLogFile, nodes)
+			} else if ENFORCEMENT == "BOTH" {
+				slog.Info("Enforcing CPU Quotas and Shares")
+				go ccWithBoth(cpuLogFile, nodes)
+			} else {
+				panic("Invalid enforcement type")
+			}
 		}
 	}
 
 	time.Sleep(DURATION_THAT_THIS_FILE_WILL_RUN_MS * time.Millisecond)
 }
 
-func ccWithNoEnforcement(cpuLogFile *LogFile, nodes []Node) {
+func ccWithNoEnforcement(
+	cpuLogFile *LogFile, nodes []Node, podsToLog []string) {
 
 	// Repeat the following:
 	// - Get CPU Utilizations from host agents
@@ -224,22 +323,41 @@ func ccWithNoEnforcement(cpuLogFile *LogFile, nodes []Node) {
 			msg := "getCPUUtilsAndReqStats"
 			go func(i int, node Node) {
 				resp := node.SendMessageAndGetResponse(msg)
-				cpuUtils, reqStats := parseCPUUtilsAndReqStats(resp)
+				cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
+				if err != nil {
+					slog.Warn(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
+					panic(err)
+				}
 				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
 			}(i, nodes[i])
 		}
 		reqStats := make([]ReqStat, 0)
 		nodeCPUUtilizations := make([]string, len(nodes))
 		for range nodes {
-			cpuUtil := <-cpuUtilizationCh
-			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
-			reqStats = append(reqStats, parseReqStats(cpuUtil.ReqStats)...)
+			nodeStats := <-cpuUtilizationCh
+			nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
+			reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
 			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
-				cpuUtil.Node, cpuUtil.CPUUtilizations))
+				nodeStats.Node, nodeStats.CPUUtilizations))
 		}
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(getLogFileFormatNoEnforcement(nodeCPUUtilizations))
+
+		cpuUtilMap := getCPUUtilMap(nodeCPUUtilizations)
+		currentTimeStr := time.Now().Format("2006-01-02 15:04:05.000")
+		toPrint := "----------------------------------------\n"
+		toPrint += fmt.Sprintf("Time: %s:\n\n", currentTimeStr)
+		toPrint += fmt.Sprintf("%-30s %s\n", "PODNAME", "CPU (%)")
+		// fmt.Printf("Pods to log: %v\n", podsToLog)
+		// fmt.Printf("CPU Map: %v\n", cpuUtilMap)
+		sortedPodsToLog := getKeysSortedByValue(cpuUtilMap, podsToLog)
+		// sort.Strings(podsToLog)
+		for _, podName := range sortedPodsToLog {
+			toPrint += fmt.Sprintf("%-30s %.2f\n",
+				podName, cpuUtilMap[podName])
+		}
+		fmt.Printf("%s\n", toPrint)
 
 		// log the request stats
 		cpuLogFile.Writeln(
@@ -247,22 +365,36 @@ func ccWithNoEnforcement(cpuLogFile *LogFile, nodes []Node) {
 	}
 }
 
-func parseCPUUtilsAndReqStats(resp string) (string, string) {
-	parts := strings.Split(resp, "---")
+func getKeysSortedByValue(m map[string]float64, keys []string) []string {
+	// Sort the keys based on the corresponding values in the map
+	sort.Slice(keys, func(i, j int) bool {
+		return m[keys[i]] > m[keys[j]]
+	})
+
+	return keys
+}
+
+func parseCPUUtilsAndReqStats(resp string) (string, string, error) {
+	parts := strings.Split(resp, "\n<SEP>\n")
 	if len(parts) != 2 {
-		panic(errors.New("invalid response from host agent"))
+		return "", "", errors.New("invalid response from host agent: " + resp)
 	}
-	return parts[0], parts[1]
+	return parts[0], parts[1], nil
 }
 
 func parseReqStats(reqStatsStr string) []ReqStat {
+
+	fmt.Printf("ReqStatsStr: %s\n", reqStatsStr)
+
 	reqStats := make([]ReqStat, 0)
-	if reqStatsStr == "" {
+	reqStatsStr = strings.TrimSpace(reqStatsStr)
+	if reqStatsStr == "reqStats:" {
 		return reqStats
 	}
-	reqStatsStrs := strings.Split(reqStatsStr, "\n")
-	for _, reqStatStr := range reqStatsStrs[1:] {
+	reqStatsStrs := strings.Split(reqStatsStr, "\n")[1:]
+	for _, reqStatStr := range reqStatsStrs {
 		reqStatParts := strings.Split(reqStatStr, " ")
+		fmt.Printf("reqStatParts: %s\n", reqStatParts)
 		reqStats = append(reqStats, ReqStat{
 			SrcSvc:      reqStatParts[0],
 			SrcPod:      reqStatParts[1],
@@ -281,7 +413,8 @@ func stringToInt64(str string) int64 {
 	return i
 }
 
-func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
+func ccWithLBEnforcement(
+	cpuLogFile *LogFile, nodes []Node, podsToLog []string) {
 
 	// Initialize past CPU Utilizations
 	roundsAppCPUUtils := make([]map[string]float64, 0)
@@ -296,18 +429,22 @@ func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
 			msg := "getCPUUtilsAndReqStats"
 			go func(i int, node Node) {
 				resp := node.SendMessageAndGetResponse(msg)
-				cpuUtils, reqStats := parseCPUUtilsAndReqStats(resp)
+				cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
+				if err != nil {
+					slog.Warn(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
+					panic(err)
+				}
 				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
 			}(i, nodes[i])
 		}
 		reqStats := make([]ReqStat, 0)
 		nodeCPUUtilizations := make([]string, len(nodes))
 		for range nodes {
-			cpuUtil := <-cpuUtilizationCh
-			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
-			reqStats = append(reqStats, parseReqStats(cpuUtil.ReqStats)...)
+			nodeStats := <-cpuUtilizationCh
+			nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
+			reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
 			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
-				cpuUtil.Node, cpuUtil.CPUUtilizations))
+				nodeStats.Node, nodeStats.CPUUtilizations))
 		}
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
@@ -318,6 +455,7 @@ func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(
 			getLogFileFormatLBEnforcement(nodeCPUUtilizations, lbWeights))
+		printCPUStatsToConsole(nodeCPUUtilizations, podsToLog)
 
 		// log the request stats
 		cpuLogFile.Writeln(
@@ -335,6 +473,23 @@ func ccWithLBEnforcement(cpuLogFile *LogFile, nodes []Node) {
 			}
 		}
 	}
+}
+
+func printCPUStatsToConsole(nodeCPUUtilizations []string, podsToLog []string) {
+	cpuUtilMap := getCPUUtilMap(nodeCPUUtilizations)
+	currentTimeStr := time.Now().Format("2006-01-02 15:04:05.000")
+	toPrint := "----------------------------------------\n"
+	toPrint += fmt.Sprintf("Time: %s:\n\n", currentTimeStr)
+	toPrint += fmt.Sprintf("%-30s %s\n", "PODNAME", "CPU (%)")
+	// fmt.Printf("Pods to log: %v\n", podsToLog)
+	// fmt.Printf("CPU Map: %v\n", cpuUtilMap)
+	sortedPodsToLog := getKeysSortedByValue(cpuUtilMap, podsToLog)
+	// sort.Strings(podsToLog)
+	for _, podName := range sortedPodsToLog {
+		toPrint += fmt.Sprintf("%-30s %.2f\n",
+			podName, cpuUtilMap[podName])
+	}
+	fmt.Printf("%s\n", toPrint)
 }
 
 func getReqStatsJSON(reqStats []ReqStat) string {
@@ -703,6 +858,24 @@ type LogFileFormat struct {
 	LBWeights       map[string]map[string]float64 `json:"LBWeights"`
 }
 
+func getCPUUtilMap(nodeCPUUtilizations []string) map[string]float64 {
+	cpuUtilMap := make(map[string]float64)
+	for _, nodeCPUUtil := range nodeCPUUtilizations {
+		podCPUtils := strings.Split(nodeCPUUtil, " ")[1:]
+		for _, podCPUUtil := range podCPUtils {
+			podUtilMap := strings.Split(podCPUUtil, ":")
+			podName := podUtilMap[0]
+			podUtil, err := strconv.ParseFloat(podUtilMap[1], 64)
+			if err != nil {
+				fmt.Printf("error here: %s", podCPUtils)
+				check(err)
+			}
+			cpuUtilMap[podName] = podUtil
+		}
+	}
+	return cpuUtilMap
+}
+
 func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 
 	logFileFormat := LogFileFormat{
@@ -715,7 +888,7 @@ func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
 
-		podCPUtils := strings.Split(nodeCPUUtil, " ")
+		podCPUtils := strings.Split(nodeCPUUtil, " ")[1:]
 
 		for _, podCPUUtil := range podCPUtils {
 			podUtilMap := strings.Split(podCPUUtil, ":")
@@ -964,10 +1137,10 @@ type PodJSON struct {
 func getFShareLoad(nodes []Node, appName string) float64 {
 	totalUtil := 0.0
 	for _, node := range nodes {
-		fmt.Sprintf("checking node %s", node.Name)
+		fmt.Printf("checking node %s", node.Name)
 		for _, pod := range node.Pods {
 			if pod.AppName == appName {
-				fmt.Sprintf("found pod %s util: %f\n", pod.Name, pod.FShare*float64(node.MilliCores))
+				fmt.Printf("found pod %s util: %f\n", pod.Name, pod.FShare*float64(node.MilliCores))
 				totalUtil += pod.FShare * float64(node.MilliCores)
 			}
 		}
@@ -1025,7 +1198,7 @@ func getGenericWeightsFromGurobi(
 	payload := fmt.Sprintf(
 		"[%s,%s,%s]", string(hostsJSON), string(tenantsJSON), string(podsJSON))
 
-	fmt.Printf("Payload sending to Gurobi: %s\n", payload)
+	slog.Info(fmt.Sprintf("Payload sending to Gurobi: %s\n", payload))
 
 	resBody, err := sendPostRequest(baseURL, payload)
 	check(err)
