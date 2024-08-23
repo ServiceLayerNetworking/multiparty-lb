@@ -355,36 +355,6 @@ func parseCPUUtilsAndReqStats(resp string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-// splitIntoParts splits the input string into exactly n parts
-func splitIntoParts(input string, n int) []string {
-	parts := make([]string, 0, n)
-	current := ""
-	count := 0
-
-	for _, char := range input {
-		if char == ' ' {
-			parts = append(parts, current)
-			current = ""
-			count++
-			if count == n-1 {
-				break
-			}
-		} else {
-			current += string(char)
-		}
-	}
-
-	parts = append(parts, current)
-	count++
-
-	for count < n {
-		parts = append(parts, "")
-		count++
-	}
-
-	return parts
-}
-
 func parseReqStats(reqStatsStr string) []ReqStat {
 
 	fmt.Printf("ReqStatsStr: %s\n", reqStatsStr)
@@ -858,8 +828,6 @@ func getCPUUtilMap(nodeCPUUtilizations []string) map[string]float64 {
 
 func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 
-	// fmt.Printf("Node CPU Utilizations: %v\n", nodeCPUUtilizations)
-
 	logFileFormat := LogFileFormat{
 		time.Now().UnixNano(),
 		make(map[string]string),
@@ -871,8 +839,6 @@ func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
 
 		podCPUtils := strings.Split(nodeCPUUtil, " ")[1:]
-
-		// fmt.Printf("Pod CPU Utilizations: %v\n", podCPUtils)
 
 		for _, podCPUUtil := range podCPUtils {
 			podUtilMap := strings.Split(podCPUUtil, ":")
