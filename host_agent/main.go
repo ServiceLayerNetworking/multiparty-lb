@@ -182,8 +182,9 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 	for _, line := range lines[5:] {
 		lineStats := strings.Split(line, " ")
 		dstSvc := lineStats[0]
-		startTimeStr := lineStats[1]
-		endTimeStr := lineStats[2]
+		dstPod := lineStats[1]
+		startTimeStr := lineStats[2]
+		endTimeStr := lineStats[3]
 		startTime, err := strconv.ParseInt(startTimeStr, 10, 64)
 		if err != nil {
 			fmt.Println("Error parsing startTime: ", err.Error())
@@ -198,7 +199,7 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 			SrcSvc:      srcSvc,
 			SrcPod:      srcPod,
 			DstSvc:      dstSvc,
-			DstPod:      "",
+			DstPod:      dstPod,
 			StartTimeMs: startTime,
 			EndTimeMs:   endTime,
 		})
@@ -255,7 +256,7 @@ func processClient(connection net.Conn, lbWeights *SafeLBWeights, reqStats *Safe
 		} else if msgType == "getCPUUtilsAndReqStats" {
 			cpuUtilizations := getCPUUtilizations(podUIDs)
 			reqStatsStr := getReqStatsStr(reqStats)
-			toSend := cpuUtilizations + "---" + reqStatsStr
+			toSend := cpuUtilizations + "\n<SEP>\n" + reqStatsStr
 			sendMsgToConnection(connection, toSend)
 
 		} else {
@@ -588,10 +589,11 @@ func readMsgFromConnection(connection net.Conn) (string, error) {
 }
 
 func sendMsgToConnection(connection net.Conn, msg string) {
+	msg = msg + "<END>"
 	_, err := connection.Write([]byte(msg))
 	if err != nil {
 		fmt.Println("Error writing:", err.Error())
 	} else {
-		slog.Info("Sent: " + msg)
+		slog.Info("Sent: \"" + msg + "\"")
 	}
 }

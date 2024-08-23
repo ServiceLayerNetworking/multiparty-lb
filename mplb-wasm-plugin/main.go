@@ -356,29 +356,20 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 	}
 	dst := strings.Split(reqAuthority, ":")[0]
 
-	proxywasm.LogCriticalf("ServiceName: %s, dst: %s",
-		ctx.pluginContext.serviceName, dst)
+	// proxywasm.LogCriticalf("ServiceName: %s, dst: %s",
+	// 	ctx.pluginContext.serviceName, dst)
 
 	proxywasm.LogCriticalf(
 		"--Request: %s %s %s %s", reqMethod, reqPath, reqAuthority, traceId)
 
-	// replicaZero := dst + "-0"
-	// proxywasm.LogCriticalf("Setting x-lb-endpt to %s for every request", replicaZero)
-	// proxywasm.AddHttpRequestHeader("x-lb-endpt", replicaZero)
-
-	// policy enforcement for outbound requests
-	if !strings.HasPrefix(ctx.pluginContext.serviceName, dst) &&
-		!strings.HasPrefix(dst, "node") &&
-		// ensure the authority is a service, and not an ip address
-		!strings.HasPrefix(dst, "1") && !strings.HasPrefix(dst, "2") {
-		// the request is originating from this sidecar to another service, perform routing magic
+	// the request is originating from this sidecar to another service, we will perform routing magic
+	if !strings.HasPrefix(ctx.pluginContext.serviceName, dst) {
+		// policy enforcement for outbound requests
 
 		// before routing, log the start time and add it to request header
 		currentTime := time.Now().UnixMilli()
 		currentTimeStr := fmt.Sprintf("%d", currentTime)
 		proxywasm.LogCriticalf("Setting x-slate-start-time: " + currentTimeStr)
-		// startTimeBytes := make([]byte, 8)
-		// binary.LittleEndian.PutUint64(startTimeBytes, uint64(currentTime))
 		headerErr := proxywasm.ReplaceHttpRequestHeader(
 			"x-slate-start-time", currentTimeStr)
 		if headerErr != nil {
@@ -386,11 +377,8 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				"Error adding x-slate-start-time header: %v", headerErr)
 		}
 
+		// set what endpoint this request should be sent to
 		weightsStr, _, err := proxywasm.GetSharedData(dst)
-		// headerErr := proxywasm.ReplaceHttpRequestHeader("x-lb-endpt", dst+"-0")
-		// if headerErr != nil {
-		// 	proxywasm.LogCriticalf("Error adding header: %v", headerErr)
-		// }
 		if err != nil {
 			// no rules available yet.
 			proxywasm.LogCriticalf("Removing x-lb-endpt")
@@ -463,7 +451,33 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		saveEndpointStatsForTrace(traceId, inflightStats)
 	}
 
-	proxywasm.LogCriticalf("OnHttpRequestHeaders done")
+	// proxywasm.LogCriticalf("OnHttpRequestHeaders done")
+
+	return types.ActionContinue
+}
+
+// OnHttpResponseHeaders is called when response headers arrive.
+// Return types.ActionPause if you want to stop sending headers to downstream.
+func (ctx *httpContext) OnHttpResponseHeaders(numHeaders int, endOfStream bool) types.Action {
+
+	// check if x-dst-pod is already set
+	podName, err := proxywasm.GetHttpResponseHeader("x-dst-pod")
+	if err == nil {
+		proxywasm.LogCriticalf("x-dst-pod already set. Value: \"%s\"", podName)
+		// if set, this means upstream has already set the podname
+		return types.ActionContinue
+	}
+
+	// else, this is the upstream, we need to set the podname
+	currPodName := ctx.pluginContext.podName
+	proxywasm.LogCriticalf("Setting x-dst-pod: " + currPodName)
+	headerErr := proxywasm.ReplaceHttpResponseHeader(
+		"x-dst-pod", currPodName)
+	if headerErr != nil {
+		proxywasm.LogCriticalf(
+			"Error adding x-dst-pod: %s as response header: %v",
+			currPodName, headerErr)
+	}
 
 	return types.ActionContinue
 }
@@ -475,7 +489,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 // bookkeeping and only record the end time for the last response.
 func (ctx *httpContext) OnHttpStreamDone() {
 
-	defer proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
+	// defer proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
 
 	reqAuthority, err := proxywasm.GetHttpRequestHeader(":authority")
 	if err != nil {
@@ -483,37 +497,58 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 	dstSvc := strings.Split(reqAuthority, ":")[0]
+
+	// we will only log requests if they are orinigating from this sidecar to another service
+	if strings.HasPrefix(ctx.pluginContext.serviceName, dstSvc) {
+		return
+	}
+
 	// get x-slate-start-time from request headers
 	startTimeStr, err := proxywasm.GetHttpRequestHeader("x-slate-start-time")
 	if err != nil {
 		proxywasm.LogCriticalf("Couldn't get request header x-slate-start-time in the response: %v", err)
 		return
-	} else {
-		// log the end time and append start time and end time in an array in SharedData
-		currentTime := time.Now().UnixMilli()
-		endTimeStr := fmt.Sprintf("%d", currentTime)
-		proxywasm.LogCriticalf("OnHttpStreamDone: StartTime: %s, EndTime: %s", startTimeStr, endTimeStr)
-
-		// get the current array of timestamps
-		tsList, _, err := proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't get shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
-			return
-		}
-
-		timeStampStr := fmt.Sprintf("\n%s %s %s", dstSvc, startTimeStr, endTimeStr)
-
-		// append the new timestamp to the list
-		tsList = append(tsList, []byte(timeStampStr)...)
-
-		// set the new list
-		if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, tsList, 0); err != nil {
-			proxywasm.LogCriticalf("unable to set shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
-			return
-		}
-
 	}
 
+	// get x-dst-pod from response headers
+	dstPod, err := proxywasm.GetHttpResponseHeader("x-dst-pod")
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get request header x-dst-pod in the response: %v", err)
+	}
+
+	// CORNER CASE PREVENTION: (logging at frontend when request gateway->frontend)
+	// for the request gateway->frontend:
+	// 		dstSvc: <ClusterIP of istio-ingressgateway>
+	// 		dstPod: frontend-\d+
+	// because we want to log at gw and not at frontend,
+	// we will check if the serviceName is prefix of dstPod
+	// (just checking dstSvc will not work as it is the ClusterIP and not frontend)
+	if strings.HasPrefix(dstPod, ctx.pluginContext.serviceName) {
+		return
+	}
+
+	// log the end time and append start time and end time in an array in SharedData
+	currentTime := time.Now().UnixMilli()
+	endTimeStr := fmt.Sprintf("%d", currentTime)
+	proxywasm.LogCriticalf("OnHttpStreamDone: StartTime: %s, EndTime: %s", startTimeStr, endTimeStr)
+
+	// get the current array of timestamps
+	tsList, _, err := proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
+		return
+	}
+
+	timeStampStr := fmt.Sprintf("\n%s %s %s %s", dstSvc, dstPod, startTimeStr, endTimeStr)
+
+	// append the new timestamp to the list
+	tsList = append(tsList, []byte(timeStampStr)...)
+
+	// set the new list
+	if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, tsList, 0); err != nil {
+		proxywasm.LogCriticalf("unable to set shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
+		return
+	}
 	// get the response headers
 	respHeaders, err := proxywasm.GetHttpResponseHeaders()
 	if err != nil {
@@ -542,7 +577,7 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 
-	proxywasm.LogCriticalf("OnHttpStreamDone: 1")
+	// proxywasm.LogCriticalf("OnHttpStreamDone: 1")
 
 	// reqAuth, err := proxywasm.GetHttpRequestHeader(":authority")
 	// if err != nil {
@@ -556,7 +591,7 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	// 	return
 	// }
 
-	proxywasm.LogCriticalf("OnHttpStreamDone: 2")
+	// proxywasm.LogCriticalf("OnHttpStreamDone: 2")
 
 	if inbound != 1 {
 		// doublecount, decrement and get out
@@ -564,11 +599,11 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 
-	proxywasm.LogCriticalf("OnHttpStreamDone: 3")
+	// proxywasm.LogCriticalf("OnHttpStreamDone: 3")
 
 	IncrementSharedData(KEY_INFLIGHT_REQ_COUNT, -1)
 
-	proxywasm.LogCriticalf("OnHttpStreamDone: 4")
+	// proxywasm.LogCriticalf("OnHttpStreamDone: 4")
 
 	reqMethod, err := proxywasm.GetHttpRequestHeader(":method")
 	if err != nil {
@@ -581,15 +616,15 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 
-	proxywasm.LogCriticalf("OnHttpStreamDone: 5")
+	// proxywasm.LogCriticalf("OnHttpStreamDone: 5")
 
 	reqPath = strings.Split(reqPath, "?")[0]
 	IncrementInflightCount(reqMethod, reqPath, -1)
 
-	proxywasm.LogCriticalf("OnHttpStreamDone: 6")
+	// proxywasm.LogCriticalf("OnHttpStreamDone: 6")
 
 	// record end time
-	currentTime := time.Now().UnixMilli()
+	currentTime = time.Now().UnixMilli()
 	endTimeBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(endTimeBytes, uint64(currentTime))
 	if err := proxywasm.SetSharedData(endTimeKey(traceId), endTimeBytes, 0); err != nil {
@@ -602,6 +637,10 @@ func (ctx *httpContext) OnHttpStreamDone() {
 
 // callback for OnTick() http call response
 func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
+
+	defer proxywasm.LogCriticalf("OnTickHttpCallResponse done")
+	proxywasm.LogCriticalf("OnTickHttpCallResponse entered")
+
 	// receive RPS thresholds, set shared data accordingly
 	hdrs, err := proxywasm.GetHttpCallResponseHeaders()
 	if err != nil {
