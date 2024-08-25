@@ -207,7 +207,12 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 
 	reqStats.mu.Lock()
 	reqStats.ReqStats = append(reqStats.ReqStats, newStats...)
-	slog.Info("Updated reqStats: " + fmt.Sprintf("%v", reqStats.ReqStats))
+	// slog.Info("Updated reqStats: " + fmt.Sprintf("%v", reqStats.ReqStats))
+
+	// only keep the most recent 10000 entries
+	if len(reqStats.ReqStats) > 10000 {
+		reqStats.ReqStats = reqStats.ReqStats[len(reqStats.ReqStats)-100:]
+	}
 	reqStats.mu.Unlock()
 
 	return nil

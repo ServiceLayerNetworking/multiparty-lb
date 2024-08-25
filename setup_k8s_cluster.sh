@@ -42,10 +42,10 @@ kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samp
 echo "[SCRIPT] installing WASM plugins.."
 kubectl apply -f mplb-wasm-plugin/wasm.yaml
 
-# echo "[SCRIPT] Applying taints to three nodes..."
-# kubectl taint nodes minikube-m02 node=node1:NoSchedule
-# kubectl taint nodes minikube-m03 node=node2:NoSchedule
-# kubectl taint nodes minikube-m04 node=node3:NoSchedule
+echo "[SCRIPT] Applying taints to three nodes..."
+kubectl taint nodes node1.k8s-twaheed.mlnetwork.emulab.net node=node1:NoSchedule --overwrite
+kubectl taint nodes node2.k8s-twaheed.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
+kubectl taint nodes node3.k8s-twaheed.mlnetwork.emulab.net node=node3:NoSchedule --overwrite
 
 echo "[SCRIPT] Starting HotelReservation..."
 kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes

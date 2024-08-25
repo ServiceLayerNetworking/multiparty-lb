@@ -124,7 +124,7 @@ func (n *Node) SendMessageAndGetResponse(msg string) string {
 		if strings.Contains(data, delim) {
 			// Extract the message up to the delimiter
 			message := data[:strings.Index(data, delim)]
-			fmt.Println("Received message:", message)
+			slog.Info("Received message: " + message)
 			return message
 		}
 	}
@@ -230,7 +230,7 @@ func main() {
 		Level: slog.LevelError,
 	}))
 
-	slog.SetDefault(l) // configures log package to print with LevelInfo
+	slog.SetDefault(l) // configures log package to print with LevelError
 
 	capturePC := log.Flags()&(log.Lshortfile|log.Llongfile) != 0
 	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelError, capturePC}) // configures log package to print with LevelError
@@ -343,21 +343,7 @@ func ccWithNoEnforcement(
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(getLogFileFormatNoEnforcement(nodeCPUUtilizations))
-
-		cpuUtilMap := getCPUUtilMap(nodeCPUUtilizations)
-		currentTimeStr := time.Now().Format("2006-01-02 15:04:05.000")
-		toPrint := "----------------------------------------\n"
-		toPrint += fmt.Sprintf("Time: %s:\n\n", currentTimeStr)
-		toPrint += fmt.Sprintf("%-30s %s\n", "PODNAME", "CPU (%)")
-		// fmt.Printf("Pods to log: %v\n", podsToLog)
-		// fmt.Printf("CPU Map: %v\n", cpuUtilMap)
-		sortedPodsToLog := getKeysSortedByValue(cpuUtilMap, podsToLog)
-		// sort.Strings(podsToLog)
-		for _, podName := range sortedPodsToLog {
-			toPrint += fmt.Sprintf("%-30s %.2f\n",
-				podName, cpuUtilMap[podName])
-		}
-		fmt.Printf("%s\n", toPrint)
+		printCPUStatsToConsole(nodeCPUUtilizations, reqStats, podsToLog)
 
 		// log the request stats
 		cpuLogFile.Writeln(
@@ -384,7 +370,7 @@ func parseCPUUtilsAndReqStats(resp string) (string, string, error) {
 
 func parseReqStats(reqStatsStr string) []ReqStat {
 
-	fmt.Printf("ReqStatsStr: %s\n", reqStatsStr)
+	// fmt.Printf("ReqStatsStr: %s\n", reqStatsStr)
 
 	reqStats := make([]ReqStat, 0)
 	reqStatsStr = strings.TrimSpace(reqStatsStr)
@@ -394,7 +380,7 @@ func parseReqStats(reqStatsStr string) []ReqStat {
 	reqStatsStrs := strings.Split(reqStatsStr, "\n")[1:]
 	for _, reqStatStr := range reqStatsStrs {
 		reqStatParts := strings.Split(reqStatStr, " ")
-		fmt.Printf("reqStatParts: %s\n", reqStatParts)
+		slog.Info(fmt.Sprintf("reqStatToStore: %s\n", reqStatParts))
 		reqStats = append(reqStats, ReqStat{
 			SrcSvc:      reqStatParts[0],
 			SrcPod:      reqStatParts[1],
@@ -455,7 +441,7 @@ func ccWithLBEnforcement(
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(
 			getLogFileFormatLBEnforcement(nodeCPUUtilizations, lbWeights))
-		printCPUStatsToConsole(nodeCPUUtilizations, podsToLog)
+		printCPUStatsToConsole(nodeCPUUtilizations, reqStats, podsToLog)
 
 		// log the request stats
 		cpuLogFile.Writeln(
@@ -475,10 +461,13 @@ func ccWithLBEnforcement(
 	}
 }
 
-func printCPUStatsToConsole(nodeCPUUtilizations []string, podsToLog []string) {
+func printCPUStatsToConsole(
+	nodeCPUUtilizations []string, reqStats []ReqStat, podsToLog []string) {
+
 	cpuUtilMap := getCPUUtilMap(nodeCPUUtilizations)
 	currentTimeStr := time.Now().Format("2006-01-02 15:04:05.000")
 	toPrint := "----------------------------------------\n"
+	toPrint += fmt.Sprintf("Number of requests logged: %d\n", len(reqStats))
 	toPrint += fmt.Sprintf("Time: %s:\n\n", currentTimeStr)
 	toPrint += fmt.Sprintf("%-30s %s\n", "PODNAME", "CPU (%)")
 	// fmt.Printf("Pods to log: %v\n", podsToLog)
