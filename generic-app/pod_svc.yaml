@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: app0
+  labels:
+    app: app0
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app0
+  template:
+    metadata:
+      labels:
+        app: app0
+    spec:
+      containers:
+        - name: app0
+          image: ghcr.io/talha-waheed/generic-app:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3333
+              protocol: TCP
+      tolerations:
+        - key: "node"
+          value: "node0"
+          effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/worker
+                operator: In
+                values:
+                - node0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app0
+  labels:
+    app: app0
+    service: app0
+spec:
+  type: NodePort
+  ports:
+  - port: 3333
+    targetPort: 3333
+  selector:
+    app: app0
