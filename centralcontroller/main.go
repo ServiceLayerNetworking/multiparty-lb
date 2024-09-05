@@ -25,7 +25,7 @@ import (
 
 const (
 	CFS_PERIOD_US     = 100000
-	CPUS_IN_NODE      = 2
+	CPUS_IN_NODE      = 210
 	MINIMUM_CPU_QUOTA = 1000
 
 	SERVER_PORT = "9988"
@@ -33,15 +33,14 @@ const (
 
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 50
 	DURATION_FOR_ONE_ROUND_MS           = 1000
-	OVERHEAD                            = 5    // 10% overhead
-	POD_QUOTA_OVERHEAD                  = 10   // 5% overhead
-	NOISE                               = 2    // 2% noise
-	ENFORCEMENT                         = "LB" // CPU_QUOTA | CPU_SHARE | BOTH | NONE | LB
+	OVERHEAD                            = 5  // 10% overhead
+	POD_QUOTA_OVERHEAD                  = 10 // 5% overhead
+	NOISE                               = 2  // 2% noise
+	ENFORCEMENT                         = "LB"
 	USE_PRESET_SHARES                   = false
 
-	DEFAULT_LB_WEIGHTS                  = ""
-	LOG_FILE_PREFIX                     = "/users/twaheed/multiparty-lb"
-	DURATION_THAT_THIS_FILE_WILL_RUN_MS = 500_000
+	DEFAULT_LB_WEIGHTS = ""
+	LOG_FILE_PREFIX    = "/users/twaheed/multiparty-lb"
 )
 
 /*
@@ -134,9 +133,7 @@ type LogFile struct {
 	logWriter *bufio.Writer
 }
 
-func (l *LogFile) Initialize(logType string) {
-	logFileName := getLogFileName(logType)
-
+func (l *LogFile) Initialize(logFileName string) {
 	logFile, err := os.Create(logFileName)
 	check(err)
 	l.logWriter = bufio.NewWriter(logFile)
@@ -153,16 +150,22 @@ type NodeStats struct {
 	ReqStats        string
 }
 
-func getLogFileName(logType string) string {
+func getFlags() (string, string, int) {
 	// get file name to log
 	logfile := flag.String("logfile", "", "Name of the log file")
+
+	// get the enforcement strategy
+	enforcement := flag.String("enforcement", "NONE",
+		"Enforcement strategy [CPU_QUOTA|CPU_SHARE|BOTH|NONE|LB]")
+
+	// get the duration this file will run
+	durationMs := flag.Int("d", 70_000, "Duration this file will run in ms")
 
 	// Parse the command line flags
 	flag.Parse()
 
 	logfileName := *logfile
 
-	// Check if the 'pods' flag is provided
 	if *logfile == "" {
 		var filename string
 		var runNum int
@@ -170,10 +173,11 @@ func getLogFileName(logType string) string {
 		fmt.Scan(&filename, &runNum)
 
 		logfileName = fmt.Sprintf(
-			"%s/%s/none_%s_%d", LOG_FILE_PREFIX, filename, logType, runNum)
+			"%s/%s/%s_%s_%d",
+			LOG_FILE_PREFIX, filename, enforcement, "cc", runNum)
 	}
 
-	return logfileName
+	return logfileName, *enforcement, *durationMs
 }
 
 func getPodsToLog(allPodNames []string) []string {
@@ -235,9 +239,12 @@ func main() {
 	capturePC := log.Flags()&(log.Lshortfile|log.Llongfile) != 0
 	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelError, capturePC}) // configures log package to print with LevelError
 
+	// get flags
+	logFileName, enforcement, durationMs := getFlags()
+
 	// Initialize log file write
 	cpuLogFile := new(LogFile)
-	cpuLogFile.Initialize("CPU")
+	cpuLogFile.Initialize(logFileName)
 
 	// Initialize KubernetesClient
 	k8sClient := new(KubernetesClient)
@@ -245,6 +252,7 @@ func main() {
 
 	// Initialize nodes
 	nodes := k8sClient.GetNodes()
+	appNames := k8sClient.GetAppNames()
 	fmt.Printf("Nodes:\n")
 	for i, node := range nodes {
 		fmt.Printf("Node %d:\n%v\n\n", i, node)
@@ -278,13 +286,14 @@ func main() {
 		}
 	}
 
-	if ENFORCEMENT == "NONE" {
+	setDefaultLBWeights(nodes, appNames)
+
+	if enforcement == "NONE" {
 		go ccWithNoEnforcement(cpuLogFile, nodes, getPodsToLog(podNames))
 
 	} else {
 
-		setDefaultLBWeights(nodes, cpuLogFile)
-		if ENFORCEMENT == "LB" {
+		if enforcement == "LB" {
 			go ccWithLBEnforcement(cpuLogFile, nodes, getPodsToLog(podNames))
 
 		} else {
@@ -292,13 +301,13 @@ func main() {
 			setDefaultCPUQuotas(nodes, cpuLogFile)
 			setDefaultCPUShares(nodes, cpuLogFile)
 
-			if ENFORCEMENT == "CPU_QUOTA" {
+			if enforcement == "CPU_QUOTA" {
 				slog.Info("Enforcing CPU Quotas")
 				go ccWithCPUQuotas(cpuLogFile, nodes)
-			} else if ENFORCEMENT == "CPU_SHARE" {
+			} else if enforcement == "CPU_SHARE" {
 				slog.Info("Enforcing CPU Shares")
 				go ccWithCPUShares(cpuLogFile, nodes)
-			} else if ENFORCEMENT == "BOTH" {
+			} else if enforcement == "BOTH" {
 				slog.Info("Enforcing CPU Quotas and Shares")
 				go ccWithBoth(cpuLogFile, nodes)
 			} else {
@@ -307,7 +316,8 @@ func main() {
 		}
 	}
 
-	time.Sleep(DURATION_THAT_THIS_FILE_WILL_RUN_MS * time.Millisecond)
+	time.Sleep(time.Duration(durationMs) * time.Millisecond)
+	fmt.Println("Time is up. Exiting...")
 }
 
 func ccWithNoEnforcement(
@@ -325,7 +335,7 @@ func ccWithNoEnforcement(
 				resp := node.SendMessageAndGetResponse(msg)
 				cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
 				if err != nil {
-					slog.Warn(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
+					slog.Error(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
 					panic(err)
 				}
 				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
@@ -417,7 +427,7 @@ func ccWithLBEnforcement(
 				resp := node.SendMessageAndGetResponse(msg)
 				cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
 				if err != nil {
-					slog.Warn(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
+					slog.Error(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
 					panic(err)
 				}
 				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
@@ -1051,6 +1061,11 @@ func getPerAppUtilizations(nodeCPUUtilizations []string) map[string]float64 {
 			util := strings.Split(cpuUtilStr, ":")
 			appName := util[0]
 
+			// don't consider hostagents for gurobi calculations
+			if strings.Contains(appName, "hostagent") {
+				continue
+			}
+
 			// get "app1-node1" from "app1-node1-0"
 			pattern := `^(.+)-\d+$`
 			// Compile the regex
@@ -1128,6 +1143,10 @@ func getFShareLoad(nodes []Node, appName string) float64 {
 	for _, node := range nodes {
 		fmt.Printf("checking node %s", node.Name)
 		for _, pod := range node.Pods {
+			// don't consider hostagents for gurobi calculations
+			// if strings.Contains(pod.Name, "hostagent") {
+			// 	continue
+			// }
 			if pod.AppName == appName {
 				fmt.Printf("found pod %s util: %f\n", pod.Name, pod.FShare*float64(node.MilliCores))
 				totalUtil += pod.FShare * float64(node.MilliCores)
@@ -1151,6 +1170,12 @@ func getGenericWeightsFromGurobi(
 
 	hosts := make([]HostJSON, 0)
 	for _, node := range nodes {
+		// TEMPORARY: don't consider nodes 0, 4, 5
+		if strings.Contains(node.Name, "node0") ||
+			strings.Contains(node.Name, "node4") ||
+			strings.Contains(node.Name, "node5") {
+			continue
+		}
 		hosts = append(hosts, HostJSON{
 			Name: node.Name,
 			Cap:  float64(node.MilliCores) / 10.0,
@@ -1161,6 +1186,10 @@ func getGenericWeightsFromGurobi(
 
 	tenants := make([]TenantJSON, 0)
 	for appName, util := range appUtils {
+		// don't consider hostagents for gurobi calculations
+		if strings.Contains(appName, "hostagent") {
+			continue
+		}
 		tenants = append(tenants, TenantJSON{
 			Name:       appName,
 			Load:       util,
@@ -1173,6 +1202,10 @@ func getGenericWeightsFromGurobi(
 	pods := make([]PodJSON, 0)
 	for _, node := range nodes {
 		for _, pod := range node.Pods {
+			// don't consider hostagents for gurobi calculations
+			if strings.Contains(pod.Name, "hostagent") {
+				continue
+			}
 			pods = append(pods, PodJSON{
 				Name:   pod.Name,
 				Tenant: pod.AppName,
@@ -1277,21 +1310,25 @@ func getQuota(appShare, nodeSum float64) int64 {
 	return quota + int64(podQuotaOverhead)
 }
 
-func setDefaultLBWeights(nodes []Node, cpuLogFile *LogFile) {
+func getNilWeights(appNames []string) string {
+	lbWeights := ""
+	for _, appName := range appNames {
+		lbWeights += appName + ":nil "
+	}
+	lbWeights = strings.TrimSpace(lbWeights)
+	return lbWeights
+}
 
-	lbWeights := DEFAULT_LB_WEIGHTS
+func setDefaultLBWeights(nodes []Node, appNames []string) {
 
-	// - Send the CPU Shares to the host agents to be applied
-	if lbWeights == "" {
-		slog.Warn("Failed to get optimal LB Weights")
-	} else {
-		for i := range nodes {
-			msg := "applyLBWeights " + lbWeights
-			response := nodes[i].SendMessageAndGetResponse(msg)
-			if response != "Success" {
-				slog.Warn("Failed to apply LB Weights on node: " +
-					nodes[i].IP)
-			}
+	lbWeights := getNilWeights(appNames)
+
+	for i := range nodes {
+		msg := "applyLBWeights " + lbWeights
+		response := nodes[i].SendMessageAndGetResponse(msg)
+		if response != "Success" {
+			slog.Warn("Failed to apply LB Weights on node: " +
+				nodes[i].IP)
 		}
 	}
 }

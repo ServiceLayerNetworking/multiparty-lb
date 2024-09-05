@@ -5,6 +5,7 @@ import os
 from time import time
 from flask import Flask, request
 from json import dumps
+import json
 from typing import List, Dict
 
 def run_model(_host_cap, _t0, _t1, _t2):
@@ -237,9 +238,9 @@ def run_general_model(_host_cap: float, _t: List[float]) -> str:
     smallest_log_sp_cap = m.addVar(vtype=GRB.CONTINUOUS,
                                name="smallest_sp_cap")
     
-    m.setObjective(smallest_log_sp_cap, GRB.MINIMIZE)
+    m.setObjective(smallest_log_sp_cap, GRB.MAXIMIZE)
     
-    m.addGenConstrMax(smallest_log_sp_cap,
+    m.addGenConstrMin(smallest_log_sp_cap,
                       [sp[host] for host in range(n_hosts)],
                       name="min_sp_cap")
     
@@ -383,12 +384,12 @@ def run_generic_model(
     
     # ============================= Set Objective ==============================
     
-    m.setObjective(smallest_log_sp_cap, GRB.MINIMIZE)
+    m.setObjective(smallest_log_sp_cap, GRB.MAXIMIZE)
     
     # ============================ Set Constraints =============================
     
     # smallest_log_sp_cap = min(sp)
-    m.addGenConstrMax(smallest_log_sp_cap,
+    m.addGenConstrMin(smallest_log_sp_cap,
                         [sp[host.name] for host in _hosts],
                         name="min_sp_cap")
     
@@ -560,11 +561,39 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-if __name__ == '__main__':  
-    print("======================reached here")
-    app.run(host="localhost", port=5000, debug=True)
+if __name__ == '__main__':
     
-    # a = run_general_model(200, [100, 300, 200])
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "-f":
+            
+            filename = sys.argv[2]
+            
+            with open(filename, "r") as f:
+                input_json = f.read()
+            
+            start_time = time()
+            input = json.loads(input_json)
+            print("Input:", input)
+            
+            hosts, tenants, workers = input[0], input[1], input[2]
+            output = run_from_json(hosts, tenants, workers)
+            
+            time_taken = time() - start_time
+            print(f"{time_taken*1000:.2f} ms")
+            
+            output_json = dumps(output)
+            
+            with open(filename + "_output", "w") as f:
+                f.write(output_json)
+        
+        else:
+            print("Invalid argument, use -sample_json to run sample json")
+            
+    else:
+        print("======================reached here")
+        app.run(host="localhost", port=5000, debug=True)
+    
+    # run_general_model(210, [79.8, 119, 202])
     # b = test_3_node_run_generic_model(200, [100, 300, 200])
     
     # print(a)

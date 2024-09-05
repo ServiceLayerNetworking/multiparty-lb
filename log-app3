@@ -1,0 +1,2 @@
+Server running (port=3333), route: http://localhost:3333/?loopCount=1&base=8&exp=7.7
+2024/08/30 18:34:08 Port is 3333, endpoint name is go_endpoint, and latency is 50

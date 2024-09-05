@@ -114,7 +114,8 @@ func main() {
 				Namespace: *ns,
 			},
 			Spec: v1alpha32.VirtualService{
-				Hosts: []string{svc},
+				Gateways: []string{"ingress-gateway"},
+				Hosts:    []string{svc},
 			},
 		}
 		headerName := "x-lb-endpt"

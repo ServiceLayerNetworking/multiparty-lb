@@ -1311,3 +1311,17 @@ Test Results @ http://10.103.140.24:80/
   8160 requests in 15.17s, 2.24MB read
 Requests/sec:    537.85  
 Transfer/sec:    151.26KB
+
+
+Config for 100%: 
+
+<!-- wrk2/wrk -H "Host: app1.mplb.com" -t 25 -c 25 -d 15 http://$GATEWAY_IP:80/\?loopCount\=4\&base\=6\&exp\=6 -R110 -->
+wrk2/wrk -H "Host: app1.mplb.com" -t 1 -c 1 -d 15 http://$GATEWAY_IP:80/\?loopCount\=25\&base\=6\&exp\=6 -R25
+
+Config for 200%:
+
+<!-- wrk2/wrk -H "Host: app1.mplb.com" -t 25 -c 25 -d 15 http://$GATEWAY_IP:80/\?loopCount\=4\&base\=6\&exp\=6 -R220 -->
+wrk2/wrk -H "Host: app1.mplb.com" -t 5 -c 5 -d 15 http://$GATEWAY_IP:80/\?loopCount\=25\&base\=6\&exp\=6 -R50
+
+Config for 300%:
+wrk2/wrk -H "Host: app1.mplb.com" -t 5 -c 5 -d 15 http://$GATEWAY_IP:80/\?loopCount\=25\&base\=6\&exp\=6 -R75
