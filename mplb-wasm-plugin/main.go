@@ -144,12 +144,21 @@ func (p *pluginContext) OnPluginStart(pluginConfigurationSize int) types.OnPlugi
 	if regionName == "" {
 		regionName = "SLATE_UNKNOWN_REGION"
 	}
-	nodeName := os.Getenv("MY_NODE_NAME")
-	if nodeName == "" {
-		nodeName = "SLATE_UNKNOWN_NODE"
+	nodeNameEnv := os.Getenv("ISTIO_META_NODE_NAME")
+	if nodeNameEnv == "" {
+		nodeNameEnv = "SLATE_UNKNOWN_NODE"
 	}
 
-	nodeID, err := getNodeID(nodeName)
+	// // Retrieve the node metadata
+	// nodeName, err := proxywasm.GetProperty([]string{"node", "metadata", "NAME"})
+	// if err != nil {
+	// 	proxywasm.LogCriticalf("failed to get node name: %v", err)
+	// 	return false
+	// }
+
+	proxywasm.LogCriticalf("Node name is: %s", string(nodeNameEnv))
+
+	nodeID, err := getNodeID(string(nodeNameEnv))
 	if err != nil {
 		proxywasm.LogCriticalf("Couldn't get node ID: %v", err)
 		nodeID = 0
@@ -279,7 +288,7 @@ func (p *pluginContext) OnTick() {
 		proxywasm.LogCriticalf("Couldn't reset timestamps shared queue: %v", err)
 	}
 
-	authority := fmt.Sprintf("hostagent-node%d.default.svc.cluster.local", p.nodeID)
+	authority := fmt.Sprintf("hostagent-node%d.mplb-system.svc.cluster.local", p.nodeID)
 
 	controllerHeaders := [][2]string{
 		{":method", "POST"},
@@ -354,7 +363,11 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		proxywasm.LogCriticalf("Couldn't get :authority request header: %v", err)
 		return types.ActionContinue
 	}
-	dst := strings.Split(reqAuthority, ":")[0]
+	// if reqAuthority contains : then it is a request to a specific port
+	dst := strings.Split(reqAuthority, ".")[0]
+	if strings.Contains(reqAuthority, ":") {
+		dst = strings.Split(reqAuthority, ":")[0]
+	}
 
 	// proxywasm.LogCriticalf("ServiceName: %s, dst: %s",
 	// 	ctx.pluginContext.serviceName, dst)
@@ -378,8 +391,9 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		}
 
 		// set what endpoint this request should be sent to
-		weightsStr, _, err := proxywasm.GetSharedData(dst)
-		if err != nil {
+		weightsBStr, _, err := proxywasm.GetSharedData(dst)
+		weightsStr := string(weightsBStr)
+		if err != nil || weightsStr == "nil" {
 			// no rules available yet.
 			proxywasm.LogCriticalf("Removing x-lb-endpt")
 			headerErr := proxywasm.RemoveHttpRequestHeader("x-lb-endpt")
@@ -390,7 +404,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 			// draw from distribution
 			coin := rand.Float64()
 			total := 0.0
-			weights := strings.Split(string(weightsStr), "|")
+			weights := strings.Split(weightsStr, "|")
 			for endpointNum, weight := range weights {
 				pct, err := strconv.ParseFloat(weight, 64)
 				if err != nil {
@@ -1216,25 +1230,17 @@ func TimestampListGetRPS(method string, path string) uint64 {
 }
 
 func getNodeID(nodeName string) (int, error) {
-	return 0, nil
 
-	// example nodeName: "minikube-m02", or "minikube"
+	// Example node: node1.k8s-twaheed.mlnetwork.emulab.net
 
-	// // check if nodename starts with "minikube"
-	// if strings.HasPrefix(nodeName, "minikube") {
-	// 	if nodeName == "minikube" {
-	// 		return 0, nil
-	// 	}
+	nodeName = strings.Split(nodeName, ".")[0]
+	nodeIDStr := nodeName[4:]
+	nodeID, err := strconv.Atoi(nodeIDStr)
+	if err != nil {
+		return 0, err
+	}
 
-	// 	// get the number after "minikube"
-	// 	nodeNum, err := strconv.Atoi(nodeName[10:])
-	// 	if err != nil {
-	// 		return -1, err
-	// 	}
-	// 	return nodeNum - 1, nil
-	// }
-
-	// return -1, nil
+	return nodeID, nil
 }
 
 func inboundCountKey(traceId string) string {

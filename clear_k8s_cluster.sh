@@ -3,7 +3,7 @@
 set -e
 set -x
 
-kubectl delete -Rf DeathStarBench/hotelReservation/kubernetes
+kubectl delete -Rf generic-app/3-node-scenario
 
 bash hostagents_delete.sh
 

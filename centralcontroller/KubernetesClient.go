@@ -60,6 +60,13 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 		slog.Error(
 			fmt.Sprintf("Error listing pods: %s\n", err.Error()))
 	}
+	podsMPLB, err := k8sClient.clientset.CoreV1().Pods("mplb-system").List(
+		context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		slog.Error(
+			fmt.Sprintf("Error listing pods: %s\n", err.Error()))
+	}
+	pods.Items = append(pods.Items, podsMPLB.Items...)
 
 	nodeToPods := make(map[string]map[string]Pod)
 
@@ -100,16 +107,46 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 	}
 
 	for _, pod := range pods.Items {
-		numPods := len(nodeToPods[pod.Spec.NodeName])
+		numPods := getNumPodsForFShare(nodeToPods[pod.Spec.NodeName])
 		nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
 			Name:           nodeToPods[pod.Spec.NodeName][pod.Name].Name,
 			AppName:        nodeToPods[pod.Spec.NodeName][pod.Name].AppName,
-			FShare:         1 / float64(numPods),
+			FShare:         getFSharePod(numPods, nodeToPods[pod.Spec.NodeName][pod.Name].Name),
 			CGroupFilePath: nodeToPods[pod.Spec.NodeName][pod.Name].CGroupFilePath,
 		}
 	}
 
 	return nodeToPods
+}
+
+func getNumPodsForFShare(pods map[string]Pod) int {
+	// don't consider hostagents for gurobi calculations
+	// so subtract 1 from the total number of pods
+	return len(pods) - 1
+}
+
+func getFSharePod(numPods int, podName string) float64 {
+	// if the pod is hostagent, it should not be counted
+	// check if the pod name contains "hostagent"
+	if strings.Contains(podName, "hostagent") {
+		return -1
+	} else {
+		return 1 / float64(numPods)
+	}
+}
+
+func (k8sClient *KubernetesClient) GetAppNames() []string {
+	nodesToPods := k8sClient.GetNodesToPodMap()
+
+	appNames := make([]string, 0)
+
+	for _, nodeToPods := range nodesToPods {
+		for _, pod := range nodeToPods {
+			appNames = append(appNames, pod.AppName)
+		}
+	}
+
+	return appNames
 }
 
 func (k8sClient *KubernetesClient) GetNodes() []Node {
@@ -133,7 +170,7 @@ func (k8sClient *KubernetesClient) GetNodes() []Node {
 		cpuCapacity := node.Status.Capacity[v1.ResourceCPU]
 		cpuMilliCores := int(cpuCapacity.MilliValue())
 		if nodeNum >= 1 && nodeNum <= 3 {
-			cpuMilliCores = 1000
+			cpuMilliCores = 2100
 		}
 		nodeList = append(nodeList,
 			Node{
@@ -157,7 +194,7 @@ func (k8sClient *KubernetesClient) getHostAgentNodePort(node v1.Node) int {
 	}
 
 	// Get the specified service
-	service, err := k8sClient.clientset.CoreV1().Services("default").Get(
+	service, err := k8sClient.clientset.CoreV1().Services("mplb-system").Get(
 		context.TODO(), serviceName, metav1.GetOptions{})
 	if err != nil {
 		slog.Error(

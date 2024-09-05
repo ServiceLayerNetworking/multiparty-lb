@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # set -x
-set -e
+# set -e
 
 NODES=5
 
@@ -40,6 +40,7 @@ kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samp
 
 # bash restart_wasm.sh
 echo "[SCRIPT] installing WASM plugins.."
+kubectl apply -f dst-rules_virtual-svcs/node-env-var-labels.yaml
 kubectl apply -f mplb-wasm-plugin/wasm.yaml
 
 echo "[SCRIPT] Applying taints to three nodes..."
@@ -47,8 +48,14 @@ kubectl taint nodes node1.k8s-twaheed.mlnetwork.emulab.net node=node1:NoSchedule
 kubectl taint nodes node2.k8s-twaheed.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
 kubectl taint nodes node3.k8s-twaheed.mlnetwork.emulab.net node=node3:NoSchedule --overwrite
 
-echo "[SCRIPT] Starting HotelReservation..."
-kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes
+# echo "[SCRIPT] Starting HotelReservation..."
+# kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes
+
+echo "[SCRIPT] Starting Generic Apps..."
+kubectl apply -Rf generic-app/3-node-scenario
+
+echo "[SCRIPT] Creating namespace mplb-system..."
+kubectl create namespace mplb-system
 
 echo "[SCRIPT] Spawning host agents on each node..."
 kubectl apply -f host_agent/pod_svc_for_master_node.yaml
@@ -61,7 +68,7 @@ done
 
 echo "[SCRIPT] Applying istio configs for hotelReservation..."
 kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
-dst-rules_virtual-svcs/virtualservice-headermatch/vs-headermatch -services "consul,frontend" -exclude
+# dst-rules_virtual-svcs/virtualservice-headermatch/vs-headermatch -exclude
 
-
-
+echo "Run these commands to get the frontend and gateway IPs:"
+echo 'GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath="{.spec.clusterIP}")'

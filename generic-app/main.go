@@ -144,12 +144,12 @@ func getFlags() (int, int, string) {
 
 func main() {
 
-	portToListenOn, latencyMs, endpointName := getFlags()
-	latency := time.Duration(latencyMs) * time.Millisecond
+	portToListenOn, _, _ := getFlags()
+	// latency := time.Duration(latencyMs) * time.Millisecond
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// handleRequest(w, r)
-		waitAndRespond(w, r, latency, endpointName)
+		handleRequest(w, r)
+		// waitAndRespond(w, r, latency, endpointName)
 	})
 	fmt.Printf("Server running (port=%d), route: http://localhost:%d/?loopCount=1&base=8&exp=7.7\n", portToListenOn, portToListenOn)
 

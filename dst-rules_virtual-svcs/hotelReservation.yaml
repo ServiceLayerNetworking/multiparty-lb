@@ -3,10 +3,11 @@
 # Gateway/VirtualService for HotelReservation frontend
 ###
 #########################################################################
+# This config creates subsets based on clusters for the frontend,
 apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
-  name: hotelreservation-gateway
+  name: ingress-gateway
 spec:
   selector:
     istio: ingressgateway # use istio default controller
@@ -16,11 +17,12 @@ spec:
       name: http
       protocol: HTTP
     hosts:
-    - "*"
+    - app1.mplb.com
+    - app2.mplb.com
+    - app3.mplb.com
 ---
 #########################################################################
 ###
-# This config creates subsets based on clusters for the frontend,
 # and does header-based route matching to the correct subset
 # based on the x-lb-endpt header
 ###
@@ -30,65 +32,207 @@ spec:
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
-  name: frontend-destination
+  name: app1-destination
   namespace: default
 spec:
-  host: frontend
+  host: app1
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
   subsets:
-  - name: frontend-0
+  - name: app1-0
     labels:
-      statefulset.kubernetes.io/pod-name: frontend-0
-  - name: frontend-1
+      statefulset.kubernetes.io/pod-name: app1-0
+  - name: app1-1
     labels:
-      statefulset.kubernetes.io/pod-name: frontend-1
-  - name: frontend-2
+      statefulset.kubernetes.io/pod-name: app1-1
+  - name: app1-2
     labels:
-      statefulset.kubernetes.io/pod-name: frontend-2
+      statefulset.kubernetes.io/pod-name: app1-2
+---
+# DestinationRule for frontend, subsetting by label.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: app2-destination
+  namespace: default
+spec:
+  host: app2
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+  subsets:
+  - name: app2-0
+    labels:
+      statefulset.kubernetes.io/pod-name: app2-0
+  - name: app2-1
+    labels:
+      statefulset.kubernetes.io/pod-name: app2-1
+  - name: app2-2
+    labels:
+      statefulset.kubernetes.io/pod-name: app2-2
+---
+# DestinationRule for frontend, subsetting by label.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: app3-destination
+  namespace: default
+spec:
+  host: app3
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+  subsets:
+  - name: app3-0
+    labels:
+      statefulset.kubernetes.io/pod-name: app3-0
+  - name: app3-1
+    labels:
+      statefulset.kubernetes.io/pod-name: app3-1
+  - name: app3-2
+    labels:
+      statefulset.kubernetes.io/pod-name: app3-2
 ---
 # Subset routing: if x-lb-endpt is frontend-0, route to frontend-0, if frontend-1, route to frontend-1, if not set, random.
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: hotelreservation
+  name: app1-virtualservice
 spec:
   hosts:
-  - "*"
+  - app1.mplb.com
   gateways:
-  - hotelreservation-gateway
-  http:
+  - ingress-gateway
+  http: 
   - match:
     - headers:
         x-lb-endpt:
-          exact: frontend-0
+          exact: app1-0
     route:
     - destination:
-        host: frontend
-        subset: frontend-0
+        host: app1
+        subset: app1-0
         port:
-          number: 5000
+          number: 3333
   - match:
     - headers:
         x-lb-endpt:
-          exact: frontend-1
+          exact: app1-1
     route:
     - destination:
-        host: frontend
-        subset: frontend-1
+        host: app1
+        subset: app1-1
         port:
-          number: 5000
+          number: 3333
   - match:
     - headers:
         x-lb-endpt:
-          exact: frontend-2
+          exact: app1-2
     route:
     - destination:
-        host: frontend
-        subset: frontend-2
+        host: app1
+        subset: app1-2
         port:
-          number: 5000
+          number: 3333
   - route:
     - destination:
-        host: frontend
+        host: app1
         port:
-          number: 5000
+          number: 3333
+---
+# Subset routing: if x-lb-endpt is frontend-0, route to frontend-0, if frontend-1, route to frontend-1, if not set, random.
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: app2-virtualservice
+spec:
+  hosts:
+  - app2.mplb.com
+  gateways:
+  - ingress-gateway
+  http: 
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: app2-0
+    route:
+    - destination:
+        host: app2
+        subset: app2-0
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: app2-1
+    route:
+    - destination:
+        host: app2
+        subset: app2-1
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: app2-2
+    route:
+    - destination:
+        host: app2
+        subset: app2-2
+        port:
+          number: 3333
+  - route:
+    - destination:
+        host: app2
+        port:
+          number: 3333
+---
+# Subset routing: if x-lb-endpt is frontend-0, route to frontend-0, if frontend-1, route to frontend-1, if not set, random.
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: app3-virtualservice
+spec:
+  hosts:
+  - app3.mplb.com
+  gateways:
+  - ingress-gateway
+  http: 
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: app3-0
+    route:
+    - destination:
+        host: app3
+        subset: app3-0
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: app3-1
+    route:
+    - destination:
+        host: app3
+        subset: app3-1
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: app3-2
+    route:
+    - destination:
+        host: app3
+        subset: app3-2
+        port:
+          number: 3333
+  - route:
+    - destination:
+        host: app3
+        port:
+          number: 3333
+
 

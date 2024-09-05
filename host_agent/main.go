@@ -20,7 +20,7 @@ const (
 	CC_SERVER_PORT              = 9988
 	CC_SERVER_TYPE              = "tcp"
 	LB_SERVER_PORT              = 9989
-	CPU_UTILIZATION_INTERVAL_MS = 2000
+	CPU_UTILIZATION_INTERVAL_MS = 500
 	DEFAULT_LB_WEIGHTS          = ""
 )
 
