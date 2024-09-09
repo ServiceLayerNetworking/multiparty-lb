@@ -50,6 +50,8 @@ def run_exp(variation, rpses, enforcement):
     # run the wrk command in a separate thread
     qeues = []
     for i, rps in enumerate(rpses):
+        if i+1 > 1:
+            continue
         q = Queue()
         Thread(target=run_wrk, args=(q, variation, i+1, rps)).start()
         qeues.append(q)
@@ -86,9 +88,11 @@ def run():
     
     rpses = [75, 50, 25]
     
-    for run in range(1, 5):
-        run_exp(f"lr_{run}", rpses, "NONE")
-        run_exp(f"mplb_{run}", rpses, "LB")
+    run_exp(f"rr_{0}", rpses, "NONE")
+    
+    # for run in range(1, 5):
+    #     run_exp(f"lr_{run}", rpses, "NONE")
+    #     run_exp(f"mplb_{run}", rpses, "LB")
 
 if __name__ == '__main__':
     # Run the experiment

@@ -31,13 +31,14 @@ const (
 	SERVER_PORT = "9988"
 	SERVER_TYPE = "tcp"
 
+	CPU_UTILIZATION_INTERVAL_MS         = 500
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 50
-	DURATION_FOR_ONE_ROUND_MS           = 1000
-	OVERHEAD                            = 5  // 10% overhead
-	POD_QUOTA_OVERHEAD                  = 10 // 5% overhead
-	NOISE                               = 2  // 2% noise
-	ENFORCEMENT                         = "LB"
-	USE_PRESET_SHARES                   = false
+
+	OVERHEAD           = 10 // 10% overhead
+	POD_QUOTA_OVERHEAD = 10 // 5% overhead
+	NOISE              = 2  // 2% noise
+	ENFORCEMENT        = "LB"
+	USE_PRESET_SHARES  = false
 
 	DEFAULT_LB_WEIGHTS = ""
 	LOG_FILE_PREFIX    = "/users/twaheed/multiparty-lb"
@@ -230,12 +231,11 @@ func (w *handlerWriter) Write(buf []byte) (int, error) {
 
 func main() {
 
+	// Initialize the logger
 	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
-
 	slog.SetDefault(l) // configures log package to print with LevelError
-
 	capturePC := log.Flags()&(log.Lshortfile|log.Llongfile) != 0
 	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelError, capturePC}) // configures log package to print with LevelError
 
@@ -270,9 +270,8 @@ func main() {
 		}
 	}()
 
-	podNames := make([]string, 0)
-
 	// Send messages to host agents to update pod state
+	podNames := make([]string, 0)
 	for i := range nodes {
 		msg := "updatePods"
 		for podName, pod := range nodes[i].Pods {
@@ -286,27 +285,31 @@ func main() {
 		}
 	}
 
+	// Set default LB weights
 	setDefaultLBWeights(nodes, appNames)
 
+	// Set default CPU Shares
+	setDefaultCPUShares(nodes)
+
+	// get pods to log
+	podNamesToLog := getPodsToLog(podNames)
+
 	if enforcement == "NONE" {
-		go ccWithNoEnforcement(cpuLogFile, nodes, getPodsToLog(podNames))
+		go ccWithNoEnforcement(cpuLogFile, nodes, podNamesToLog)
 
 	} else {
 
 		if enforcement == "LB" {
-			go ccWithLBEnforcement(cpuLogFile, nodes, getPodsToLog(podNames))
+			go ccWithLBEnforcement(cpuLogFile, nodes, podNamesToLog)
 
 		} else {
-			// update with default values of the cpu quotas and shares
-			setDefaultCPUQuotas(nodes, cpuLogFile)
-			setDefaultCPUShares(nodes, cpuLogFile)
 
 			if enforcement == "CPU_QUOTA" {
 				slog.Info("Enforcing CPU Quotas")
 				go ccWithCPUQuotas(cpuLogFile, nodes)
 			} else if enforcement == "CPU_SHARE" {
 				slog.Info("Enforcing CPU Shares")
-				go ccWithCPUShares(cpuLogFile, nodes)
+				go ccWithCPUShares(cpuLogFile, nodes, podNamesToLog)
 			} else if enforcement == "BOTH" {
 				slog.Info("Enforcing CPU Quotas and Shares")
 				go ccWithBoth(cpuLogFile, nodes)
@@ -327,29 +330,8 @@ func ccWithNoEnforcement(
 	// - Get CPU Utilizations from host agents
 	for {
 
-		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan NodeStats)
-		for i := range nodes {
-			msg := "getCPUUtilsAndReqStats"
-			go func(i int, node Node) {
-				resp := node.SendMessageAndGetResponse(msg)
-				cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
-				if err != nil {
-					slog.Error(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
-					panic(err)
-				}
-				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
-			}(i, nodes[i])
-		}
-		reqStats := make([]ReqStat, 0)
-		nodeCPUUtilizations := make([]string, len(nodes))
-		for range nodes {
-			nodeStats := <-cpuUtilizationCh
-			nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
-			reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
-			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
-				nodeStats.Node, nodeStats.CPUUtilizations))
-		}
+		// Get CPU Utilizations and Request Stats from host agents
+		nodeCPUUtilizations, reqStats := getCPUUtilAndReqStatsFromCluster(nodes)
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(getLogFileFormatNoEnforcement(nodeCPUUtilizations))
@@ -409,6 +391,35 @@ func stringToInt64(str string) int64 {
 	return i
 }
 
+func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat) {
+
+	// - Get CPU Utilizations from host agents
+	cpuUtilizationCh := make(chan NodeStats)
+	for i := range nodes {
+		msg := "getCPUUtilsAndReqStats"
+		go func(i int, node Node) {
+			resp := node.SendMessageAndGetResponse(msg)
+			cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
+			if err != nil {
+				slog.Error(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
+				panic(err)
+			}
+			cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
+		}(i, nodes[i])
+	}
+	reqStats := make([]ReqStat, 0)
+	nodeCPUUtilizations := make([]string, len(nodes))
+	for range nodes {
+		nodeStats := <-cpuUtilizationCh
+		nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
+		reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
+		slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
+			nodeStats.Node, nodeStats.CPUUtilizations))
+	}
+
+	return nodeCPUUtilizations, reqStats
+}
+
 func ccWithLBEnforcement(
 	cpuLogFile *LogFile, nodes []Node, podsToLog []string) {
 
@@ -419,29 +430,8 @@ func ccWithLBEnforcement(
 	// - Get CPU Utilizations from host agents
 	for {
 
-		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan NodeStats)
-		for i := range nodes {
-			msg := "getCPUUtilsAndReqStats"
-			go func(i int, node Node) {
-				resp := node.SendMessageAndGetResponse(msg)
-				cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
-				if err != nil {
-					slog.Error(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
-					panic(err)
-				}
-				cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
-			}(i, nodes[i])
-		}
-		reqStats := make([]ReqStat, 0)
-		nodeCPUUtilizations := make([]string, len(nodes))
-		for range nodes {
-			nodeStats := <-cpuUtilizationCh
-			nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
-			reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
-			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
-				nodeStats.Node, nodeStats.CPUUtilizations))
-		}
+		// Get CPU Utilizations and Request Stats from host agents
+		nodeCPUUtilizations, reqStats := getCPUUtilAndReqStatsFromCluster(nodes)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		lbWeights, newRoundsAppCPUUtils := getOptimalLBWeights(
@@ -497,7 +487,7 @@ func getReqStatsJSON(reqStats []ReqStat) string {
 	return string(reqStatsJSON)
 }
 
-func ccWithCPUShares(cpuLogFile *LogFile, nodes []Node) {
+func ccWithCPUShares(cpuLogFile *LogFile, nodes []Node, podsToLog []string) {
 
 	// Initialize past CPU Utilizations
 	roundsAppCPUUtils := make([]map[string]float64, 0)
@@ -508,30 +498,21 @@ func ccWithCPUShares(cpuLogFile *LogFile, nodes []Node) {
 	// - Send the CPU shares to the host agents to be applied
 	for {
 
-		// - Get CPU Utilizations from host agents
-		cpuUtilizationCh := make(chan NodeStats)
-		for i := range nodes {
-			msg := "getCPUUtilizations"
-			go func(i int, node Node) {
-				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, ""}
-			}(i, nodes[i])
-		}
-		nodeCPUUtilizations := make([]string, len(nodes))
-		for range nodes {
-			cpuUtil := <-cpuUtilizationCh
-			nodeCPUUtilizations[cpuUtil.Node] = cpuUtil.CPUUtilizations
-			slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
-				cpuUtil.Node, cpuUtil.CPUUtilizations))
-		}
+		// Get CPU Utilizations and Request Stats from host agents
+		nodeCPUUtilizations, reqStats := getCPUUtilAndReqStatsFromCluster(nodes)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		nodeCPUShares, newRoundsAppCPUUtils := getOptimalCPUShares(
-			nodeCPUUtilizations, roundsAppCPUUtils)
+			nodes, nodeCPUUtilizations, roundsAppCPUUtils)
 		roundsAppCPUUtils = newRoundsAppCPUUtils
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(getLogFileFormat(nodeCPUUtilizations, nodeCPUShares))
+		printCPUStatsToConsole(nodeCPUUtilizations, reqStats, podsToLog)
+
+		// log the request stats
+		cpuLogFile.Writeln(
+			fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
 
 		// - Send the CPU shares to the host agents to be applied
 		if nodeCPUShares == nil {
@@ -655,7 +636,7 @@ func ccWithBoth(cpuLogFile *LogFile, nodes []Node) {
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		nodeCPUShares, newRoundsAppCPUUtils := getOptimalCPUShares(
-			nodeCPUUtilizations, roundsAppCPUUtils)
+			nodes, nodeCPUUtilizations, roundsAppCPUUtils)
 		roundsAppCPUUtils = newRoundsAppCPUUtils
 
 		// log the CPU Utilizations and CPU Shares
@@ -666,6 +647,10 @@ func ccWithBoth(cpuLogFile *LogFile, nodes []Node) {
 			slog.Warn("Failed to get optimal CPU shares")
 		} else {
 			for i := range nodes {
+				nodeCPUShares[i] = strings.TrimSpace(nodeCPUShares[i])
+				if nodeCPUShares[i] != "" {
+					continue
+				}
 				msg := "applyCPUShares " + nodeCPUShares[i]
 				response := nodes[i].SendMessageAndGetResponse(msg)
 				if response != "Success" {
@@ -732,6 +717,9 @@ func getOptimalLBWeights(
 	// get weights from gurobi
 	gurobiResponse := getGenericWeightsFromGurobi(nodes, avgAppUtils)
 
+	// print Gurobi weights:
+	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
+
 	lbWeights := parseGurobiResponse(gurobiResponse)
 
 	// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
@@ -786,6 +774,7 @@ func parseGurobiResponse(gurobiResponse string) string {
 }
 
 func getOptimalCPUShares(
+	nodes []Node,
 	nodeCPUUtilizations []string,
 	roundsAppCPUUtils []map[string]float64) ([]string, []map[string]float64) {
 
@@ -805,10 +794,13 @@ func getOptimalCPUShares(
 	// }
 
 	// get weights from gurobi
-	gurobiResponse := getWeightsFromGurobi(200.0, avgAppUtils)
+	gurobiResponse := getGenericWeightsFromGurobi(nodes, avgAppUtils)
+
+	// print Gurobi weights:
+	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
 
 	// get cpu shares
-	nodeCPUShares := getNodeCPUShares(gurobiResponse)
+	nodeCPUShares := getNodeCPUShares(nodes, gurobiResponse)
 
 	return nodeCPUShares, newRoundsAppCPUUtils
 }
@@ -985,6 +977,11 @@ func getLogFileFormat(
 
 	for _, nodeCPUShare := range nodeCPUShares {
 
+		nodeCPUShare = strings.TrimSpace(nodeCPUShare)
+		if nodeCPUShare == "" {
+			continue
+		}
+
 		podCPShares := strings.Split(nodeCPUShare, " ")
 
 		for _, podCPUShare := range podCPShares {
@@ -1141,14 +1138,14 @@ type PodJSON struct {
 func getFShareLoad(nodes []Node, appName string) float64 {
 	totalUtil := 0.0
 	for _, node := range nodes {
-		fmt.Printf("checking node %s", node.Name)
+		slog.Info(fmt.Sprintf("checking node %s\n", node.Name))
 		for _, pod := range node.Pods {
 			// don't consider hostagents for gurobi calculations
 			// if strings.Contains(pod.Name, "hostagent") {
 			// 	continue
 			// }
 			if pod.AppName == appName {
-				fmt.Printf("found pod %s util: %f\n", pod.Name, pod.FShare*float64(node.MilliCores))
+				slog.Info(fmt.Sprintf("found pod %s util: %f\n", pod.Name, pod.FShare*float64(node.MilliCores)))
 				totalUtil += pod.FShare * float64(node.MilliCores)
 			}
 		}
@@ -1170,12 +1167,12 @@ func getGenericWeightsFromGurobi(
 
 	hosts := make([]HostJSON, 0)
 	for _, node := range nodes {
-		// TEMPORARY: don't consider nodes 0, 4, 5
-		if strings.Contains(node.Name, "node0") ||
-			strings.Contains(node.Name, "node4") ||
-			strings.Contains(node.Name, "node5") {
-			continue
-		}
+		// // TEMPORARY: don't consider nodes 0, 4, 5
+		// if strings.Contains(node.Name, "node0") ||
+		// 	strings.Contains(node.Name, "node4") ||
+		// 	strings.Contains(node.Name, "node5") {
+		// 	continue
+		// }
 		hosts = append(hosts, HostJSON{
 			Name: node.Name,
 			Cap:  float64(node.MilliCores) / 10.0,
@@ -1253,13 +1250,24 @@ func sendPostRequest(url, payload string) (string, error) {
 	return string(body), nil
 }
 
-func getNodeCPUShares(gurobiResponse string) []string {
+func getNodeNumOfPod(podName string, nodes []Node) (int, error) {
+	for i, node := range nodes {
+		for _, pod := range node.Pods {
+			if pod.Name == podName {
+				return i, nil
+			}
+		}
+	}
+	return -1, errors.New("Pod not found in nodes")
+}
+
+func getNodeCPUShares(nodes []Node, gurobiResponse string) []string {
 
 	if USE_PRESET_SHARES {
 		return getPresetCPUShares()
 	}
 
-	var response GurobiResponse
+	var response GurobiGenericResponse
 	err := json.Unmarshal([]byte(gurobiResponse), &response)
 	check(err)
 
@@ -1267,35 +1275,14 @@ func getNodeCPUShares(gurobiResponse string) []string {
 		slog.Warn(fmt.Sprintf("gurobi returned status %d", response.Status))
 		return nil
 	} else {
-		nodeCPUShares := make([]string, 3)
-		nodeCPUShares[0] = fmt.Sprintf("%s:%f %s:%f",
-			"app1-node1",
-			(response.App1Node1*512)/(response.App1Node1+response.App3Node1),
-			"app3-node1",
-			(response.App3Node1*512)/(response.App1Node1+response.App3Node1))
-		nodeCPUShares[1] = fmt.Sprintf("%s:%f %s:%f",
-			"app1-node2",
-			(response.App1Node2*512)/(response.App1Node2+response.App2Node2),
-			"app2-node2",
-			(response.App2Node2*512)/(response.App1Node2+response.App2Node2))
-		nodeCPUShares[2] = fmt.Sprintf("%s:%f",
-			"app2-node3",
-			(response.App2Node3*512)/response.App2Node3)
-
-		// nodeCPUShares[0] = fmt.Sprintf("%s:%f %s:%f",
-		// 	"app1-node1",
-		// 	256.0,
-		// 	"app3-node1",
-		// 	256.0)
-		// nodeCPUShares[1] = fmt.Sprintf("%s:%f %s:%f",
-		// 	"app1-node2",
-		// 	256.0,
-		// 	"app2-node2",
-		// 	256.0)
-		// nodeCPUShares[2] = fmt.Sprintf("%s:%f",
-		// 	"app2-node3",
-		// 	256.0)
-
+		nodeCPUShares := make([]string, len(nodes))
+		for _, podResult := range response.Result {
+			for podName, share := range podResult {
+				nodeNum, err := getNodeNumOfPod(podName, nodes)
+				check(err)
+				nodeCPUShares[nodeNum] += fmt.Sprintf("%s:%f ", podName, share)
+			}
+		}
 		return nodeCPUShares
 	}
 }
@@ -1352,9 +1339,9 @@ func setDefaultCPUQuotas(nodes []Node, cpuLogFile *LogFile) {
 	}
 }
 
-func setDefaultCPUShares(nodes []Node, cpuLogFile *LogFile) {
+func setDefaultCPUShares(nodes []Node) {
 
-	nodeCPUShares := getDefaultCPUShares()
+	nodeCPUShares := getDefaultCPUShares(nodes)
 
 	// - Send the CPU Shares to the host agents to be applied
 	if nodeCPUShares == nil {
@@ -1371,12 +1358,25 @@ func setDefaultCPUShares(nodes []Node, cpuLogFile *LogFile) {
 	}
 }
 
-func getDefaultCPUShares() []string {
-	return []string{
-		"app1-node1:256 app3-node1:256",
-		"app1-node2:256 app2-node2:256",
-		"app2-node3:512",
+func getDefaultCPUShares(nodes []Node) []string {
+
+	CPUShares := make([]string, 0)
+
+	for _, node := range nodes {
+		nodeCPUShares := ""
+		for _, pod := range node.Pods {
+			// don't consider hostagents for setting cpu shares
+			if strings.Contains(pod.Name, "hostagent") {
+				continue
+			}
+			nodeCPUShares += fmt.Sprintf(
+				"%s:%d ", pod.Name, int64(pod.FShare*1000))
+		}
+		nodeCPUShares = strings.TrimSpace(nodeCPUShares)
+		CPUShares = append(CPUShares, nodeCPUShares)
 	}
+
+	return CPUShares
 }
 
 func getDefaultCPUQuotas() []string {
@@ -1388,11 +1388,9 @@ func getDefaultCPUQuotas() []string {
 }
 
 func getPresetCPUShares() []string {
-	return []string{
-		"app1-node1:0 app3-node1:512",
-		"app1-node2:512 app2-node2:0",
-		"app2-node3:512",
-	}
+	// raise not implemented error
+	check(errors.New("Preset CPU Shares not implemented"))
+	return nil
 }
 
 func getPresetCPUQuotas() []string {

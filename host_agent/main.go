@@ -381,8 +381,8 @@ func applyCPUShares(podUIDs map[string]string, msg string) bool {
 
 	for podName, share := range podShares {
 
-		fileName := "/host/sys/fs/cgroup/cpu/kubepods/" +
-			podUIDs[podName] + "/cpu.shares"
+		uid := podUIDs[podName]
+		fileName := "/host/sys/fs/cgroup/kubepods.slice/" + uid + "/cpu.weight"
 		// fileName := "/Users/twaheed2/go/src/host_agent/" +
 		// 	podUIDs[podName]
 
@@ -396,10 +396,13 @@ func applyCPUShares(podUIDs map[string]string, msg string) bool {
 			"bash", "./writetofile.sh", share, fileName))
 
 		cmd := exec.Command("bash", "./writetofile.sh", share, fileName)
-		_, err := cmd.Output()
+		output, err := cmd.Output()
+
 		if err != nil {
-			slog.Warn(err.Error())
+			slog.Info(fmt.Sprintf("Error: %s\n", err.Error()))
 			return false
+		} else {
+			slog.Info("Output: " + string(output))
 		}
 	}
 
@@ -412,6 +415,7 @@ func parsePodShares(msg string) (map[string]string, bool) {
 
 	// example message to parse: "applyCPUShares pod1:45 pod2:69"
 
+	msg = strings.TrimSpace(msg)
 	podShares := make(map[string]string)
 	podStrs := strings.Split(msg, " ")[1:]
 	for _, podStr := range podStrs {

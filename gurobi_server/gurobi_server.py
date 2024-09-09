@@ -369,46 +369,36 @@ def run_generic_model(
         log_sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS,
                                      name=f"log_sp_{host.name}")
         
-    share = {}
+    t_min = {}
     for tenant in _tenants:
-        share[tenant.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
-                                 name=f"share_{tenant.name}")
-        
-    fshare = {}
-    for tenant in _tenants:
-        fshare[tenant.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
-                                 name=f"fshare_{tenant.name}")
+        t_min[tenant.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
+                                 name=f"t_min_{tenant.name}")
     
-    smallest_log_sp_cap = m.addVar(vtype=GRB.CONTINUOUS,
-                                 name="smallest_sp_cap")
+    objective_f = m.addVar(vtype=GRB.CONTINUOUS,
+                                 name="objective_f")
+    objective_f_log = m.addVar(vtype=GRB.CONTINUOUS,
+                                 name="objective_f_log")
     
     # ============================= Set Objective ==============================
     
-    m.setObjective(smallest_log_sp_cap, GRB.MINIMIZE)
+    m.setObjective(objective_f_log, GRB.MAXIMIZE)
     
     # ============================ Set Constraints =============================
     
-    # smallest_log_sp_cap = min(sp)
-    m.addGenConstrMax(smallest_log_sp_cap,
-                        [sp[host.name] for host in _hosts],
-                        name="min_sp_cap")
+    # objective_f_log = log(objective_f)
+    m.addGenConstrLog(objective_f, objective_f_log)
     
-    # for host in _hosts:
-    #     m.addGenConstrLog(sp[host.name], log_sp[host.name],
-    #                       name=f"log_sp{host}")
+    # objective_f = sum(w) [maximize utilization of the cluster]
+    m.addConstr(objective_f == 
+                gp.quicksum((w[worker.name] for worker in _workers)),
+                name="objective_f")
     
-    # at each host, sum(w) + sp = cap
+    # at each host, sum(w) <= cap
     for host in _hosts:
         m.addConstr(gp.quicksum(
-            (w[worker.name] for worker in _workers if worker.host == host.name))
-                    + sp[host.name] == cap[host.name],
+            (w[worker.name] for worker in _workers if worker.host == host.name)) 
+                    <= cap[host.name],
                     name=f"h_{host.name}")
-    
-    for tenant in _tenants:
-        print()
-        print(tenant.name, [worker.name
-              for worker in _workers if worker.tenant == tenant.name])
-        print()
         
     # at each tenant, sum(w) <= t
     for tenant in _tenants:
@@ -417,26 +407,22 @@ def run_generic_model(
                 (w[worker.name]
                 for worker in _workers if worker.tenant == tenant.name)) 
             <= t[tenant.name],
-            name=f"t_{tenant.name}")
+            name=f"t_upper_{tenant.name}")
     
-    # for each tenant, set fshare
+    # for each tenant, set t_min = min(fshareload, t)
     for tenant in _tenants:
-        m.addConstr(fshare[tenant.name] == tenant.fshareload, 
-                    name=f"fshare_{tenant.name}")
+        m.addGenConstrMin(t_min[tenant.name],
+                          [tenant.fshareload, t[tenant.name]],
+                          name=f"t_min_{tenant.name}")
     
-    # for each tenant, share = min(fshare, t)
+    # for each tenant, sum(w) >= t_min
     for tenant in _tenants:
-        m.addGenConstrMin(share[tenant.name],
-                          [fshare[tenant.name], t[tenant.name]],
-                          name=f"share_{tenant.name}")
-    
-    # for each tenant, share(tenant) == sum(w)
-    for tenant in _tenants:
-        m.addConstr(share[tenant.name] <= 
-                    gp.quicksum((w[worker.name] 
-                                 for worker in _workers 
-                                 if worker.tenant == tenant.name)), 
-                    name=f"share_{tenant}")
+        m.addConstr(
+            gp.quicksum(
+                (w[worker.name]
+                for worker in _workers if worker.tenant == tenant.name)) 
+            >= t_min[tenant.name],
+            name=f"t_lower_{tenant.name}")
     
     # ============================== Optimize! =================================
     
