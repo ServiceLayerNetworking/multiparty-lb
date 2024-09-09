@@ -21,7 +21,7 @@
         },
         {
             "name": "app2",
-            "load": 2,
+            "load": 3,
             "fshareload": 3
         },
         {

@@ -384,12 +384,12 @@ def run_generic_model(
     
     # ============================= Set Objective ==============================
     
-    m.setObjective(smallest_log_sp_cap, GRB.MAXIMIZE)
+    m.setObjective(smallest_log_sp_cap, GRB.MINIMIZE)
     
     # ============================ Set Constraints =============================
     
     # smallest_log_sp_cap = min(sp)
-    m.addGenConstrMin(smallest_log_sp_cap,
+    m.addGenConstrMax(smallest_log_sp_cap,
                         [sp[host.name] for host in _hosts],
                         name="min_sp_cap")
     
