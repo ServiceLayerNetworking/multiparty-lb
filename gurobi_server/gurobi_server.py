@@ -430,7 +430,7 @@ def run_generic_model(
                           [fshare[tenant.name], t[tenant.name]],
                           name=f"share_{tenant.name}")
     
-    # for each tenant, share(tenant) <= sum(w)
+    # for each tenant, share(tenant) == sum(w)
     for tenant in _tenants:
         m.addConstr(share[tenant.name] <= 
                     gp.quicksum((w[worker.name] 
