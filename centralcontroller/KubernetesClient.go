@@ -89,7 +89,7 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 					"kubepods-" + qosClass +
 					"-pod" +
 					strings.ReplaceAll(string(pod.UID), "-", "_") +
-					".slice/",
+					".slice",
 			}
 		} else {
 			nodeToPods[pod.Spec.NodeName] = make(map[string]Pod)
@@ -101,7 +101,7 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 					"kubepods-" + qosClass +
 					"-pod" +
 					strings.ReplaceAll(string(pod.UID), "-", "_") +
-					".slice/",
+					".slice",
 			}
 		}
 	}
