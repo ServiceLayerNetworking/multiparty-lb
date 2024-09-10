@@ -16,23 +16,28 @@
     [
         {
             "name": "app1",
-            "load": 3,
-            "fshareload": 2
+            "load": 60,
+            "fshareload": 2.33
         },
         {
             "name": "app2",
-            "load": 3,
+            "load": 1,
             "fshareload": 3
         },
         {
             "name": "app3",
             "load": 1,
-            "fshareload": 1
+            "fshareload": 0.67
         }
     ],
     [
         {
             "name": "app1-node1",
+            "tenant": "app1",
+            "host": "node1"
+        },
+        {
+            "name": "app1-node1-0",
             "tenant": "app1",
             "host": "node1"
         },

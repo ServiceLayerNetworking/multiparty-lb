@@ -328,6 +328,36 @@ class Worker:
         self.tenant: str = tenant
         self.host: str = host
         
+def run_admission_control(
+    _hosts: List[Host],
+    _tenants: List[Tenant],
+    _workers: List[Worker]):
+    
+    """
+    Algorithm:
+    
+    1. For each tenant, divide demand on the pods
+    2. For each pod, what is more resources needed (demand - min(fair share, ))?
+    3. If spare capacity available at the node, then divide it among the pods in a maxmin way
+    4. If more resources are needed for a node, then try all pods, if they can be moved to another node, if any can be moved, move as much as possible
+    5. As spare capacity is available, divide it among tenants in a maxmin fair way
+    6. repeat until no more resources can be shed off from a node, or all load is satisfied
+    
+    3. if it is negative, allocate the excess resource to the tenant with the highest demand
+    
+    
+    
+    Now, with admission control, first we calculate demands and excess resource needs:
+    App3: demand=1, fair share=1, excess needed=0
+    App1: demand=3, fair share=2, excess needed=-1
+    App2: demand=2, fair share=3, excess needed=1
+
+    Now, how do I write the next step to determine that we allocate 1 node to allocate to app1-1?
+    
+    """
+    
+    pass
+        
 def run_generic_model(
     _hosts: List[Host],
     _tenants: List[Tenant],
@@ -360,19 +390,26 @@ def run_generic_model(
     
     print(w)
     
-    # set spare caps
-    sp = {}
-    for host in _hosts:
-        sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS, name=f"sp_{host.name}")
-    log_sp = {}
-    for host in _hosts:
-        log_sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS,
-                                     name=f"log_sp_{host.name}")
+    # # set spare caps
+    # sp = {}
+    # for host in _hosts:
+    #     sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS, name=f"sp_{host.name}")
+    # log_sp = {}
+    # for host in _hosts:
+    #     log_sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS,
+    #                                  name=f"log_sp_{host.name}")
+        
+    t_consumed = {}
+    for tenant in _tenants:
+        t_consumed[tenant.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
+                                 name=f"t_consumed_{tenant.name}")
         
     t_min = {}
     for tenant in _tenants:
         t_min[tenant.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
                                  name=f"t_min_{tenant.name}")
+    
+    
     
     objective_f = m.addVar(vtype=GRB.CONTINUOUS,
                                  name="objective_f")
@@ -400,13 +437,18 @@ def run_generic_model(
                     <= cap[host.name],
                     name=f"h_{host.name}")
         
+    # for each tenant, set t_consumed = sum(w)
+    for tenant in _tenants:
+        m.addConstr(
+            t_consumed[tenant.name] == gp.quicksum(
+                (w[worker.name]
+                for worker in _workers if worker.tenant == tenant.name)),
+            name=f"t_consumed_{tenant.name}")
+        
     # at each tenant, sum(w) <= t
     for tenant in _tenants:
         m.addConstr(
-            gp.quicksum(
-                (w[worker.name]
-                for worker in _workers if worker.tenant == tenant.name)) 
-            <= t[tenant.name],
+            t_consumed[tenant.name] <= t[tenant.name],
             name=f"t_upper_{tenant.name}")
     
     # for each tenant, set t_min = min(fshareload, t)
@@ -418,13 +460,54 @@ def run_generic_model(
     # for each tenant, sum(w) >= t_min
     for tenant in _tenants:
         m.addConstr(
-            gp.quicksum(
-                (w[worker.name]
-                for worker in _workers if worker.tenant == tenant.name)) 
-            >= t_min[tenant.name],
+            t_consumed[tenant.name] >= t_min[tenant.name],
             name=f"t_lower_{tenant.name}")
     
     # ============================== Optimize! =================================
+    
+    m.optimize()
+    
+    if m.Status == GRB.OPTIMAL:
+        vars = {v.varName: v.x for v in m.getVars()}
+        print(vars)
+    
+    # ============================ New Variance Optimization ============================
+    
+    t_consumed_min = {}
+    for tenant in _tenants:
+        t_consumed_min[tenant.name] = m.addVar(
+            lb=vars[f"t_consumed_{tenant.name}"], 
+            ub=vars[f"t_consumed_{tenant.name}"], 
+            vtype=GRB.CONTINUOUS,
+            name=f"t_consumed_min_{tenant.name}")
+        
+    # for each tenant, t_consumed_min <= t_consumed
+    for tenant in _tenants:
+        m.addConstr(
+            t_consumed_min[tenant.name] <= t_consumed[tenant.name],
+            name=f"t_consumed_min_{tenant.name}")
+        
+    # set spare caps
+    sp = {}
+    for host in _hosts:
+        sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS, name=f"sp_{host.name}")
+        
+    # for each host, sp = (cap - sum(w))
+    for host in _hosts:
+        m.addConstr(
+            sp[host.name] == (cap[host.name] - gp.quicksum(
+                (w[worker.name] 
+                 for worker in _workers if worker.host == host.name))),
+            name=f"sp_{host.name}")
+        
+    # Compute the mean of spare caps
+    mean = (1 / len(sp)) * gp.quicksum((sp[host.name] for host in _hosts))
+
+    # Add the variance objective: minimize (1/n) * sum((x_i - mean)^2)
+    variance = (1 / len(sp)) * gp.quicksum(
+        (sp[host.name] - mean) * (sp[host.name] - mean) for host in _hosts)
+        
+    m.setObjective(variance, GRB.MINIMIZE)
     
     m.optimize()
     
