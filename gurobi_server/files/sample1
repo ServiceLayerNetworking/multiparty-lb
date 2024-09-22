@@ -1,0 +1,36 @@
+[
+    [
+        {"name": "node0.k8s-twaheed.mlnetwork.emulab.net", "cap": 3200
+        },
+        {"name": "node1.k8s-twaheed.mlnetwork.emulab.net", "cap": 210
+        },
+        {"name": "node2.k8s-twaheed.mlnetwork.emulab.net", "cap": 210
+        },
+        {"name": "node3.k8s-twaheed.mlnetwork.emulab.net", "cap": 210
+        },
+        {"name": "node4.k8s-twaheed.mlnetwork.emulab.net", "cap": 3200
+        },
+        {"name": "node5.k8s-twaheed.mlnetwork.emulab.net", "cap": 3200
+        }
+    ],
+    [
+        {"name": "app3", "load": 42.742789, "fshareload": 700
+        },
+        {"name": "app1", "load": 197.26371, "fshareload": 1750
+        },
+        {"name": "app2", "load": 191.340543, "fshareload": 1750
+        }
+    ],
+    [
+        {"name": "app1-0", "tenant": "app1", "host": "node1.k8s-twaheed.mlnetwork.emulab.net"
+        },
+        {"name": "app2-1", "tenant": "app2", "host": "node1.k8s-twaheed.mlnetwork.emulab.net"
+        },
+        {"name": "app3-0", "tenant": "app3", "host": "node1.k8s-twaheed.mlnetwork.emulab.net"
+        },
+        {"name": "app1-1", "tenant": "app1", "host": "node2.k8s-twaheed.mlnetwork.emulab.net"
+        },
+        {"name": "app2-0", "tenant": "app2", "host": "node2.k8s-twaheed.mlnetwork.emulab.net"
+        }
+    ]
+]

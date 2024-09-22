@@ -10,9 +10,6 @@ import (
 	"os"
 	"sync"
 	"time"
-
-	xrand "golang.org/x/exp/rand"
-	"gonum.org/v1/gonum/stat/distuv"
 )
 
 type GurobiResponse struct {
@@ -115,10 +112,26 @@ func makeReqToEndpoint(
 			time.Now().UnixNano(), 0, 0}
 		return
 	}
-	req.Header.Set("Connection", "close")
-	for key, value := range headers {
-		req.Header.Set(key, value)
+
+	// for key, value := range headers {
+	// 	req.Header.Set(key, value)
+	// }
+
+	// endpoint.Headers is a string of json with key-value pairs
+	// 	eg. {"key1": "value1", "key2": "value2"}
+	// 	we need to convert this to a map[string]string
+	// 	so that we can set the headers in the request
+	endpointHeaders := make(map[string]string)
+	json.Unmarshal([]byte(endpoint.Headers), &endpointHeaders)
+	for headersKey, headersValue := range endpointHeaders {
+		if headersKey == "Host" {
+			req.Host = headersValue
+		} else {
+			req.Header.Set(headersKey, headersValue)
+		}
+		// fmt.Printf("Setting header: \"%s\" \"%s\"\n", headersKey, headersValue)
 	}
+	req.Header.Set("Connection", "close")
 
 	startReq := time.Now()
 	// client := http.Client{
@@ -169,7 +182,7 @@ func makeReqToEndpoint(
 type Interval struct {
 	repeatIntervalMs int
 	distribution     string
-	poisson          distuv.Poisson
+	// poisson          distuv.Poisson
 }
 
 func (interval *Interval) Initialize(repeatIntervalMs int, distributionName string) {
@@ -177,17 +190,19 @@ func (interval *Interval) Initialize(repeatIntervalMs int, distributionName stri
 	interval.distribution = distributionName
 
 	if interval.distribution == "poisson" {
-		interval.poisson = distuv.Poisson{
-			Lambda: float64(interval.repeatIntervalMs),
-			Src:    xrand.NewSource(uint64(time.Now().UnixNano())),
-		}
+		panic("Poisson distribution not implemented yet")
+		// interval.poisson = distuv.Poisson{
+		// 	Lambda: float64(interval.repeatIntervalMs),
+		// 	Src:    xrand.NewSource(uint64(time.Now().UnixNano())),
+		// }
 	}
 }
 
 func (interval *Interval) Next() time.Duration {
 	if interval.distribution == "poisson" {
-		return time.Duration(
-			interval.poisson.Rand() * float64(time.Millisecond))
+		panic("Poisson distribution not implemented yet")
+		// return time.Duration(
+		// 	interval.poisson.Rand() * float64(time.Millisecond))
 	} else {
 		return time.Duration(interval.repeatIntervalMs) * time.Millisecond
 	}
@@ -382,9 +397,10 @@ func (i *arrayFlags) Set(value string) error {
 }
 
 type Endpoint struct {
-	URL  string `json:"url"`
-	Node int    `json:"node"`
-	App  int    `json:"app"`
+	URL     string `json:"url"`
+	Node    int    `json:"node"`
+	App     int    `json:"app"`
+	Headers string `json:"headers"`
 }
 
 type Config struct {

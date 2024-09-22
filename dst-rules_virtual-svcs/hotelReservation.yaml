@@ -38,7 +38,9 @@ spec:
   host: app1
   trafficPolicy:
     loadBalancer:
-      simple: RANDOM
+      simple: LEAST_REQUEST
+      active_request_bias: 1
+      warmupDurationSecs: 0
   subsets:
   - name: app1-0
     labels:
@@ -60,7 +62,9 @@ spec:
   host: app2
   trafficPolicy:
     loadBalancer:
-      simple: RANDOM
+      simple: LEAST_REQUEST
+      active_request_bias: 1
+      warmupDurationSecs: 0
   subsets:
   - name: app2-0
     labels:
@@ -82,7 +86,9 @@ spec:
   host: app3
   trafficPolicy:
     loadBalancer:
-      simple: RANDOM
+      simple: LEAST_REQUEST
+      active_request_bias: 1
+      warmupDurationSecs: 0
   subsets:
   - name: app3-0
     labels:
