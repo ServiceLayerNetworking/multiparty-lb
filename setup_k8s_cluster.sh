@@ -57,6 +57,8 @@ kubectl apply -Rf generic-app/3-node-scenario
 echo "[SCRIPT] Creating namespace mplb-system..."
 kubectl create namespace mplb-system
 
+kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
+
 echo "[SCRIPT] Spawning host agents on each node..."
 kubectl apply -f host_agent/pod_svc_for_master_node.yaml
 for i in $(seq 1 $NODES)
@@ -69,6 +71,8 @@ done
 echo "[SCRIPT] Applying istio configs for hotelReservation..."
 kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
 # dst-rules_virtual-svcs/virtualservice-headermatch/vs-headermatch -exclude
+# kubectl rollout restart statefulset
+# kubectl rollout restart deploy istio-ingressgateway -n istio-system
 
 echo "Run these commands to get the frontend and gateway IPs:"
 echo 'GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath="{.spec.clusterIP}")'

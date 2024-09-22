@@ -1,0 +1,2596 @@
+statefulset.apps/app1 configured
+statefulset.apps/app2 configured
+statefulset.apps/app3 configured
+Running experiment with: app1=('node1', 'node2'), app2=('node1', 'node2'), app3=('node1',)
+Running experiment with: app1=('node1', 'node2'), app2=('node1', 'node2'), app3=('node2',)
+Running experiment with: app1=('node1', 'node2'), app2=('node1', 'node2'), app3=('node3',)
+Running experiment with: app1=('node1', 'node2'), app2=('node1', 'node3'), app3=('node1',)
+Running experiment with: app1=('node1', 'node2'), app2=('node1', 'node3'), app3=('node2',)
+Running experiment with: app1=('node1', 'node2'), app2=('node1', 'node3'), app3=('node3',)
+Running experiment with: app1=('node1', 'node2'), app2=('node2', 'node3'), app3=('node1',)
+Running experiment with: app1=('node1', 'node2'), app2=('node2', 'node3'), app3=('node2',)
+Running experiment with: app1=('node1', 'node2'), app2=('node2', 'node3'), app3=('node3',)
+Running experiment with: app1=('node1', 'node3'), app2=('node1', 'node2'), app3=('node1',)
+Running experiment with: app1=('node1', 'node3'), app2=('node1', 'node2'), app3=('node2',)
+Running experiment with: app1=('node1', 'node3'), app2=('node1', 'node2'), app3=('node3',)
+Running experiment with: app1=('node1', 'node3'), app2=('node1', 'node3'), app3=('node1',)
+Running experiment with: app1=('node1', 'node3'), app2=('node1', 'node3'), app3=('node2',)
+Running experiment with: app1=('node1', 'node3'), app2=('node1', 'node3'), app3=('node3',)
+Selected nodes:  ['node1', 'node3']
+Applied YAML for app1 with nodes ('node1', 'node3')
+Selected nodes:  ['node1', 'node3']
+Applied YAML for app2 with nodes ('node1', 'node3')
+Selected nodes:  ['node3']
+Applied YAML for app3 with nodes ('node3',)
+{'app1': ('node1', 'node3'), 'app2': ('node1', 'node3'), 'app3': ('node3',)}
+App (Pod) Name: app1-0, Node: node1.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app1-1, Node: node3.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app2-0, Node: node1.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app2-1, Node: node3.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app3-0, Node: node3.k8s-twaheed.mlnetwork.emulab.net
+{"actual": {"app1-0": "node1.k8s-twaheed.mlnetwork.emulab.net", "app1-1": "node3.k8s-twaheed.mlnetwork.emulab.net", "app2-0": "node1.k8s-twaheed.mlnetwork.emulab.net", "app2-1": "node3.k8s-twaheed.mlnetwork.emulab.net", "app3-0": "node3.k8s-twaheed.mlnetwork.emulab.net"}, "intended": {"app1": ["node1", "node3"], "app2": ["node1", "node3"], "app3": ["node3"]}}
+Nodes:
+Node 0:
+{0 node0.k8s-twaheed.mlnetwork.emulab.net 155.98.36.37 32661 map[hostagent-node0-0:{hostagent-node0-0 hostagent-node0 -1 kubepods-burstable.slice/kubepods-burstable-pod82dc7f51_5a6a_4dc9_bcae_95b3e9be72f9.slice}] 32000 <nil>}
+
+Node 1:
+{1 node1.k8s-twaheed.mlnetwork.emulab.net 155.98.36.35 32428 map[app1-0:{app1-0 app1 0.5 kubepods-burstable.slice/kubepods-burstable-pod808136ed_ce82_4615_b259_10c2bad86106.slice} app2-0:{app2-0 app2 0.5 kubepods-burstable.slice/kubepods-burstable-pod58c3fc1f_ae11_4c5c_bb48_734e25124d62.slice} hostagent-node1-0:{hostagent-node1-0 hostagent-node1 -1 kubepods-burstable.slice/kubepods-burstable-poda340d0ac_1a83_4d19_a962_95aa2416ab58.slice}] 2100 <nil>}
+
+Node 2:
+{2 node2.k8s-twaheed.mlnetwork.emulab.net 155.98.36.32 31064 map[hostagent-node2-0:{hostagent-node2-0 hostagent-node2 -1 kubepods-burstable.slice/kubepods-burstable-podfce4bfb6_47d2_4d64_82f9_4d82a9c49873.slice}] 2100 <nil>}
+
+Node 3:
+{3 node3.k8s-twaheed.mlnetwork.emulab.net 155.98.36.29 31533 map[app1-1:{app1-1 app1 0.3333333333333333 kubepods-burstable.slice/kubepods-burstable-podc56e7c2d_aa06_4dd8_a571_3c4da8d3c9a7.slice} app2-1:{app2-1 app2 0.3333333333333333 kubepods-burstable.slice/kubepods-burstable-pod568d1c45_64b2_4546_b481_7501f6dea918.slice} app3-0:{app3-0 app3 0.3333333333333333 kubepods-burstable.slice/kubepods-burstable-pod57e4fa40_3ccb_47a4_976a_7c79bbae3c9e.slice} hostagent-node3-0:{hostagent-node3-0 hostagent-node3 -1 kubepods-burstable.slice/kubepods-burstable-pod00a8871b_026a_43be_913a_71cb62fae5bd.slice}] 2100 <nil>}
+
+Node 4:
+{4 node4.k8s-twaheed.mlnetwork.emulab.net 155.98.36.40 31006 map[hostagent-node4-0:{hostagent-node4-0 hostagent-node4 -1 kubepods-burstable.slice/kubepods-burstable-pod3ecb2dba_f48c_45a1_a225_3dc24cba649f.slice}] 32000 <nil>}
+
+Node 5:
+{5 node5.k8s-twaheed.mlnetwork.emulab.net 155.98.36.23 32088 map[hostagent-node5-0:{hostagent-node5-0 hostagent-node5 -1 kubepods-burstable.slice/kubepods-burstable-pod6b6a86dd_c20f_43f1_b0b9_458fd2156588.slice}] 32000 <nil>}
+
+Pods to print: [hostagent-node0-0 app1-0 app2-0 hostagent-node1-0 hostagent-node2-0 app1-1 app2-1 app3-0 hostagent-node3-0 hostagent-node4-0 hostagent-node5-0]
+----------------------------------------
+Number of requests logged: 10
+Time: 2024-09-16 06:07:00.438:
+
+PODNAME                        CPU (%)
+app2-0                         113.54
+app1-0                         105.13
+app1-1                         98.51
+app2-1                         73.07
+app3-0                         37.16
+hostagent-node1-0              2.12
+hostagent-node3-0              1.53
+hostagent-node0-0              0.66
+hostagent-node5-0              0.64
+hostagent-node4-0              0.62
+hostagent-node2-0              0.54
+
+----------------------------------------
+Number of requests logged: 85
+Time: 2024-09-16 06:07:01.015:
+
+PODNAME                        CPU (%)
+app1-0                         115.35
+app2-0                         98.27
+app1-1                         86.42
+app2-1                         84.25
+app3-0                         40.63
+hostagent-node1-0              1.14
+hostagent-node3-0              1.08
+hostagent-node0-0              0.57
+hostagent-node4-0              0.55
+hostagent-node2-0              0.47
+hostagent-node5-0              0.46
+
+----------------------------------------
+Number of requests logged: 99
+Time: 2024-09-16 06:07:01.528:
+
+PODNAME                        CPU (%)
+app1-0                         107.01
+app2-0                         100.65
+app2-1                         90.23
+app1-1                         84.80
+app3-0                         37.00
+hostagent-node3-0              2.23
+hostagent-node1-0              1.28
+hostagent-node4-0              0.66
+hostagent-node5-0              0.50
+hostagent-node2-0              0.48
+hostagent-node0-0              0.46
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:02.113:
+
+PODNAME                        CPU (%)
+app2-0                         124.78
+app2-1                         90.64
+app1-1                         89.99
+app1-0                         84.72
+app3-0                         34.45
+hostagent-node1-0              1.58
+hostagent-node3-0              0.94
+hostagent-node2-0              0.68
+hostagent-node5-0              0.66
+hostagent-node0-0              0.62
+hostagent-node4-0              0.36
+
+----------------------------------------
+Number of requests logged: 102
+Time: 2024-09-16 06:07:02.627:
+
+PODNAME                        CPU (%)
+app1-0                         106.06
+app2-0                         104.18
+app2-1                         84.92
+app1-1                         75.67
+app3-0                         42.10
+hostagent-node3-0              1.72
+hostagent-node1-0              1.13
+hostagent-node2-0              0.60
+hostagent-node5-0              0.59
+hostagent-node4-0              0.59
+hostagent-node0-0              0.56
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:03.211:
+
+PODNAME                        CPU (%)
+app2-0                         112.03
+app1-0                         94.61
+app1-1                         85.28
+app2-1                         73.72
+app3-0                         35.69
+hostagent-node3-0              1.62
+hostagent-node0-0              0.76
+hostagent-node1-0              0.60
+hostagent-node4-0              0.45
+hostagent-node2-0              0.39
+hostagent-node5-0              0.37
+
+----------------------------------------
+Number of requests logged: 95
+Time: 2024-09-16 06:07:03.727:
+
+PODNAME                        CPU (%)
+app2-0                         119.91
+app1-1                         99.52
+app1-0                         90.03
+app2-1                         80.81
+app3-0                         31.80
+hostagent-node3-0              1.79
+hostagent-node1-0              1.38
+hostagent-node4-0              0.70
+hostagent-node2-0              0.47
+hostagent-node0-0              0.41
+hostagent-node5-0              0.29
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:04.313:
+
+PODNAME                        CPU (%)
+app1-0                         111.49
+app2-1                         104.39
+app2-0                         98.07
+app1-1                         72.68
+app3-0                         36.16
+hostagent-node3-0              1.82
+hostagent-node1-0              1.43
+hostagent-node0-0              0.79
+hostagent-node4-0              0.54
+hostagent-node5-0              0.44
+hostagent-node2-0              0.34
+
+----------------------------------------
+Number of requests logged: 95
+Time: 2024-09-16 06:07:04.828:
+
+PODNAME                        CPU (%)
+app1-0                         119.21
+app1-1                         92.80
+app2-0                         90.62
+app2-1                         90.22
+app3-0                         28.88
+hostagent-node3-0              1.65
+hostagent-node4-0              0.82
+hostagent-node1-0              0.81
+hostagent-node0-0              0.53
+hostagent-node5-0              0.51
+hostagent-node2-0              0.48
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:05.341:
+
+PODNAME                        CPU (%)
+app2-0                         113.93
+app1-0                         98.53
+app1-1                         88.41
+app2-1                         76.62
+app3-0                         35.47
+hostagent-node1-0              1.23
+hostagent-node3-0              0.68
+hostagent-node2-0              0.65
+hostagent-node5-0              0.62
+hostagent-node0-0              0.56
+hostagent-node4-0              0.41
+
+----------------------------------------
+Number of requests logged: 99
+Time: 2024-09-16 06:07:05.915:
+
+PODNAME                        CPU (%)
+app2-0                         101.29
+app1-0                         100.58
+app2-1                         97.47
+app1-1                         83.64
+app3-0                         32.83
+hostagent-node1-0              1.41
+hostagent-node3-0              0.90
+hostagent-node5-0              0.56
+hostagent-node2-0              0.56
+hostagent-node4-0              0.54
+hostagent-node0-0              0.47
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:06.429:
+
+PODNAME                        CPU (%)
+app1-0                         113.44
+app2-0                         94.47
+app2-1                         92.46
+app1-1                         82.64
+app3-0                         36.17
+hostagent-node3-0              2.70
+hostagent-node1-0              1.42
+hostagent-node4-0              0.53
+hostagent-node2-0              0.43
+hostagent-node0-0              0.40
+hostagent-node5-0              0.34
+
+----------------------------------------
+Number of requests logged: 94
+Time: 2024-09-16 06:07:06.941:
+
+PODNAME                        CPU (%)
+app1-0                         109.48
+app2-0                         98.96
+app1-1                         86.04
+app2-1                         81.33
+app3-0                         35.37
+hostagent-node1-0              1.55
+hostagent-node3-0              1.09
+hostagent-node5-0              0.66
+hostagent-node2-0              0.64
+hostagent-node4-0              0.59
+hostagent-node0-0              0.58
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:07.517:
+
+PODNAME                        CPU (%)
+app2-0                         104.58
+app1-0                         104.02
+app1-1                         95.72
+app2-1                         86.34
+app3-0                         34.00
+hostagent-node1-0              1.41
+hostagent-node3-0              1.19
+hostagent-node5-0              0.57
+hostagent-node2-0              0.57
+hostagent-node0-0              0.55
+hostagent-node4-0              0.49
+
+----------------------------------------
+Number of requests logged: 100
+Time: 2024-09-16 06:07:08.030:
+
+PODNAME                        CPU (%)
+app2-0                         109.36
+app1-0                         97.38
+app1-1                         92.87
+app2-1                         89.74
+app3-0                         28.39
+hostagent-node1-0              2.15
+hostagent-node3-0              1.61
+hostagent-node4-0              1.36
+hostagent-node2-0              0.63
+hostagent-node5-0              0.61
+hostagent-node0-0              0.56
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:08.615:
+
+PODNAME                        CPU (%)
+app1-0                         111.63
+app2-0                         99.62
+app2-1                         85.48
+app1-1                         85.23
+app3-0                         36.25
+hostagent-node3-0              1.81
+hostagent-node1-0              1.20
+hostagent-node4-0              0.55
+hostagent-node0-0              0.55
+hostagent-node2-0              0.50
+hostagent-node5-0              0.46
+
+----------------------------------------
+Number of requests logged: 101
+Time: 2024-09-16 06:07:09.130:
+
+PODNAME                        CPU (%)
+app2-0                         114.20
+app1-1                         97.70
+app1-0                         95.25
+app2-1                         78.52
+app3-0                         37.65
+hostagent-node1-0              1.07
+hostagent-node3-0              0.56
+hostagent-node4-0              0.51
+hostagent-node2-0              0.50
+hostagent-node5-0              0.49
+hostagent-node0-0              0.45
+
+----------------------------------------
+Number of requests logged: 98
+Time: 2024-09-16 06:07:09.709:
+
+PODNAME                        CPU (%)
+app1-0                         115.09
+app2-1                         92.09
+app2-0                         77.55
+app1-1                         68.75
+app3-0                         25.75
+hostagent-node3-0              2.34
+hostagent-node1-0              1.36
+hostagent-node4-0              0.72
+hostagent-node2-0              0.51
+hostagent-node5-0              0.40
+hostagent-node0-0              0.31
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:10.227:
+
+PODNAME                        CPU (%)
+app2-0                         111.35
+app1-0                         97.68
+app1-1                         93.30
+app2-1                         80.82
+app3-0                         33.28
+hostagent-node3-0              1.68
+hostagent-node1-0              1.51
+hostagent-node2-0              0.57
+hostagent-node5-0              0.55
+hostagent-node0-0              0.53
+hostagent-node4-0              0.49
+
+----------------------------------------
+Number of requests logged: 99
+Time: 2024-09-16 06:07:10.808:
+
+PODNAME                        CPU (%)
+app1-0                         105.60
+app2-0                         100.05
+app1-1                         83.85
+app2-1                         77.79
+app3-0                         31.70
+hostagent-node1-0              1.71
+hostagent-node3-0              0.74
+hostagent-node4-0              0.63
+hostagent-node5-0              0.40
+hostagent-node0-0              0.32
+hostagent-node2-0              0.31
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:11.328:
+
+PODNAME                        CPU (%)
+app2-0                         115.63
+app1-0                         93.48
+app1-1                         93.31
+app2-1                         83.09
+app3-0                         34.62
+hostagent-node3-0              2.00
+hostagent-node1-0              1.33
+hostagent-node4-0              0.74
+hostagent-node2-0              0.56
+hostagent-node0-0              0.53
+hostagent-node5-0              0.53
+
+----------------------------------------
+Number of requests logged: 100
+Time: 2024-09-16 06:07:11.910:
+
+PODNAME                        CPU (%)
+app2-0                         121.09
+app1-1                         89.54
+app1-0                         82.15
+app2-1                         70.05
+app3-0                         29.73
+hostagent-node3-0              1.47
+hostagent-node0-0              0.75
+hostagent-node4-0              0.67
+hostagent-node2-0              0.44
+hostagent-node5-0              0.37
+hostagent-node1-0              0.28
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:12.423:
+
+PODNAME                        CPU (%)
+app1-0                         123.10
+app2-1                         95.22
+app2-0                         90.57
+app1-1                         75.83
+app3-0                         33.55
+hostagent-node3-0              2.35
+hostagent-node1-0              1.46
+hostagent-node5-0              0.54
+hostagent-node4-0              0.53
+hostagent-node2-0              0.51
+hostagent-node0-0              0.45
+
+----------------------------------------
+Number of requests logged: 94
+Time: 2024-09-16 06:07:13.014:
+
+PODNAME                        CPU (%)
+app2-0                         113.70
+app1-1                         103.35
+app1-0                         96.00
+app2-1                         86.28
+app3-0                         29.99
+hostagent-node3-0              1.79
+hostagent-node1-0              1.30
+hostagent-node4-0              0.65
+hostagent-node0-0              0.54
+hostagent-node2-0              0.40
+hostagent-node5-0              0.39
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:13.527:
+
+PODNAME                        CPU (%)
+app2-0                         107.84
+app1-0                         99.80
+app1-1                         90.78
+app2-1                         86.63
+app3-0                         33.66
+hostagent-node3-0              1.63
+hostagent-node0-0              1.48
+hostagent-node1-0              1.31
+hostagent-node2-0              0.49
+hostagent-node4-0              0.48
+hostagent-node5-0              0.46
+
+----------------------------------------
+Number of requests logged: 100
+Time: 2024-09-16 06:07:14.110:
+
+PODNAME                        CPU (%)
+app1-0                         106.76
+app2-0                         98.28
+app2-1                         87.15
+app1-1                         74.88
+app3-0                         32.92
+hostagent-node1-0              1.84
+hostagent-node4-0              0.63
+hostagent-node2-0              0.52
+hostagent-node3-0              0.51
+hostagent-node5-0              0.47
+hostagent-node0-0              0.36
+
+----------------------------------------
+Number of requests logged: 103
+Time: 2024-09-16 06:07:14.628:
+
+PODNAME                        CPU (%)
+app1-0                         120.25
+app2-1                         96.87
+app2-0                         92.16
+app1-1                         83.20
+app3-0                         29.42
+hostagent-node3-0              1.39
+hostagent-node1-0              1.27
+hostagent-node4-0              0.76
+hostagent-node5-0              0.49
+hostagent-node2-0              0.47
+hostagent-node0-0              0.35
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:15.210:
+
+PODNAME                        CPU (%)
+app1-0                         115.82
+app2-0                         91.40
+app1-1                         82.76
+app2-1                         81.54
+app3-0                         29.08
+hostagent-node3-0              1.33
+hostagent-node2-0              1.12
+hostagent-node1-0              1.04
+hostagent-node5-0              0.63
+hostagent-node0-0              0.56
+hostagent-node4-0              0.44
+
+----------------------------------------
+Number of requests logged: 103
+Time: 2024-09-16 06:07:15.729:
+
+PODNAME                        CPU (%)
+app1-0                         116.76
+app2-0                         92.56
+app2-1                         92.55
+app1-1                         82.20
+app3-0                         32.17
+hostagent-node3-0              1.99
+hostagent-node1-0              1.22
+hostagent-node4-0              0.66
+hostagent-node2-0              0.49
+hostagent-node5-0              0.48
+hostagent-node0-0              0.35
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:16.311:
+
+PODNAME                        CPU (%)
+app2-0                         112.69
+app1-0                         95.21
+app1-1                         94.59
+app2-1                         89.00
+app3-0                         31.59
+hostagent-node3-0              2.54
+hostagent-node1-0              1.29
+hostagent-node0-0              0.52
+hostagent-node5-0              0.47
+hostagent-node2-0              0.40
+hostagent-node4-0              0.39
+
+----------------------------------------
+Number of requests logged: 100
+Time: 2024-09-16 06:07:16.827:
+
+PODNAME                        CPU (%)
+app1-0                         110.03
+app2-0                         97.29
+app2-1                         96.11
+app1-1                         87.28
+app3-0                         29.66
+hostagent-node3-0              2.48
+hostagent-node4-0              0.60
+hostagent-node0-0              0.55
+hostagent-node1-0              0.41
+hostagent-node5-0              0.41
+hostagent-node2-0              0.33
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:17.415:
+
+PODNAME                        CPU (%)
+app2-0                         115.90
+app1-0                         98.75
+app1-1                         98.31
+app2-1                         83.77
+app3-0                         30.99
+hostagent-node1-0              2.21
+hostagent-node3-0              1.78
+hostagent-node0-0              0.74
+hostagent-node4-0              0.47
+hostagent-node2-0              0.43
+hostagent-node5-0              0.40
+
+----------------------------------------
+Number of requests logged: 107
+Time: 2024-09-16 06:07:17.930:
+
+PODNAME                        CPU (%)
+app1-0                         108.80
+app2-1                         94.76
+app2-0                         88.20
+app1-1                         74.98
+app3-0                         38.66
+hostagent-node3-0              2.17
+hostagent-node1-0              0.87
+hostagent-node4-0              0.63
+hostagent-node0-0              0.52
+hostagent-node2-0              0.36
+hostagent-node5-0              0.30
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:18.509:
+
+PODNAME                        CPU (%)
+app2-0                         113.14
+app1-0                         97.26
+app1-1                         81.16
+app2-1                         72.09
+app3-0                         32.74
+hostagent-node3-0              2.26
+hostagent-node1-0              1.27
+hostagent-node4-0              0.57
+hostagent-node0-0              0.56
+hostagent-node5-0              0.46
+hostagent-node2-0              0.41
+
+----------------------------------------
+Number of requests logged: 102
+Time: 2024-09-16 06:07:19.027:
+
+PODNAME                        CPU (%)
+app2-0                         114.53
+app1-1                         104.05
+app1-0                         89.61
+app2-1                         84.81
+app3-0                         28.18
+hostagent-node1-0              1.61
+hostagent-node3-0              0.84
+hostagent-node2-0              0.62
+hostagent-node5-0              0.59
+hostagent-node4-0              0.55
+hostagent-node0-0              0.54
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:19.615:
+
+PODNAME                        CPU (%)
+app1-0                         114.93
+app2-1                         100.01
+app2-0                         71.35
+app1-1                         71.14
+app3-0                         22.76
+hostagent-node3-0              4.01
+hostagent-node1-0              1.34
+hostagent-node0-0              0.72
+hostagent-node4-0              0.48
+hostagent-node5-0              0.42
+hostagent-node2-0              0.39
+
+----------------------------------------
+Number of requests logged: 98
+Time: 2024-09-16 06:07:20.212:
+
+PODNAME                        CPU (%)
+app1-0                         115.56
+app2-1                         92.12
+app2-0                         90.91
+app1-1                         86.26
+app3-0                         37.92
+hostagent-node1-0              2.06
+hostagent-node3-0              1.95
+hostagent-node4-0              0.50
+hostagent-node2-0              0.47
+hostagent-node5-0              0.47
+hostagent-node0-0              0.39
+
+----------------------------------------
+Number of requests logged: 100
+Time: 2024-09-16 06:07:20.727:
+
+PODNAME                        CPU (%)
+app2-0                         108.60
+app1-1                         97.40
+app1-0                         96.76
+app2-1                         81.47
+app3-0                         30.33
+hostagent-node3-0              1.67
+hostagent-node1-0              1.60
+hostagent-node0-0              0.61
+hostagent-node4-0              0.52
+hostagent-node5-0              0.47
+hostagent-node2-0              0.45
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:21.309:
+
+PODNAME                        CPU (%)
+app1-0                         103.53
+app2-0                         86.83
+app2-1                         81.29
+app1-1                         74.96
+app3-0                         27.99
+hostagent-node3-0              2.22
+hostagent-node1-0              1.71
+hostagent-node4-0              0.59
+hostagent-node2-0              0.40
+hostagent-node0-0              0.40
+hostagent-node5-0              0.37
+
+----------------------------------------
+Number of requests logged: 99
+Time: 2024-09-16 06:07:21.828:
+
+PODNAME                        CPU (%)
+app2-0                         115.09
+app1-0                         94.53
+app1-1                         89.80
+app2-1                         82.68
+app3-0                         33.45
+hostagent-node1-0              2.03
+hostagent-node3-0              1.65
+hostagent-node2-0              0.66
+hostagent-node5-0              0.64
+hostagent-node0-0              0.54
+hostagent-node4-0              0.53
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:22.409:
+
+PODNAME                        CPU (%)
+app1-0                         105.79
+app2-0                         102.71
+app1-1                         79.30
+app2-1                         73.93
+app3-0                         34.16
+hostagent-node1-0              2.21
+hostagent-node3-0              1.87
+hostagent-node0-0              0.65
+hostagent-node2-0              0.51
+hostagent-node5-0              0.46
+hostagent-node4-0              0.38
+
+----------------------------------------
+Number of requests logged: 104
+Time: 2024-09-16 06:07:22.927:
+
+PODNAME                        CPU (%)
+app1-0                         117.77
+app2-1                         93.95
+app2-0                         88.11
+app1-1                         84.38
+app3-0                         30.74
+hostagent-node3-0              1.89
+hostagent-node1-0              1.67
+hostagent-node4-0              1.32
+hostagent-node2-0              0.66
+hostagent-node0-0              0.57
+hostagent-node5-0              0.47
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:23.517:
+
+PODNAME                        CPU (%)
+app1-0                         111.25
+app2-1                         94.83
+app1-1                         85.47
+app2-0                         83.88
+app3-0                         31.71
+hostagent-node3-0              3.23
+hostagent-node1-0              2.12
+hostagent-node0-0              0.74
+hostagent-node4-0              0.46
+hostagent-node5-0              0.40
+hostagent-node2-0              0.39
+
+----------------------------------------
+Number of requests logged: 100
+Time: 2024-09-16 06:07:24.029:
+
+PODNAME                        CPU (%)
+app2-0                         121.97
+app1-1                         96.08
+app1-0                         86.08
+app2-1                         74.29
+app3-0                         31.36
+hostagent-node3-0              2.28
+hostagent-node1-0              1.65
+hostagent-node5-0              0.67
+hostagent-node2-0              0.65
+hostagent-node4-0              0.57
+hostagent-node0-0              0.56
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:24.609:
+
+PODNAME                        CPU (%)
+app1-0                         101.92
+app2-0                         93.58
+app1-1                         79.51
+app2-1                         75.52
+app3-0                         31.89
+hostagent-node1-0              2.06
+hostagent-node3-0              1.29
+hostagent-node5-0              0.57
+hostagent-node2-0              0.52
+hostagent-node4-0              0.50
+hostagent-node0-0              0.49
+
+----------------------------------------
+Number of requests logged: 105
+Time: 2024-09-16 06:07:25.125:
+
+PODNAME                        CPU (%)
+app1-0                         104.40
+app2-0                         99.68
+app2-1                         86.75
+app1-1                         84.18
+app3-0                         30.35
+hostagent-node3-0              2.53
+hostagent-node1-0              1.58
+hostagent-node5-0              0.55
+hostagent-node0-0              0.52
+hostagent-node2-0              0.52
+hostagent-node4-0              0.48
+
+----------------------------------------
+Number of requests logged: 100
+Time: 2024-09-16 06:07:25.710:
+
+PODNAME                        CPU (%)
+app1-0                         118.59
+app2-0                         87.29
+app2-1                         80.78
+app1-1                         78.33
+app3-0                         30.24
+hostagent-node3-0              2.20
+hostagent-node1-0              0.96
+hostagent-node5-0              0.72
+hostagent-node4-0              0.61
+hostagent-node0-0              0.55
+hostagent-node2-0              0.40
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:26.228:
+
+PODNAME                        CPU (%)
+app2-0                         110.27
+app1-1                         96.85
+app1-0                         88.51
+app2-1                         82.61
+app3-0                         35.66
+hostagent-node1-0              2.21
+hostagent-node3-0              2.17
+hostagent-node5-0              0.51
+hostagent-node4-0              0.47
+hostagent-node2-0              0.46
+hostagent-node0-0              0.36
+
+----------------------------------------
+Number of requests logged: 97
+Time: 2024-09-16 06:07:26.818:
+
+PODNAME                        CPU (%)
+app2-0                         115.64
+app1-0                         97.66
+app1-1                         92.99
+app2-1                         77.72
+app3-0                         31.20
+hostagent-node3-0              2.90
+hostagent-node1-0              1.15
+hostagent-node0-0              0.65
+hostagent-node5-0              0.62
+hostagent-node4-0              0.55
+hostagent-node2-0              0.47
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:27.410:
+
+PODNAME                        CPU (%)
+app1-0                         116.52
+app2-1                         94.08
+app2-0                         88.08
+app1-1                         65.83
+app3-0                         33.62
+hostagent-node3-0              3.26
+hostagent-node1-0              1.43
+hostagent-node4-0              0.63
+hostagent-node0-0              0.57
+hostagent-node5-0              0.47
+hostagent-node2-0              0.46
+
+----------------------------------------
+Number of requests logged: 98
+Time: 2024-09-16 06:07:27.928:
+
+PODNAME                        CPU (%)
+app2-0                         114.87
+app1-1                         94.11
+app1-0                         92.72
+app2-1                         84.23
+app3-0                         30.64
+hostagent-node3-0              1.84
+hostagent-node1-0              1.75
+hostagent-node5-0              1.42
+hostagent-node4-0              0.68
+hostagent-node2-0              0.46
+hostagent-node0-0              0.40
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:28.508:
+
+PODNAME                        CPU (%)
+app1-0                         108.68
+app2-0                         105.85
+app2-1                         78.64
+app1-1                         76.54
+app3-0                         30.81
+hostagent-node1-0              1.42
+hostagent-node3-0              0.95
+hostagent-node0-0              0.70
+hostagent-node5-0              0.49
+hostagent-node4-0              0.47
+hostagent-node2-0              0.45
+
+----------------------------------------
+Number of requests logged: 95
+Time: 2024-09-16 06:07:29.028:
+
+PODNAME                        CPU (%)
+app2-0                         126.45
+app1-1                         104.68
+app1-0                         84.16
+app2-1                         56.97
+app3-0                         41.89
+hostagent-node3-0              1.97
+hostagent-node1-0              1.29
+hostagent-node0-0              0.74
+hostagent-node4-0              0.47
+hostagent-node5-0              0.46
+hostagent-node2-0              0.37
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:29.610:
+
+PODNAME                        CPU (%)
+app2-0                         120.20
+app1-1                         92.80
+app1-0                         80.49
+app2-1                         71.02
+app3-0                         32.97
+hostagent-node3-0              1.75
+hostagent-node1-0              1.24
+hostagent-node5-0              0.64
+hostagent-node2-0              0.58
+hostagent-node0-0              0.56
+hostagent-node4-0              0.42
+
+----------------------------------------
+Number of requests logged: 105
+Time: 2024-09-16 06:07:30.128:
+
+PODNAME                        CPU (%)
+app1-1                         43.08
+app2-1                         40.83
+app2-0                         21.25
+app1-0                         19.45
+app3-0                         12.07
+hostagent-node1-0              2.10
+hostagent-node3-0              2.04
+hostagent-node0-0              1.09
+hostagent-node4-0              0.58
+hostagent-node5-0              0.51
+hostagent-node2-0              0.49
+
+----------------------------------------
+Number of requests logged: 25
+Time: 2024-09-16 06:07:30.641:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              2.21
+hostagent-node3-0              1.85
+hostagent-node0-0              0.65
+app3-0                         0.61
+app1-1                         0.57
+app2-1                         0.51
+hostagent-node5-0              0.47
+hostagent-node2-0              0.45
+app2-0                         0.40
+hostagent-node4-0              0.37
+app1-0                         0.28
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:31.154:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              2.07
+hostagent-node3-0              1.64
+app3-0                         0.60
+hostagent-node2-0              0.53
+hostagent-node5-0              0.52
+hostagent-node0-0              0.50
+hostagent-node4-0              0.45
+app2-1                         0.43
+app1-1                         0.40
+app1-0                         0.34
+app2-0                         0.18
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:31.667:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.61
+hostagent-node1-0              0.98
+hostagent-node2-0              0.69
+app1-1                         0.61
+app3-0                         0.56
+app2-1                         0.55
+hostagent-node4-0              0.52
+hostagent-node5-0              0.50
+app2-0                         0.42
+hostagent-node0-0              0.38
+app1-0                         0.23
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:32.180:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.43
+app2-1                         0.65
+hostagent-node1-0              0.56
+hostagent-node4-0              0.47
+app1-0                         0.40
+hostagent-node0-0              0.38
+app3-0                         0.38
+hostagent-node2-0              0.38
+app1-1                         0.36
+hostagent-node5-0              0.34
+app2-0                         0.21
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:32.694:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.25
+hostagent-node3-0              1.07
+app1-1                         0.67
+app3-0                         0.63
+app2-1                         0.57
+hostagent-node0-0              0.57
+hostagent-node5-0              0.55
+app2-0                         0.48
+hostagent-node2-0              0.47
+hostagent-node4-0              0.47
+app1-0                         0.25
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:33.206:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              2.23
+hostagent-node1-0              1.31
+hostagent-node4-0              0.57
+app1-1                         0.54
+hostagent-node5-0              0.49
+app1-0                         0.43
+hostagent-node0-0              0.43
+hostagent-node2-0              0.39
+app3-0                         0.37
+app2-1                         0.36
+app2-0                         0.29
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:33.719:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.86
+hostagent-node1-0              1.31
+hostagent-node4-0              0.61
+hostagent-node5-0              0.60
+app2-0                         0.58
+app3-0                         0.58
+app1-1                         0.55
+app2-1                         0.52
+hostagent-node2-0              0.40
+hostagent-node0-0              0.34
+app1-0                         0.19
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:34.231:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.41
+hostagent-node3-0              1.32
+hostagent-node4-0              1.17
+app3-0                         0.56
+app1-0                         0.47
+hostagent-node0-0              0.45
+app2-0                         0.42
+app2-1                         0.38
+hostagent-node2-0              0.38
+hostagent-node5-0              0.35
+app1-1                         0.34
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:34.743:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              2.69
+hostagent-node3-0              1.82
+hostagent-node4-0              0.59
+app1-1                         0.55
+app2-1                         0.53
+app3-0                         0.52
+hostagent-node0-0              0.51
+hostagent-node5-0              0.42
+app1-0                         0.37
+hostagent-node2-0              0.30
+app2-0                         0.23
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:35.256:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.81
+hostagent-node3-0              1.15
+hostagent-node0-0              0.84
+app3-0                         0.45
+hostagent-node4-0              0.43
+app2-0                         0.42
+app2-1                         0.39
+app1-1                         0.38
+app1-0                         0.35
+hostagent-node2-0              0.33
+hostagent-node5-0              0.29
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:35.769:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.99
+hostagent-node1-0              1.11
+hostagent-node5-0              0.57
+app3-0                         0.55
+app2-1                         0.53
+hostagent-node2-0              0.49
+app1-1                         0.43
+hostagent-node0-0              0.42
+hostagent-node4-0              0.39
+app2-0                         0.25
+app1-0                         0.22
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:36.281:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              2.37
+hostagent-node1-0              1.27
+app1-1                         0.67
+hostagent-node2-0              0.64
+hostagent-node0-0              0.55
+app2-1                         0.46
+hostagent-node4-0              0.41
+app1-0                         0.41
+app3-0                         0.38
+app2-0                         0.38
+hostagent-node5-0              0.37
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:36.794:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.21
+app2-1                         0.59
+hostagent-node5-0              0.59
+app3-0                         0.54
+hostagent-node4-0              0.53
+hostagent-node2-0              0.53
+hostagent-node0-0              0.51
+app1-1                         0.36
+hostagent-node1-0              0.35
+app2-0                         0.28
+app1-0                         0.26
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:37.305:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.53
+app2-1                         0.66
+hostagent-node1-0              0.65
+hostagent-node4-0              0.61
+app1-1                         0.56
+hostagent-node0-0              0.51
+hostagent-node5-0              0.45
+app1-0                         0.42
+app3-0                         0.40
+hostagent-node2-0              0.37
+app2-0                         0.36
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:37.817:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.22
+hostagent-node4-0              0.62
+hostagent-node2-0              0.61
+hostagent-node3-0              0.58
+app3-0                         0.54
+app2-1                         0.53
+hostagent-node0-0              0.53
+hostagent-node5-0              0.48
+app1-1                         0.47
+app2-0                         0.29
+app1-0                         0.25
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:38.329:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.38
+app1-1                         0.69
+app2-0                         0.69
+hostagent-node5-0              0.66
+hostagent-node0-0              0.58
+hostagent-node3-0              0.50
+hostagent-node2-0              0.43
+app2-1                         0.43
+hostagent-node4-0              0.38
+app1-0                         0.36
+app3-0                         0.35
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:38.841:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              2.36
+hostagent-node1-0              1.25
+app3-0                         0.70
+hostagent-node5-0              0.68
+hostagent-node2-0              0.63
+hostagent-node0-0              0.57
+app2-1                         0.52
+hostagent-node4-0              0.51
+app1-1                         0.43
+app1-0                         0.34
+app2-0                         0.27
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:39.353:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.24
+hostagent-node1-0              0.98
+hostagent-node5-0              0.57
+app1-1                         0.56
+hostagent-node2-0              0.55
+hostagent-node0-0              0.54
+app3-0                         0.51
+hostagent-node4-0              0.49
+app2-0                         0.45
+app2-1                         0.44
+app1-0                         0.44
+
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:39.867:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.75
+hostagent-node1-0              1.22
+hostagent-node5-0              0.69
+app3-0                         0.56
+hostagent-node0-0              0.56
+app2-1                         0.52
+hostagent-node4-0              0.51
+hostagent-node2-0              0.46
+app1-1                         0.39
+app1-0                         0.37
+app2-0                         0.21
+
+Time is up. Exiting...
+{"time":"2024-09-16T06:07:39.926800873Z","level":"ERROR","msg":"Failed to parse CPU Utilizations and ReqStats from Node 0: invalid response from host agent: "}
+panic: invalid response from host agent: 
+
+goroutine 540 [running]:
+main.getCPUUtilAndReqStatsFromCluster.func1(0x0, {0x0, {0xc000400030, 0x26}, {0xc000014450, 0xc}, 0x7f95, 0xc00048bb60, 0x7d00, 0xc00025b810})
+	/users/twaheed/multiparty-lb/centralcontroller/main.go:404 +0x196
+created by main.getCPUUtilAndReqStatsFromCluster in goroutine 33
+	/users/twaheed/multiparty-lb/centralcontroller/main.go:399 +0x88
+Nodes:
+Node 0:
+{0 node0.k8s-twaheed.mlnetwork.emulab.net 155.98.36.37 32661 map[hostagent-node0-0:{hostagent-node0-0 hostagent-node0 -1 kubepods-burstable.slice/kubepods-burstable-pod82dc7f51_5a6a_4dc9_bcae_95b3e9be72f9.slice}] 32000 <nil>}
+
+Node 1:
+{1 node1.k8s-twaheed.mlnetwork.emulab.net 155.98.36.35 32428 map[app1-0:{app1-0 app1 0.5 kubepods-burstable.slice/kubepods-burstable-pod808136ed_ce82_4615_b259_10c2bad86106.slice} app2-0:{app2-0 app2 0.5 kubepods-burstable.slice/kubepods-burstable-pod58c3fc1f_ae11_4c5c_bb48_734e25124d62.slice} hostagent-node1-0:{hostagent-node1-0 hostagent-node1 -1 kubepods-burstable.slice/kubepods-burstable-poda340d0ac_1a83_4d19_a962_95aa2416ab58.slice}] 2100 <nil>}
+
+Node 2:
+{2 node2.k8s-twaheed.mlnetwork.emulab.net 155.98.36.32 31064 map[hostagent-node2-0:{hostagent-node2-0 hostagent-node2 -1 kubepods-burstable.slice/kubepods-burstable-podfce4bfb6_47d2_4d64_82f9_4d82a9c49873.slice}] 2100 <nil>}
+
+Node 3:
+{3 node3.k8s-twaheed.mlnetwork.emulab.net 155.98.36.29 31533 map[app1-1:{app1-1 app1 0.3333333333333333 kubepods-burstable.slice/kubepods-burstable-podc56e7c2d_aa06_4dd8_a571_3c4da8d3c9a7.slice} app2-1:{app2-1 app2 0.3333333333333333 kubepods-burstable.slice/kubepods-burstable-pod568d1c45_64b2_4546_b481_7501f6dea918.slice} app3-0:{app3-0 app3 0.3333333333333333 kubepods-burstable.slice/kubepods-burstable-pod57e4fa40_3ccb_47a4_976a_7c79bbae3c9e.slice} hostagent-node3-0:{hostagent-node3-0 hostagent-node3 -1 kubepods-burstable.slice/kubepods-burstable-pod00a8871b_026a_43be_913a_71cb62fae5bd.slice}] 2100 <nil>}
+
+Node 4:
+{4 node4.k8s-twaheed.mlnetwork.emulab.net 155.98.36.40 31006 map[hostagent-node4-0:{hostagent-node4-0 hostagent-node4 -1 kubepods-burstable.slice/kubepods-burstable-pod3ecb2dba_f48c_45a1_a225_3dc24cba649f.slice}] 32000 <nil>}
+
+Node 5:
+{5 node5.k8s-twaheed.mlnetwork.emulab.net 155.98.36.23 32088 map[hostagent-node5-0:{hostagent-node5-0 hostagent-node5 -1 kubepods-burstable.slice/kubepods-burstable-pod6b6a86dd_c20f_43f1_b0b9_458fd2156588.slice}] 32000 <nil>}
+
+Pods to print: [hostagent-node0-0 app1-0 app2-0 hostagent-node1-0 hostagent-node2-0 app1-1 app2-1 app3-0 hostagent-node3-0 hostagent-node4-0 hostagent-node5-0]
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 195.159607, "app1-1": 0.0}, "app2": {"app2-0": 14.840393000000006, "app2-1": 174.627391}, "app3": {"app3-0": 35.372609}}}
+----------------------------------------
+Number of requests logged: 49
+Time: 2024-09-16 06:07:55.995:
+
+PODNAME                        CPU (%)
+app1-0                         109.69
+app2-0                         101.33
+app1-1                         90.47
+app2-1                         88.14
+app3-0                         35.37
+hostagent-node3-0              1.26
+hostagent-node1-0              1.07
+hostagent-node4-0              0.66
+hostagent-node5-0              0.61
+hostagent-node0-0              0.40
+hostagent-node2-0              0.32
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 196.64228, "app1-1": 0.0}, "app2": {"app2-0": 13.35772, "app2-1": 175.536384}, "app3": {"app3-0": 34.463616}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:56.584:
+
+PODNAME                        CPU (%)
+app2-0                         105.26
+app1-0                         99.57
+app1-1                         94.66
+app2-1                         83.07
+app3-0                         33.55
+hostagent-node1-0              1.98
+hostagent-node3-0              1.88
+hostagent-node4-0              0.57
+hostagent-node5-0              0.51
+hostagent-node2-0              0.46
+hostagent-node0-0              0.27
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 19.31424916666633, "app1-1": 172.87008116666703}, "app2": {"app2-0": 190.31060933333333, "app2-1": 0.0}, "app3": {"app3-0": 36.75477733333333}}}
+----------------------------------------
+Number of requests logged: 103
+Time: 2024-09-16 06:07:57.172:
+
+PODNAME                        CPU (%)
+app1-0                         159.99
+app2-1                         141.33
+app2-0                         51.81
+app3-0                         41.34
+app1-1                         22.17
+hostagent-node3-0              1.61
+hostagent-node1-0              1.30
+hostagent-node4-0              0.64
+hostagent-node5-0              0.62
+hostagent-node0-0              0.44
+hostagent-node2-0              0.39
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 19.137361749999656, "app1-1": 172.52756725000035}, "app2": {"app2-0": 190.759882, "app2-1": 0.0}, "app3": {"app3-0": 37.3696765}}}
+----------------------------------------
+Number of requests logged: 57
+Time: 2024-09-16 06:07:57.795:
+
+PODNAME                        CPU (%)
+app1-0                         181.51
+app2-1                         166.95
+app3-0                         39.21
+app2-0                         25.16
+app1-1                         8.60
+hostagent-node1-0              1.91
+hostagent-node3-0              1.58
+hostagent-node5-0              0.62
+hostagent-node4-0              0.50
+hostagent-node2-0              0.47
+hostagent-node0-0              0.36
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 17.952112799999654, "app1-1": 171.57062500000035}, "app2": {"app2-0": 191.24403560000002, "app2-1": 0.0}, "app3": {"app3-0": 37.6255234}}}
+----------------------------------------
+Number of requests logged: 47
+Time: 2024-09-16 06:07:58.368:
+
+PODNAME                        CPU (%)
+app2-0                         184.55
+app1-1                         160.49
+app3-0                         38.65
+app1-0                         20.46
+app2-1                         8.63
+hostagent-node1-0              0.76
+hostagent-node3-0              0.64
+hostagent-node4-0              0.57
+hostagent-node0-0              0.52
+hostagent-node2-0              0.49
+hostagent-node5-0              0.47
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 16.109844916666333, "app1-1": 171.48268075000036}, "app2": {"app2-0": 192.68882983333333, "app2-1": 0.0}, "app3": {"app3-0": 37.315993999999996}}}
+----------------------------------------
+Number of requests logged: 114
+Time: 2024-09-16 06:07:58.991:
+
+PODNAME                        CPU (%)
+app2-0                         199.43
+app1-1                         169.67
+app3-0                         35.77
+app1-0                         8.27
+hostagent-node3-0              2.18
+hostagent-node1-0              1.08
+hostagent-node5-0              0.63
+hostagent-node4-0              0.60
+app2-1                         0.48
+hostagent-node2-0              0.47
+hostagent-node0-0              0.38
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 16.163067499999656, "app1-1": 171.15729592857178}, "app2": {"app2-0": 192.7767732857143, "app2-1": 0.0}, "app3": {"app3-0": 37.78254485714285}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:07:59.592:
+
+PODNAME                        CPU (%)
+app2-0                         193.01
+app1-1                         169.42
+app3-0                         40.58
+app1-0                         16.27
+hostagent-node3-0              2.34
+hostagent-node1-0              1.59
+hostagent-node0-0              1.12
+hostagent-node2-0              0.47
+hostagent-node5-0              0.47
+hostagent-node4-0              0.45
+app2-1                         0.29
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 18.15512724999965, "app1-1": 170.91035050000036}, "app2": {"app2-0": 190.97734987500002, "app2-1": 0.0}, "app3": {"app3-0": 38.222126624999994}}}
+----------------------------------------
+Number of requests logged: 111
+Time: 2024-09-16 06:08:00.172:
+
+PODNAME                        CPU (%)
+app2-0                         177.77
+app1-1                         169.13
+app3-0                         41.30
+app1-0                         32.15
+hostagent-node1-0              1.54
+hostagent-node4-0              0.82
+hostagent-node5-0              0.61
+app2-1                         0.61
+hostagent-node2-0              0.48
+hostagent-node0-0              0.47
+hostagent-node3-0              0.34
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 19.937550166666313, "app1-1": 169.9202340555559}, "app2": {"app2-0": 188.59826122222225, "app2-1": 0.0}, "app3": {"app3-0": 38.61557733333333}}}
+----------------------------------------
+Number of requests logged: 64
+Time: 2024-09-16 06:08:00.779:
+
+PODNAME                        CPU (%)
+app2-0                         169.15
+app1-1                         163.92
+app3-0                         41.76
+app1-0                         32.28
+hostagent-node1-0              1.37
+hostagent-node3-0              1.13
+hostagent-node4-0              0.50
+hostagent-node2-0              0.46
+hostagent-node5-0              0.42
+app2-1                         0.41
+hostagent-node0-0              0.36
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 22.49256944999965, "app1-1": 168.61488775000035}, "app2": {"app2-0": 185.7864533, "app2-1": 0.0}, "app3": {"app3-0": 39.664134999999995}}}
+----------------------------------------
+Number of requests logged: 53
+Time: 2024-09-16 06:08:01.375:
+
+PODNAME                        CPU (%)
+app2-0                         160.18
+app1-1                         158.52
+app3-0                         49.10
+app1-0                         43.84
+hostagent-node3-0              2.31
+hostagent-node1-0              1.43
+hostagent-node4-0              0.66
+hostagent-node0-0              0.56
+hostagent-node5-0              0.54
+hostagent-node2-0              0.49
+app2-1                         0.30
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 21.916008863635994, "app1-1": 168.85857477272762}, "app2": {"app2-0": 186.42338590909094, "app2-1": 0.0}, "app3": {"app3-0": 39.480819999999994}}}
+----------------------------------------
+Number of requests logged: 109
+Time: 2024-09-16 06:08:01.999:
+
+PODNAME                        CPU (%)
+app2-0                         192.13
+app1-1                         171.35
+app3-0                         37.65
+app1-0                         16.10
+hostagent-node3-0              3.00
+hostagent-node1-0              1.31
+app2-1                         0.66
+hostagent-node4-0              0.60
+hostagent-node5-0              0.57
+hostagent-node2-0              0.49
+hostagent-node0-0              0.45
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 22.463615458332967, "app1-1": 168.57740245833367}, "app2": {"app2-0": 185.8728685, "app2-1": 0.0}, "app3": {"app3-0": 39.75908149999999}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:02.587:
+
+PODNAME                        CPU (%)
+app2-0                         179.25
+app1-1                         163.21
+app3-0                         42.82
+app1-0                         30.76
+hostagent-node1-0              1.51
+hostagent-node3-0              1.30
+app2-1                         0.56
+hostagent-node5-0              0.50
+hostagent-node2-0              0.49
+hostagent-node4-0              0.47
+hostagent-node0-0              0.46
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 22.931990807691932, "app1-1": 168.66084588461572}, "app2": {"app2-0": 185.5103501538462, "app2-1": 0.0}, "app3": {"app3-0": 39.78149507692307}}}
+----------------------------------------
+Number of requests logged: 112
+Time: 2024-09-16 06:08:03.191:
+
+PODNAME                        CPU (%)
+app2-0                         180.75
+app1-1                         170.15
+app3-0                         40.05
+app1-0                         28.06
+hostagent-node3-0              1.33
+hostagent-node4-0              0.75
+hostagent-node5-0              0.67
+hostagent-node0-0              0.58
+hostagent-node2-0              0.50
+app2-1                         0.41
+hostagent-node1-0              0.40
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 23.059066892856762, "app1-1": 168.2631468928575}, "app2": {"app2-0": 185.00518621428574, "app2-1": 0.0}, "app3": {"app3-0": 39.80110621428571}}}
+----------------------------------------
+Number of requests logged: 63
+Time: 2024-09-16 06:08:03.799:
+
+PODNAME                        CPU (%)
+app2-0                         177.93
+app1-1                         156.44
+app3-0                         40.06
+app1-0                         31.37
+hostagent-node3-0              1.98
+hostagent-node1-0              1.68
+hostagent-node5-0              0.60
+app2-1                         0.51
+hostagent-node0-0              0.48
+hostagent-node2-0              0.46
+hostagent-node4-0              0.39
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 23.2794404666663, "app1-1": 168.35261820000034}, "app2": {"app2-0": 184.82249840000003, "app2-1": 0.0}, "app3": {"app3-0": 39.74932066666666}}}
+----------------------------------------
+Number of requests logged: 50
+Time: 2024-09-16 06:08:04.391:
+
+PODNAME                        CPU (%)
+app2-0                         181.95
+app1-1                         166.11
+app3-0                         39.02
+app1-0                         29.86
+hostagent-node3-0              3.42
+hostagent-node1-0              1.51
+hostagent-node0-0              0.56
+hostagent-node2-0              0.51
+hostagent-node5-0              0.51
+hostagent-node4-0              0.43
+app2-1                         0.32
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 22.827638031249634, "app1-1": 168.53144196875036}, "app2": {"app2-0": 185.32705425000003, "app2-1": 0.0}, "app3": {"app3-0": 39.6232503125}}}
+----------------------------------------
+Number of requests logged: 111
+Time: 2024-09-16 06:08:04.987:
+
+PODNAME                        CPU (%)
+app2-0                         192.33
+app1-1                         170.86
+app3-0                         37.73
+app1-0                         16.41
+hostagent-node3-0              3.22
+hostagent-node4-0              0.74
+hostagent-node1-0              0.69
+hostagent-node5-0              0.68
+app2-1                         0.56
+hostagent-node0-0              0.46
+hostagent-node2-0              0.45
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 23.587288588234912, "app1-1": 168.30035076470622}, "app2": {"app2-0": 184.57848800000002, "app2-1": 0.0}, "app3": {"app3-0": 39.86542582352941}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:05.567:
+
+PODNAME                        CPU (%)
+app2-0                         172.22
+app1-1                         165.91
+app3-0                         43.74
+app1-0                         34.43
+hostagent-node3-0              1.37
+hostagent-node1-0              1.35
+hostagent-node4-0              0.59
+hostagent-node0-0              0.56
+hostagent-node5-0              0.45
+hostagent-node2-0              0.43
+app2-1                         0.38
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 23.33994261111073, "app1-1": 168.35066238888925}, "app2": {"app2-0": 184.82908733333338, "app2-1": 0.0}, "app3": {"app3-0": 39.818367555555554}}}
+----------------------------------------
+Number of requests logged: 112
+Time: 2024-09-16 06:08:06.197:
+
+PODNAME                        CPU (%)
+app2-0                         188.53
+app1-1                         170.33
+app3-0                         39.02
+app1-0                         18.01
+hostagent-node1-0              2.17
+hostagent-node3-0              1.76
+hostagent-node4-0              0.83
+hostagent-node5-0              0.59
+app2-1                         0.56
+hostagent-node0-0              0.55
+hostagent-node2-0              0.48
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 15.55722973684179, "app2-1": 168.09899921052664}, "app1": {"app1-0": 192.69281373684208, "app1-1": 0.0}, "app3": {"app3-0": 40.15104426315789}}}
+----------------------------------------
+Number of requests logged: 59
+Time: 2024-09-16 06:08:06.770:
+
+PODNAME                        CPU (%)
+app2-0                         162.02
+app1-1                         161.02
+app1-0                         49.71
+app3-0                         46.14
+hostagent-node1-0              1.90
+hostagent-node3-0              1.49
+hostagent-node0-0              0.79
+app2-1                         0.52
+hostagent-node5-0              0.52
+hostagent-node4-0              0.49
+hostagent-node2-0              0.32
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 24.972092574999635, "app1-1": 167.87477822500034}, "app2": {"app2-0": 183.26950115000002, "app2-1": 0.0}, "app3": {"app3-0": 40.366815499999994}}}
+----------------------------------------
+Number of requests logged: 51
+Time: 2024-09-16 06:08:07.383:
+
+PODNAME                        CPU (%)
+app2-0                         175.29
+app1-1                         163.35
+app3-0                         44.47
+app1-0                         32.42
+hostagent-node3-0              1.62
+hostagent-node1-0              1.31
+app2-1                         0.63
+hostagent-node2-0              0.57
+hostagent-node5-0              0.55
+hostagent-node0-0              0.52
+hostagent-node4-0              0.47
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 15.739768333333004, "app2-1": 168.0000003809527}, "app1": {"app1-0": 192.56844404761904, "app1-1": 0.0}, "app3": {"app3-0": 40.30821199999999}}}
+----------------------------------------
+Number of requests logged: 114
+Time: 2024-09-16 06:08:07.967:
+
+PODNAME                        CPU (%)
+app2-0                         192.61
+app1-1                         168.47
+app3-0                         39.14
+app1-0                         18.53
+hostagent-node3-0              1.58
+hostagent-node1-0              1.22
+hostagent-node4-0              0.92
+hostagent-node5-0              0.60
+app2-1                         0.54
+hostagent-node0-0              0.53
+hostagent-node2-0              0.49
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 24.496420522726922, "app1-1": 167.96003275000032}, "app2": {"app2-0": 183.71775931818183, "app2-1": 0.0}, "app3": {"app3-0": 40.254147090909086}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:08.587:
+
+PODNAME                        CPU (%)
+app2-0                         182.88
+app1-1                         167.90
+app3-0                         39.12
+app1-0                         22.21
+hostagent-node1-0              2.90
+hostagent-node3-0              2.04
+hostagent-node4-0              0.52
+hostagent-node2-0              0.46
+hostagent-node5-0              0.46
+app2-1                         0.38
+hostagent-node0-0              0.37
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 24.247784630434438, "app1-1": 167.84352015217425}, "app2": {"app2-0": 183.9325935652174, "app2-1": 0.0}, "app3": {"app3-0": 40.33685804347826}}}
+----------------------------------------
+Number of requests logged: 109
+Time: 2024-09-16 06:08:09.188:
+
+PODNAME                        CPU (%)
+app2-0                         188.18
+app1-1                         164.29
+app3-0                         42.16
+app1-0                         19.77
+hostagent-node3-0              2.46
+hostagent-node1-0              1.04
+hostagent-node5-0              0.69
+hostagent-node4-0              0.61
+hostagent-node0-0              0.56
+hostagent-node2-0              0.52
+app2-1                         0.48
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 24.519781083332987, "app1-1": 167.947028416667}, "app2": {"app2-0": 183.678101, "app2-1": 0.0}, "app3": {"app3-0": 40.250853666666664}}}
+----------------------------------------
+Number of requests logged: 59
+Time: 2024-09-16 06:08:09.802:
+
+PODNAME                        CPU (%)
+app2-0                         177.38
+app1-1                         171.86
+app3-0                         38.27
+app1-0                         29.24
+hostagent-node3-0              1.42
+hostagent-node1-0              0.99
+hostagent-node4-0              0.48
+hostagent-node5-0              0.46
+app2-1                         0.45
+hostagent-node0-0              0.44
+hostagent-node2-0              0.33
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 25.326718039999648, "app1-1": 167.77623456000032}, "app2": {"app2-0": 182.95567116, "app2-1": 0.0}, "app3": {"app3-0": 40.50615464}}}
+----------------------------------------
+Number of requests logged: 52
+Time: 2024-09-16 06:08:10.367:
+
+PODNAME                        CPU (%)
+app2-0                         165.27
+app1-1                         163.74
+app3-0                         46.63
+app1-0                         44.63
+hostagent-node3-0              1.55
+hostagent-node1-0              1.36
+hostagent-node5-0              0.62
+hostagent-node2-0              0.61
+hostagent-node0-0              0.54
+hostagent-node4-0              0.45
+app2-1                         0.34
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 25.523320096153498, "app1-1": 167.5665547115388}, "app2": {"app2-0": 182.71794973076925, "app2-1": 0.0}, "app3": {"app3-0": 40.674715115384615}}}
+----------------------------------------
+Number of requests logged: 107
+Time: 2024-09-16 06:08:10.993:
+
+PODNAME                        CPU (%)
+app2-0                         176.29
+app1-1                         162.05
+app3-0                         44.89
+app1-0                         30.71
+hostagent-node3-0              2.14
+hostagent-node1-0              2.08
+hostagent-node4-0              0.78
+hostagent-node5-0              0.63
+hostagent-node0-0              0.52
+app2-1                         0.48
+hostagent-node2-0              0.46
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 25.774973074073728, "app1-1": 167.5819911481485}, "app2": {"app2-0": 182.42884555555557, "app2-1": 0.0}, "app3": {"app3-0": 40.621827481481475}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:11.592:
+
+PODNAME                        CPU (%)
+app2-0                         174.57
+app1-1                         168.48
+app3-0                         39.25
+app1-0                         31.82
+hostagent-node3-0              2.43
+hostagent-node1-0              1.30
+hostagent-node0-0              0.55
+hostagent-node4-0              0.50
+hostagent-node2-0              0.36
+app2-1                         0.34
+hostagent-node5-0              0.34
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 25.94167530357106, "app1-1": 167.5205234821432}, "app2": {"app2-0": 182.2260418214286, "app2-1": 0.0}, "app3": {"app3-0": 40.64719364285713}}}
+----------------------------------------
+Number of requests logged: 114
+Time: 2024-09-16 06:08:12.187:
+
+PODNAME                        CPU (%)
+app2-0                         176.19
+app1-1                         164.59
+app3-0                         41.33
+app1-0                         31.71
+hostagent-node1-0              0.93
+hostagent-node5-0              0.64
+hostagent-node4-0              0.61
+app2-1                         0.56
+hostagent-node3-0              0.54
+hostagent-node2-0              0.49
+hostagent-node0-0              0.28
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 26.296495982758245, "app1-1": 167.6341117068969}, "app2": {"app2-0": 181.97190072413795, "app2-1": 0.0}, "app3": {"app3-0": 40.63428499999999}}}
+----------------------------------------
+Number of requests logged: 64
+Time: 2024-09-16 06:08:12.774:
+
+PODNAME                        CPU (%)
+app2-0                         174.40
+app1-1                         169.26
+app3-0                         40.27
+app1-0                         37.79
+hostagent-node3-0              2.50
+hostagent-node5-0              1.31
+hostagent-node1-0              1.27
+hostagent-node4-0              0.50
+hostagent-node2-0              0.47
+app2-1                         0.46
+hostagent-node0-0              0.33
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 26.927786049999625, "app1-1": 167.52609438333366}, "app2": {"app2-0": 181.32709930000001, "app2-1": 0.0}, "app3": {"app3-0": 40.72879096666666}}}
+----------------------------------------
+Number of requests logged: 52
+Time: 2024-09-16 06:08:13.371:
+
+PODNAME                        CPU (%)
+app1-1                         164.04
+app2-0                         162.22
+app1-0                         45.59
+app3-0                         43.47
+hostagent-node3-0              2.67
+hostagent-node1-0              0.79
+hostagent-node4-0              0.58
+hostagent-node0-0              0.56
+hostagent-node5-0              0.54
+hostagent-node2-0              0.53
+app2-1                         0.41
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.19558967741898, "app1-1": 167.53809935483903}, "app2": {"app2-0": 181.10258083870968, "app2-1": 0.0}, "app3": {"app3-0": 40.76007116129031}}}
+----------------------------------------
+Number of requests logged: 108
+Time: 2024-09-16 06:08:13.995:
+
+PODNAME                        CPU (%)
+app2-0                         173.85
+app1-1                         171.34
+app3-0                         41.70
+app1-0                         31.78
+hostagent-node1-0              2.87
+hostagent-node3-0              1.92
+hostagent-node4-0              0.74
+hostagent-node5-0              0.64
+app2-1                         0.52
+hostagent-node0-0              0.52
+hostagent-node2-0              0.50
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.529845453124622, "app1-1": 167.40262176562533}, "app2": {"app2-0": 180.77429381250002, "app2-1": 0.0}, "app3": {"app3-0": 40.90151749999999}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:14.555:
+
+PODNAME                        CPU (%)
+app2-0                         170.22
+app1-1                         161.69
+app3-0                         45.29
+app1-0                         39.41
+hostagent-node1-0              1.60
+hostagent-node3-0              0.56
+hostagent-node5-0              0.53
+hostagent-node4-0              0.49
+hostagent-node0-0              0.49
+hostagent-node2-0              0.48
+app2-1                         0.38
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 28.343522681817802, "app1-1": 167.05400140909123}, "app2": {"app2-0": 179.98836530303032, "app2-1": 0.0}, "app3": {"app3-0": 41.27788657575757}}}
+----------------------------------------
+Number of requests logged: 112
+Time: 2024-09-16 06:08:15.183:
+
+PODNAME                        CPU (%)
+app2-0                         154.05
+app1-1                         153.87
+app1-0                         56.41
+app3-0                         53.32
+hostagent-node3-0              3.61
+hostagent-node1-0              1.15
+app2-1                         0.79
+hostagent-node5-0              0.65
+hostagent-node4-0              0.59
+hostagent-node2-0              0.57
+hostagent-node0-0              0.43
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 12.872922147058503, "app2-1": 166.99930394117678}, "app1": {"app1-0": 195.50754723529406, "app1-1": 0.0}, "app3": {"app3-0": 41.381165441176464}}}
+----------------------------------------
+Number of requests logged: 65
+Time: 2024-09-16 06:08:15.799:
+
+PODNAME                        CPU (%)
+app2-0                         175.52
+app1-1                         163.10
+app3-0                         44.79
+app1-0                         36.03
+hostagent-node3-0              1.81
+hostagent-node1-0              1.24
+hostagent-node5-0              0.63
+hostagent-node4-0              0.60
+hostagent-node0-0              0.54
+app2-1                         0.52
+hostagent-node2-0              0.45
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 12.829124885713966, "app2-1": 167.18942094285745}, "app1": {"app1-0": 195.56696845714282, "app1-1": 0.0}, "app3": {"app3-0": 41.206672399999995}}}
+----------------------------------------
+Number of requests logged: 48
+Time: 2024-09-16 06:08:16.388:
+
+PODNAME                        CPU (%)
+app1-0                         109.70
+app2-0                         95.32
+app2-1                         89.68
+app1-1                         87.89
+app3-0                         35.27
+hostagent-node3-0              1.78
+hostagent-node1-0              1.49
+hostagent-node2-0              0.99
+hostagent-node4-0              0.68
+hostagent-node0-0              0.53
+hostagent-node5-0              0.48
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 12.533321069444128, "app2-1": 167.33179587500032}, "app1": {"app1-0": 195.86094055555552, "app1-1": 0.0}, "app3": {"app3-0": 41.062465749999994}}}
+----------------------------------------
+Number of requests logged: 103
+Time: 2024-09-16 06:08:16.991:
+
+PODNAME                        CPU (%)
+app1-0                         149.52
+app2-1                         114.62
+app2-0                         59.87
+app1-1                         56.63
+app3-0                         36.02
+hostagent-node3-0              2.33
+hostagent-node1-0              1.27
+hostagent-node5-0              0.72
+hostagent-node0-0              0.56
+hostagent-node4-0              0.55
+hostagent-node2-0              0.50
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 28.622761418918543, "app1-1": 167.62845422973007}, "app2": {"app2-0": 179.84445343243246, "app2-1": 0.0}, "app3": {"app3-0": 40.83876062162162}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:17.595:
+
+PODNAME                        CPU (%)
+app1-0                         209.75
+app2-1                         177.50
+app3-0                         32.79
+hostagent-node3-0              1.62
+app2-0                         1.60
+hostagent-node1-0              1.00
+app1-1                         0.55
+hostagent-node5-0              0.50
+hostagent-node4-0              0.49
+hostagent-node2-0              0.46
+hostagent-node0-0              0.43
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 12.164548868420752, "app2-1": 167.21578934210558}, "app1": {"app1-0": 195.77686199999994, "app1-1": 0.0}, "app3": {"app3-0": 40.725621526315784}}}
+----------------------------------------
+Number of requests logged: 110
+Time: 2024-09-16 06:08:18.271:
+
+PODNAME                        CPU (%)
+app2-0                         107.42
+app1-1                         96.76
+app1-0                         81.47
+app2-1                         54.79
+app3-0                         36.54
+hostagent-node1-0              1.19
+hostagent-node3-0              0.78
+hostagent-node4-0              0.70
+hostagent-node5-0              0.57
+hostagent-node0-0              0.54
+hostagent-node2-0              0.46
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 28.25213632051245, "app1-1": 167.32568993589777}, "app2": {"app2-0": 179.71680341025643, "app2-1": 0.0}, "app3": {"app3-0": 40.64324979487179}}}
+----------------------------------------
+Number of requests logged: 58
+Time: 2024-09-16 06:08:18.894:
+
+PODNAME                        CPU (%)
+app2-0                         187.27
+app1-1                         164.37
+app3-0                         37.51
+app1-0                         23.65
+app2-1                         5.23
+hostagent-node3-0              1.52
+hostagent-node1-0              1.51
+hostagent-node5-0              0.55
+hostagent-node4-0              0.52
+hostagent-node2-0              0.49
+hostagent-node0-0              0.31
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 28.50708864999963, "app1-1": 167.4080136250003}, "app2": {"app2-0": 179.35317495, "app2-1": 0.0}, "app3": {"app3-0": 40.452249975}}}
+----------------------------------------
+Number of requests logged: 48
+Time: 2024-09-16 06:08:19.467:
+
+PODNAME                        CPU (%)
+app1-0                         208.81
+app2-1                         164.10
+app3-0                         33.00
+hostagent-node1-0              1.37
+hostagent-node3-0              1.28
+app2-0                         1.07
+hostagent-node5-0              0.61
+hostagent-node2-0              0.59
+hostagent-node0-0              0.49
+hostagent-node4-0              0.47
+app1-1                         0.26
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 12.147908634146035, "app2-1": 167.37968063414667}, "app1": {"app1-0": 195.74562890243897, "app1-1": 0.0}, "app3": {"app3-0": 40.513856902439024}}}
+----------------------------------------
+Number of requests logged: 107
+Time: 2024-09-16 06:08:20.077:
+
+PODNAME                        CPU (%)
+app1-0                         138.92
+app2-1                         114.76
+app2-0                         71.75
+app1-1                         50.05
+app3-0                         42.98
+hostagent-node1-0              1.65
+hostagent-node3-0              0.75
+hostagent-node5-0              0.72
+hostagent-node4-0              0.54
+hostagent-node0-0              0.49
+hostagent-node2-0              0.49
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.915994833332945, "app1-1": 167.45849823809556}, "app2": {"app2-0": 179.9677333809524, "app2-1": 0.0}, "app3": {"app3-0": 40.42522997619047}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:20.668:
+
+PODNAME                        CPU (%)
+app2-0                         197.68
+app1-1                         167.45
+app3-0                         36.79
+app1-0                         12.71
+hostagent-node1-0              1.72
+hostagent-node3-0              1.58
+hostagent-node2-0              0.69
+hostagent-node0-0              0.61
+hostagent-node5-0              0.51
+hostagent-node4-0              0.40
+app2-1                         0.33
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.95769155813916, "app1-1": 167.3958764651166}, "app2": {"app2-0": 179.96670465116281, "app2-1": 0.0}, "app3": {"app3-0": 40.52851974418605}}}
+----------------------------------------
+Number of requests logged: 114
+Time: 2024-09-16 06:08:21.280:
+
+PODNAME                        CPU (%)
+app2-0                         179.39
+app1-1                         165.12
+app3-0                         44.87
+app1-0                         29.36
+hostagent-node3-0              1.62
+hostagent-node5-0              1.33
+hostagent-node1-0              1.22
+hostagent-node4-0              0.70
+app2-1                         0.54
+hostagent-node2-0              0.49
+hostagent-node0-0              0.23
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.931507056817807, "app1-1": 167.37299521590944}, "app2": {"app2-0": 180.0146541818182, "app2-1": 0.0}, "app3": {"app3-0": 40.57316602272727}}}
+----------------------------------------
+Number of requests logged: 67
+Time: 2024-09-16 06:08:21.867:
+
+PODNAME                        CPU (%)
+app2-0                         181.62
+app1-1                         167.06
+app3-0                         42.49
+app1-0                         26.14
+hostagent-node1-0              1.90
+hostagent-node3-0              1.88
+hostagent-node4-0              0.51
+hostagent-node0-0              0.47
+app2-1                         0.46
+hostagent-node5-0              0.42
+hostagent-node2-0              0.31
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 28.015918511110726, "app1-1": 167.26192193333367}, "app2": {"app2-0": 179.79424022222224, "app2-1": 0.0}, "app3": {"app3-0": 40.5482368}}}
+----------------------------------------
+Number of requests logged: 49
+Time: 2024-09-16 06:08:22.487:
+
+PODNAME                        CPU (%)
+app2-0                         169.49
+app1-1                         157.88
+app3-0                         39.45
+app1-0                         36.22
+hostagent-node1-0              1.33
+hostagent-node3-0              0.77
+hostagent-node4-0              0.62
+app2-1                         0.60
+hostagent-node2-0              0.50
+hostagent-node5-0              0.47
+hostagent-node0-0              0.39
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.81867636956484, "app1-1": 167.38403336956554}, "app2": {"app2-0": 180.02588389130437, "app2-1": 0.0}, "app3": {"app3-0": 40.46052689130435}}}
+----------------------------------------
+Number of requests logged: 115
+Time: 2024-09-16 06:08:23.087:
+
+PODNAME                        CPU (%)
+app2-0                         189.91
+app1-1                         169.50
+app3-0                         36.51
+app1-0                         22.32
+hostagent-node1-0              1.32
+hostagent-node3-0              0.71
+hostagent-node4-0              0.65
+hostagent-node5-0              0.64
+hostagent-node0-0              0.55
+app2-1                         0.54
+hostagent-node2-0              0.49
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 28.439834861701755, "app1-1": 167.1339630744684}, "app2": {"app2-0": 179.4380456382979, "app2-1": 0.0}, "app3": {"app3-0": 40.74391742553191}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:23.650:
+
+PODNAME                        CPU (%)
+app1-1                         156.53
+app2-0                         152.03
+app1-0                         56.11
+app3-0                         53.78
+hostagent-node3-0              1.53
+hostagent-node1-0              1.04
+hostagent-node5-0              0.57
+hostagent-node2-0              0.56
+hostagent-node0-0              0.52
+hostagent-node4-0              0.45
+app2-1                         0.36
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 12.097101093749714, "app2-1": 167.036308072917}, "app1": {"app1-0": 195.82959595833327, "app1-1": 0.0}, "app3": {"app3-0": 40.890388979166666}}}
+----------------------------------------
+Number of requests logged: 115
+Time: 2024-09-16 06:08:24.303:
+
+PODNAME                        CPU (%)
+app1-1                         165.65
+app2-0                         164.23
+app3-0                         47.77
+app1-0                         42.20
+hostagent-node1-0              0.83
+hostagent-node3-0              0.76
+hostagent-node2-0              0.62
+app2-1                         0.58
+hostagent-node4-0              0.53
+hostagent-node0-0              0.51
+hostagent-node5-0              0.49
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 28.61501537755062, "app1-1": 167.13402517346975}, "app2": {"app2-0": 179.3256172653062, "app2-1": 0.0}, "app3": {"app3-0": 40.80660746938776}}}
+----------------------------------------
+Number of requests logged: 64
+Time: 2024-09-16 06:08:24.883:
+
+PODNAME                        CPU (%)
+app2-0                         183.80
+app1-1                         168.16
+app3-0                         36.79
+app1-0                         23.72
+app2-1                         4.75
+hostagent-node3-0              1.83
+hostagent-node1-0              1.41
+hostagent-node5-0              0.81
+hostagent-node0-0              0.59
+hostagent-node2-0              0.47
+hostagent-node4-0              0.37
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 12.041593039999725, "app2-1": 165.59197772000036}, "app1": {"app1-0": 193.88414251999995, "app1-1": 0.0}, "app3": {"app3-0": 40.33375784}}}
+----------------------------------------
+Number of requests logged: 60
+Time: 2024-09-16 06:08:25.475:
+
+PODNAME                        CPU (%)
+app1-0                         102.02
+app2-1                         86.33
+app3-0                         17.16
+app2-0                         8.40
+hostagent-node3-0              1.44
+hostagent-node1-0              1.08
+hostagent-node0-0              0.54
+hostagent-node2-0              0.49
+hostagent-node5-0              0.49
+app1-1                         0.48
+hostagent-node4-0              0.46
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.8342605499996, "app1-1": 162.0632805500004}, "app2": {"app2-0": 173.8672990200001, "app2-1": 0.0}, "app3": {"app3-0": 39.63827902}}}
+----------------------------------------
+Number of requests logged: 51
+Time: 2024-09-16 06:08:26.048:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.89
+hostagent-node3-0              0.98
+hostagent-node4-0              0.71
+app3-0                         0.60
+hostagent-node5-0              0.59
+app2-1                         0.58
+app1-1                         0.58
+app2-0                         0.57
+hostagent-node0-0              0.54
+hostagent-node2-0              0.50
+app1-0                         0.25
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.44523815999962, "app1-1": 158.58530462000033}, "app2": {"app2-0": 170.11473256000005, "app2-1": 0.0}, "app3": {"app3-0": 38.9746661}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:26.624:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              2.39
+hostagent-node1-0              1.59
+app1-1                         0.51
+hostagent-node0-0              0.43
+hostagent-node4-0              0.40
+app3-0                         0.37
+app1-0                         0.37
+hostagent-node5-0              0.37
+app2-0                         0.35
+app2-1                         0.34
+hostagent-node2-0              0.32
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 27.145602359999625, "app1-1": 155.25573582000035}, "app2": {"app2-0": 166.26962144000004, "app2-1": 0.0}, "app3": {"app3-0": 38.15948798}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:27.179:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.76
+hostagent-node1-0              1.65
+app2-1                         0.63
+hostagent-node4-0              0.59
+app3-0                         0.58
+hostagent-node5-0              0.52
+hostagent-node0-0              0.48
+hostagent-node2-0              0.47
+app1-1                         0.46
+app2-0                         0.26
+app1-0                         0.23
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 26.77820189999964, "app1-1": 151.84088418000036}, "app2": {"app2-0": 162.4446766, "app2-1": 0.0}, "app3": {"app3-0": 37.38199432}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:27.753:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.72
+hostagent-node1-0              1.35
+app1-1                         0.66
+hostagent-node4-0              0.61
+app2-1                         0.52
+hostagent-node2-0              0.49
+hostagent-node0-0              0.47
+hostagent-node5-0              0.46
+app3-0                         0.34
+app2-0                         0.34
+app1-0                         0.34
+
+Gurobi Response: {"status": 2, "result": {"app2": {"app2-0": 158.5995738, "app2-1": 0.0}, "app1": {"app1-0": 26.51791344999962, "app1-1": 148.49901261000034}, "app3": {"app3-0": 36.61847464}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:28.327:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.60
+hostagent-node1-0              0.84
+hostagent-node0-0              0.70
+app2-1                         0.58
+app1-1                         0.55
+hostagent-node2-0              0.49
+app3-0                         0.47
+hostagent-node4-0              0.39
+hostagent-node5-0              0.38
+app2-0                         0.35
+app1-0                         0.29
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 26.384426169999642, "app1-1": 145.0903344100003}, "app2": {"app2-0": 154.62153311999998, "app2-1": 0.0}, "app3": {"app3-0": 35.91562488}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:28.875:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              2.20
+hostagent-node3-0              1.81
+app3-0                         0.63
+hostagent-node5-0              0.61
+hostagent-node0-0              0.56
+app2-0                         0.54
+app1-1                         0.52
+hostagent-node2-0              0.48
+hostagent-node4-0              0.47
+app2-1                         0.47
+app1-0                         0.32
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 26.061413879999662, "app1-1": 141.7135599600003}, "app2": {"app2-0": 150.76721981999998, "app2-1": 0.0}, "app3": {"app3-0": 35.11507374}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:29.423:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.61
+hostagent-node3-0              1.40
+app3-0                         0.55
+hostagent-node2-0              0.55
+hostagent-node5-0              0.53
+hostagent-node4-0              0.47
+hostagent-node0-0              0.46
+app2-1                         0.40
+app1-0                         0.35
+app1-1                         0.34
+app2-0                         0.19
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 25.42593160999965, "app1-1": 138.34854407000034}, "app2": {"app2-0": 147.22287636, "app2-1": 0.0}, "app3": {"app3-0": 34.3002639}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:29.975:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.78
+hostagent-node1-0              1.27
+app1-1                         0.84
+app2-1                         0.74
+hostagent-node2-0              0.65
+hostagent-node0-0              0.63
+app3-0                         0.56
+hostagent-node5-0              0.55
+hostagent-node4-0              0.48
+app2-0                         0.42
+app1-0                         0.41
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 24.745664309999654, "app1-1": 135.11761119000033}, "app2": {"app2-0": 143.84542733999996, "app2-1": 0.0}, "app3": {"app3-0": 33.47348046}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:30.523:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              2.61
+hostagent-node1-0              1.53
+hostagent-node4-0              0.61
+hostagent-node0-0              0.55
+hostagent-node2-0              0.48
+hostagent-node5-0              0.48
+app3-0                         0.42
+app2-1                         0.41
+app1-1                         0.33
+app1-0                         0.31
+app2-0                         0.28
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 23.844454669999664, "app1-1": 131.98847187000035}, "app2": {"app2-0": 140.65155507999998, "app2-1": 0.0}, "app3": {"app3-0": 32.50753788}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:31.071:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              2.28
+hostagent-node1-0              1.10
+app3-0                         0.80
+hostagent-node4-0              0.71
+hostagent-node0-0              0.57
+app1-1                         0.57
+hostagent-node5-0              0.56
+app2-1                         0.50
+hostagent-node2-0              0.48
+app2-0                         0.29
+app1-0                         0.27
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 23.526317879999652, "app1-1": 128.57460006000034}, "app2": {"app2-0": 136.80962851999996, "app2-1": 0.0}, "app3": {"app3-0": 31.76134634}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:31.636:
+
+PODNAME                        CPU (%)
+hostagent-node1-0              1.55
+hostagent-node0-0              1.03
+hostagent-node3-0              0.61
+app1-1                         0.47
+hostagent-node5-0              0.44
+hostagent-node2-0              0.44
+hostagent-node4-0              0.39
+app1-0                         0.37
+app2-1                         0.36
+app2-0                         0.34
+app3-0                         0.34
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 22.96005049999968, "app1-1": 125.27449524000033}, "app2": {"app2-0": 133.23116841999996, "app2-1": 0.0}, "app3": {"app3-0": 30.916723679999997}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:32.187:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              3.01
+hostagent-node1-0              1.26
+app2-1                         0.64
+app3-0                         0.59
+hostagent-node4-0              0.59
+hostagent-node5-0              0.53
+hostagent-node2-0              0.47
+app1-1                         0.41
+hostagent-node0-0              0.34
+app2-0                         0.26
+app1-0                         0.25
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 22.39165200999966, "app1-1": 121.89443121000036}, "app2": {"app2-0": 129.62637904, "app2-1": 0.0}, "app3": {"app3-0": 30.123599839999997}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:32.738:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.49
+hostagent-node1-0              1.41
+app2-1                         0.52
+hostagent-node5-0              0.51
+hostagent-node2-0              0.50
+app1-1                         0.49
+hostagent-node4-0              0.48
+hostagent-node0-0              0.44
+app2-0                         0.40
+app3-0                         0.39
+app1-0                         0.30
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 21.902895129999663, "app1-1": 118.64344233000035}, "app2": {"app2-0": 126.07365049999997, "app2-1": 0.0}, "app3": {"app3-0": 29.333103299999998}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:33.307:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.82
+hostagent-node1-0              1.07
+hostagent-node5-0              0.59
+hostagent-node2-0              0.57
+app1-1                         0.57
+app3-0                         0.53
+hostagent-node0-0              0.48
+app2-1                         0.47
+hostagent-node4-0              0.46
+app2-0                         0.33
+app1-0                         0.25
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 21.379238339999645, "app1-1": 115.26344328000035}, "app2": {"app2-0": 122.44870497999996, "app2-1": 0.0}, "app3": {"app3-0": 28.56450004}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:33.854:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              1.90
+hostagent-node1-0              1.34
+hostagent-node4-0              0.66
+app3-0                         0.59
+hostagent-node5-0              0.58
+app2-0                         0.56
+app1-1                         0.55
+hostagent-node0-0              0.54
+hostagent-node2-0              0.47
+app2-1                         0.46
+app1-0                         0.24
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 21.064970959999656, "app1-1": 111.84920410000034}, "app2": {"app2-0": 118.60506949999997, "app2-1": 0.0}, "app3": {"app3-0": 27.820836359999998}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:34.420:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              2.83
+hostagent-node1-0              2.05
+hostagent-node2-0              0.62
+hostagent-node5-0              0.61
+hostagent-node4-0              0.60
+app3-0                         0.55
+hostagent-node0-0              0.53
+app1-0                         0.46
+app2-1                         0.46
+app1-1                         0.38
+app2-0                         0.26
+
+Gurobi Response: {"status": 2, "result": {"app1": {"app1-0": 20.355421789999667, "app1-1": 108.56878835000035}, "app2": {"app2-0": 115.17095761999994, "app2-1": 0.0}, "app3": {"app3-0": 26.957591059999995}}}
+----------------------------------------
+Number of requests logged: 0
+Time: 2024-09-16 06:08:34.971:
+
+PODNAME                        CPU (%)
+hostagent-node3-0              3.02
+hostagent-node1-0              1.81
+hostagent-node4-0              0.62
+hostagent-node5-0              0.58
+app3-0                         0.58
+app2-1                         0.53
+hostagent-node0-0              0.48
+app1-1                         0.48
+hostagent-node2-0              0.46
+app1-0                         0.37
+app2-0                         0.36
+
+Time is up. Exiting...
+{"time":"2024-09-16T06:08:35.407615799Z","level":"ERROR","msg":"Failed to parse CPU Utilizations and ReqStats from Node 0: invalid response from host agent: "}
+panic: invalid response from host agent: 
+
+goroutine 884 [running]:
+main.getCPUUtilAndReqStatsFromCluster.func1(0x0, {0x0, {0xc000404060, 0x26}, {0xc00048de00, 0xc}, 0x7f95, 0xc00048a7e0, 0x7d00, 0xc000611870})
+	/users/twaheed/multiparty-lb/centralcontroller/main.go:404 +0x196
+created by main.getCPUUtilAndReqStatsFromCluster in goroutine 71
+	/users/twaheed/multiparty-lb/centralcontroller/main.go:399 +0x88
+|||||||||||||||||||||||||||||||||||||||||||||||||||||
+Running experiment with lr_15 at [75, 50, 25] RPS
+Command: ../wrk2/wrk -H "Host: app1.mplb.com" -t 5 -c 5 -d 30 -L "http://10.102.249.82/?loopCount=25&base=6&exp=6" -R75 > logs4/lr_15_app1_75rps_wrk.log
+Command: ../wrk2/wrk -H "Host: app2.mplb.com" -t 5 -c 5 -d 30 -L "http://10.102.249.82/?loopCount=25&base=6&exp=6" -R50 > logs4/lr_15_app2_50rps_wrk.log
+Command: ../wrk2/wrk -H "Host: app3.mplb.com" -t 1 -c 1 -d 30 -L "http://10.102.249.82/?loopCount=25&base=6&exp=6" -R25 > logs4/lr_15_app3_25rps_wrk.log
+Command: ../centralcontroller/centralcontroller -logfile /users/twaheed/multiparty-lb/exp_3_node/logs4/lr_15_cc.log -enforcement=NONE -d=40000
+wrk for app1 finished with exit status: 0
+wrk for app2 finished with exit status: 0
+wrk for app3 finished with exit status: 0
+CC finished with exit status: 512
+Completed experiment with lr_15 at [75, 50, 25] RPS
+|||||||||||||||||||||||||||||||||||||||||||||||||||||
+Sleeping for 15 seconds...
+App (Pod) Name: app1-0, Node: node1.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app1-1, Node: node3.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app2-0, Node: node1.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app2-1, Node: node3.k8s-twaheed.mlnetwork.emulab.net
+App (Pod) Name: app3-0, Node: node3.k8s-twaheed.mlnetwork.emulab.net
+|||||||||||||||||||||||||||||||||||||||||||||||||||||
+Running experiment with mplb_15 at [75, 50, 25] RPS
+Command: ../wrk2/wrk -H "Host: app1.mplb.com" -t 5 -c 5 -d 30 -L "http://10.102.249.82/?loopCount=25&base=6&exp=6" -R75 > logs4/mplb_15_app1_75rps_wrk.log
+Command: ../wrk2/wrk -H "Host: app2.mplb.com" -t 5 -c 5 -d 30 -L "http://10.102.249.82/?loopCount=25&base=6&exp=6" -R50 > logs4/mplb_15_app2_50rps_wrk.log
+Command: ../wrk2/wrk -H "Host: app3.mplb.com" -t 1 -c 1 -d 30 -L "http://10.102.249.82/?loopCount=25&base=6&exp=6" -R25 > logs4/mplb_15_app3_25rps_wrk.log
+Command: ../centralcontroller/centralcontroller -logfile /users/twaheed/multiparty-lb/exp_3_node/logs4/mplb_15_cc.log -enforcement=LB -d=40000
+wrk for app1 finished with exit status: 0
+wrk for app2 finished with exit status: 0
+wrk for app3 finished with exit status: 0
+CC finished with exit status: 512
+Completed experiment with mplb_15 at [75, 50, 25] RPS
+|||||||||||||||||||||||||||||||||||||||||||||||||||||
+Sleeping for 15 seconds...
+Running experiment with: app1=('node1', 'node3'), app2=('node2', 'node3'), app3=('node1',)
+Running experiment with: app1=('node1', 'node3'), app2=('node2', 'node3'), app3=('node2',)
+Running experiment with: app1=('node1', 'node3'), app2=('node2', 'node3'), app3=('node3',)
+Running experiment with: app1=('node2', 'node3'), app2=('node1', 'node2'), app3=('node1',)
+Running experiment with: app1=('node2', 'node3'), app2=('node1', 'node2'), app3=('node2',)
+Running experiment with: app1=('node2', 'node3'), app2=('node1', 'node2'), app3=('node3',)
+Running experiment with: app1=('node2', 'node3'), app2=('node1', 'node3'), app3=('node1',)
+Running experiment with: app1=('node2', 'node3'), app2=('node1', 'node3'), app3=('node2',)
+Running experiment with: app1=('node2', 'node3'), app2=('node1', 'node3'), app3=('node3',)
+Running experiment with: app1=('node2', 'node3'), app2=('node2', 'node3'), app3=('node1',)
+Running experiment with: app1=('node2', 'node3'), app2=('node2', 'node3'), app3=('node2',)
+Running experiment with: app1=('node2', 'node3'), app2=('node2', 'node3'), app3=('node3',)

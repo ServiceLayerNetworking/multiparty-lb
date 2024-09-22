@@ -1,6 +1,5 @@
 #!/bin/bash
 
-set -e
 set -x
 
 kubectl delete -Rf generic-app/3-node-scenario

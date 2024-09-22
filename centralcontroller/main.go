@@ -174,8 +174,7 @@ func getFlags() (string, string, int) {
 		fmt.Scan(&filename, &runNum)
 
 		logfileName = fmt.Sprintf(
-			"%s/%s/%s_%s_%d",
-			LOG_FILE_PREFIX, filename, enforcement, "cc", runNum)
+			"%s/%s/%s_%s_%d", LOG_FILE_PREFIX, filename, *enforcement, "cc", runNum)
 	}
 
 	return logfileName, *enforcement, *durationMs
@@ -1145,8 +1144,9 @@ func getFShareLoad(nodes []Node, appName string) float64 {
 			// 	continue
 			// }
 			if pod.AppName == appName {
-				slog.Info(fmt.Sprintf("found pod %s util: %f\n", pod.Name, pod.FShare*float64(node.MilliCores)))
-				totalUtil += pod.FShare * float64(node.MilliCores)
+				fShare := pod.FShare * float64(node.MilliCores) / 10.0
+				slog.Info(fmt.Sprintf("found pod %s util: %f\n", pod.Name, fShare))
+				totalUtil += fShare
 			}
 		}
 	}

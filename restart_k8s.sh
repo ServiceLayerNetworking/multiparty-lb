@@ -1,3 +1,5 @@
+echo "Restarting k8s cluster"
+
 bash clear_k8s_cluster.sh
 
 sleep 15

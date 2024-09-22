@@ -1,0 +1,16 @@
+[
+    {
+        "endpoints": [
+            {
+                "url": "http://10.105.79.127:80/?loopCount=25&base=6&exp=6",
+                "node": 1,
+                "app": 2,
+                "headers": "{\"Host\":\"app1.mplb.com\"}"
+            }
+        ],
+        "reqIntervalMs": 1000,
+        "durationMs": 20,
+        "logFileName": "tmp.log",
+        "stallTimeMs": 0
+    }
+]
