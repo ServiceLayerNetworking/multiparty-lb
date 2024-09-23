@@ -134,7 +134,7 @@ type Response struct {
 
 func getFlags() (int, int, string) {
 	port := flag.Int("p", 3333, "Port to run on")
-	latencyMs := flag.Int("l", 50, "")
+	latencyMs := flag.Int("l", -1, "")
 	endpointName := flag.String("e", "go_endpoint", "")
 	flag.Parse()
 	log.Printf("Port is %d, endpoint name is %s, and latency is %d\n",
@@ -144,16 +144,23 @@ func getFlags() (int, int, string) {
 
 func main() {
 
-	portToListenOn, _, _ := getFlags()
-	// latency := time.Duration(latencyMs) * time.Millisecond
+	portToListenOn, latencyMs, endpointName := getFlags()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		handleRequest(w, r)
-		// waitAndRespond(w, r, latency, endpointName)
+		if isEndpointLatencyFlagSet(latencyMs) {
+			latency := time.Duration(latencyMs) * time.Millisecond
+			waitAndRespond(w, r, latency, endpointName)
+		} else {
+			handleRequest(w, r)
+		}
 	})
 	fmt.Printf("Server running (port=%d), route: http://localhost:%d/?loopCount=1&base=8&exp=7.7\n", portToListenOn, portToListenOn)
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", portToListenOn), nil); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func isEndpointLatencyFlagSet(latency int) bool {
+	return latency > 0
 }
