@@ -8,6 +8,8 @@ from json import dumps
 import json
 from typing import Tuple, List, Dict
 
+previous_w = {}
+
 def run_model(_host_cap, _t0, _t1, _t2):
 
     # MIP  model formulation
@@ -441,6 +443,8 @@ def run_generic_model(
     _tenants: List[Tenant],
     _workers: List[Worker]):
     
+    global previous_w
+    
     # =========================== Begin Optimization ===========================
     
     # MIP  model formulation
@@ -601,6 +605,40 @@ def run_generic_model(
         m.setObjective(variance, GRB.MINIMIZE)
         
         m.optimize()
+        
+    
+        if m.Status == GRB.OPTIMAL:
+            
+            # =========================== Optimization minimize distanc between weights ============================
+            
+            # do this only if you have all the previous weights
+            was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers)
+            
+            if was_previous_the_same_topology:
+                
+                print("Same topology;", "doing the distance optimization")
+            
+                # set that the variance objective is no more as much as what it was in the last optimization
+                max_var = m.ObjVal
+                m.addConstr(variance <= max_var)
+                
+                n = len(_workers)
+                abs_diff = m.addVars(n, vtype=GRB.CONTINUOUS, name="abs_diff")
+                
+                # set the new objective to minimize the distance between the weights
+                for i, worker in enumerate(_workers):
+                    m.addConstr(abs_diff[i] >= w[worker.name] - previous_w[worker.name])
+                    m.addConstr(abs_diff[i] >= previous_w[worker.name] - w[worker.name])
+                
+                m.setObjective(gp.quicksum(abs_diff[i] for i in range(n)), GRB.MINIMIZE)
+                
+                m.optimize()
+                
+                print("Same topology;", "did the distance optimization")
+                
+            else:
+                
+                print("Different topology;", "not doing the distance optimization")
     
     # =========================== Done Optimization ============================
     
@@ -623,6 +661,10 @@ def run_generic_model(
             "status": m.Status,
             "result": results
         }
+        
+        # set the previous weights to the current weights
+        previous_w = {worker.name: vars[f"w_{worker.name}"] for worker in _workers}
+        print("New previous weights:", previous_w)            
         
         print(to_return)
         
@@ -713,6 +755,14 @@ def gurobi_server():
         print(f"{time_taken*1000:.2f} ms")
         
         return dumps(variables)  
+
+@app.route('/reset', methods=['GET'])
+def reset_weights():
+    
+    global previous_w
+    previous_w = {}
+    
+    return "Weights reset!"
 
 import sys
 

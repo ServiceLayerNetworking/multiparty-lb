@@ -8,7 +8,9 @@ import yaml
 import json
 from kubernetes import client, config
 
-LOG_FOLDER = "logs_arb"
+DURATION = 60 # 1 minute
+SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 2 * 60 # 5 minutes
+LOG_FOLDER = "logs8"
 
 def get_gateway_ip():
     """
@@ -24,7 +26,9 @@ IP = get_gateway_ip()
 def run_wrk(q, variation, app_num, rps):
     
     c, t = (1, 1) if rps <= 25 else (5, 5)
-    cmd = f"../wrk2/wrk -H \"Host: app{app_num}.mplb.com\" -t {t} -c {c} -d 30 -L \"http://{IP}/?loopCount=25&base=6&exp=6\" -R{rps} > {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log"
+    
+    cmd = f"../hit/hit -d {DURATION} -rps {rps} -l {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log -headers \"" + "{\\\"Host\\\": " +  f"\\\"app{app_num}.mplb.com\\" + "\"}\"" + f" -url \"http://{IP}/?loopCount=25&base=6&exp=6\""
+    # cmd = f"../wrk2/wrk -H \"Host: app{app_num}.mplb.com\" -t {t} -c {c} -d {DURATION} -L \"http://{IP}/?loopCount=25&base=6&exp=6\" -R{rps} > {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log"
     print(f"Command: {cmd}")
     
     start_time = time.time()
@@ -37,7 +41,7 @@ def run_wrk(q, variation, app_num, rps):
 def run_cc(q, variation, enforcement):
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={40_000}"
+    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={(DURATION + 10) * 1000}"
     print(f"Command: {cmd}")
     
     start_time = time.time()
@@ -51,6 +55,9 @@ def run_exp(variation, rpses, enforcement, append_to_times=""):
       
     print(f"|||||||||||||||||||||||||||||||||||||||||||||||||||||")
     print(f"Running experiment with {variation} at {rpses} RPS")
+    
+    # send a request to the gurobi server to reset previous weights
+    os.system("curl http://localhost:5000/reset")
 
     # run the wrk command in a separate thread
     qeues = []
@@ -248,7 +255,7 @@ def run():
                 
                 run_id += 1
                 
-                if run_id == 17:
+                if run_id in [9, 19, 22]:
                     
                     restart_k8s()
                         
@@ -259,10 +266,10 @@ def run():
                     set_topology("app2", nodes_app2)
                     set_topology("app3", nodes_app3)
                         
-                    time.sleep(5 * 60) # sleep for 10 minutes
+                    time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE) 
                     
-                    for iteration in range(1, 6):
-                        print(f"Starting iteration {iteration}...")
+                    for iteration in range(1, 3):
+                        print(f"Starting iteration {iteration} for run_id {run_id}...")
                         
                         intended_topology = {
                             "app1": nodes_app1,
@@ -280,8 +287,8 @@ def run():
                         rpses = [75, 50, 25]
                     
                         # Run the experiment
-                        run_exp(f"lr_{iteration}", rpses, "NONE", append_to_times=to_append)
-                        run_exp(f"mplb_{iteration}", rpses, "LB", append_to_times=to_append)
+                        run_exp(f"lr_{run_id}_{iteration}", rpses, "NONE", append_to_times=to_append)
+                        run_exp(f"mplb_{run_id}_{iteration}", rpses, "LB", append_to_times=to_append)
 
 def print_all_combinations(): 
     
@@ -366,9 +373,9 @@ def run_once(nodes_app1, nodes_app2, nodes_app3):
 
 if __name__ == '__main__':
     # Run the experiment
-    # run()
+    run()
     
-    run_once(['node1', 'node2'], ['node2', 'node3'], ['node1'])
+    # run_once(['node1', 'node2'], ['node2', 'node3'], ['node1'])
     
     # print_all_combinations()    
     # set_topology("app2")

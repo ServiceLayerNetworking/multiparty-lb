@@ -129,7 +129,6 @@ func makeReqToEndpoint(
 		} else {
 			req.Header.Set(headersKey, headersValue)
 		}
-		// fmt.Printf("Setting header: \"%s\" \"%s\"\n", headersKey, headersValue)
 	}
 	req.Header.Set("Connection", "close")
 
@@ -489,9 +488,10 @@ func getConfigs() ([]Config, bool, string, bool, bool, bool) {
 		endpoints := make([]Endpoint, len(urls.StringArr()))
 		for i, url := range urls.StringArr() {
 			endpoints[i] = Endpoint{
-				URL:  url,
-				Node: 0,
-				App:  0,
+				URL:     url,
+				Node:    0,
+				App:     0,
+				Headers: *headers,
 			}
 		}
 
