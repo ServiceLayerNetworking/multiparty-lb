@@ -115,19 +115,6 @@ spec:
         subset: app1-0
         port:
           number: 3333
-      weight: 50
-    - destination:
-        host: app1
-        subset: app1-1
-        port:
-          number: 3333
-      weight: 50
-    - destination:
-        host: app1
-        subset: app1-2
-        port:
-          number: 3333
-      weight: 50
   - match:
     - headers:
         x-lb-endpt:

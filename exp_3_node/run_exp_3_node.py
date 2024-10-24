@@ -10,7 +10,8 @@ from kubernetes import client, config
 
 DURATION = 60 # 1 minute
 SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 2 * 60 # 5 minutes
-LOG_FOLDER = "logs8"
+SLEEP_TIME_AFTER_EACH_RUN = 0 # 120 seconds
+LOG_FOLDER = "logs14"
 
 def get_gateway_ip():
     """
@@ -51,6 +52,46 @@ def run_cc(q, variation, enforcement):
     q.put(("cc", start_time, end_time, 
            f"CC finished with exit status: {exit_status}"))
 
+def run_hit(q, variation, app_nums, rpses):
+    
+    curr_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    configs = []
+    
+    for i, app_num in enumerate(app_nums):
+        
+        rps = rpses[i]
+        
+        configs.append({
+            "endpoints": [
+                {
+                    "url": f"http://{IP}/?loopCount=25&base=6&exp=6",
+                    "node": 1,
+                    "app": app_num,
+                    "headers": "{\"Host\":\"app" + str(app_num) + ".mplb.com\"}"
+                }
+            ],
+            "reqIntervalMs": 1000.0 / float(rps),
+            "durationMs": DURATION * 1000,
+            "logFileName": f"{curr_dir}/{LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_hit.log",
+            "stallTimeMs": 0
+        })
+        
+    with open(f"{curr_dir}/{LOG_FOLDER}/{variation}_hit.json", "w") as f:
+        f.write(json.dumps(configs))
+        
+    cmd = f"../hit/hit -f {curr_dir}/{LOG_FOLDER}/{variation}_hit.json"
+    print(f"Command: {cmd}")
+    
+    start_time = time.time()
+    exit_status = os.system(cmd)
+    end_time = time.time()
+    
+    q.put((f"hit", start_time, end_time, 
+           f"hit for apps{app_nums} finished with exit status: {exit_status}"))
+        
+        
+
 def run_exp(variation, rpses, enforcement, append_to_times=""):
       
     print(f"|||||||||||||||||||||||||||||||||||||||||||||||||||||")
@@ -59,14 +100,19 @@ def run_exp(variation, rpses, enforcement, append_to_times=""):
     # send a request to the gurobi server to reset previous weights
     os.system("curl http://localhost:5000/reset")
 
-    # run the wrk command in a separate thread
     qeues = []
-    for i, rps in enumerate(rpses):
-        # if i+1 > 1:
-        #     continue
-        q = Queue()
-        Thread(target=run_wrk, args=(q, variation, i+1, rps)).start()
-        qeues.append(q)
+    
+    # run the wrk command in a separate thread
+    # for i, rps in enumerate(rpses):
+    #     # if i+1 > 1:
+    #     #     continue
+    #     q = Queue()
+    #     Thread(target=run_wrk, args=(q, variation, i+1, rps)).start()
+    #     qeues.append(q)
+        
+    # run the app workloads through a single hit
+    q = Queue()
+    Thread(target=run_hit, args=(q, variation, [1, 2, 3], rpses)).start()
         
     q = Queue()
     Thread(target=run_cc, args=(q, variation, enforcement)).start()
@@ -89,8 +135,8 @@ def run_exp(variation, rpses, enforcement, append_to_times=""):
     print(f"Completed experiment with {variation} at {rpses} RPS")
     print(f"|||||||||||||||||||||||||||||||||||||||||||||||||||||")
     
-    print("Sleeping for 15 seconds...")
-    time.sleep(15)
+    print(f"Sleeping for {SLEEP_TIME_AFTER_EACH_RUN} seconds...")
+    time.sleep(SLEEP_TIME_AFTER_EACH_RUN)
 
 def update_yaml(app_name, yaml_data, selected_nodes):
     data = yaml.safe_load(yaml_data)
@@ -138,6 +184,9 @@ spec:
           ports:
             - containerPort: 3333
               protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
       tolerations:
         - key: "node"
           value: "node1"
@@ -221,8 +270,39 @@ def get_nodes_for_pods():
         
     return pod_nodes
 
+def get_nodes_for_apps(nodes_for_pods):
+    
+    nodes_for_apps = {}
+    
+    for pod, node in nodes_for_pods.items():
+        
+        app = "-".join(pod.split("-")[:-1])
+        print(app)
+        
+        if app not in nodes_for_apps:
+            nodes_for_apps[app] = []
+        
+        nodes_for_apps[app].append(node)    
+
+    return nodes_for_apps
+
+def are_both_topologies_equal(intended_topology, actual_topology):
+    
+    for app in intended_topology:
+        if app not in actual_topology:
+            return False
+        
+        if intended_topology[app] != actual_topology[app]:
+            return False
+        
+    return True
+
 def get_topology_str(intended_topology):
     actual_topology = get_nodes_for_pods()
+    
+    nodes_for_apps = get_nodes_for_apps(actual_topology)
+    print("Nodes for apps: ", nodes_for_apps)
+    
     return json.dumps({
         "actual": actual_topology,
         "intended": intended_topology
@@ -253,22 +333,26 @@ def run():
             for nodes_app3 in itertools.combinations(nodes, 1):
                 print(f"Running experiment with: app1={nodes_app1}, app2={nodes_app2}, app3={nodes_app3}")
                 
-                run_id += 1
+                run_id += 1 
                 
-                if run_id in [9, 19, 22]:
+                if run_id in [9]:
                     
                     restart_k8s()
                         
-                    time.sleep(60)
+                    time.sleep(15)
                     
                     # Set topology for app1, app2, app3
                     set_topology("app1", nodes_app1)
                     set_topology("app2", nodes_app2)
                     set_topology("app3", nodes_app3)
                         
-                    time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE) 
+                    time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                     
-                    for iteration in range(1, 3):
+                    # Define the RPS for each app
+                    rpses = [90, 60, 30]
+                    
+                    for iteration in range(1, 1+1):
+                        
                         print(f"Starting iteration {iteration} for run_id {run_id}...")
                         
                         intended_topology = {
@@ -281,13 +365,14 @@ def run():
                         
                         to_append = get_topology_str(intended_topology)
                         print(to_append)
-                        # input()
                         
-                        # Define the RPS for each app
-                        rpses = [75, 50, 25]
-                    
                         # Run the experiment
+                        print("Press enter to continue...")
+                        input()
                         run_exp(f"lr_{run_id}_{iteration}", rpses, "NONE", append_to_times=to_append)
+                        
+                        print("Press enter to continue...")
+                        input()
                         run_exp(f"mplb_{run_id}_{iteration}", rpses, "LB", append_to_times=to_append)
 
 def print_all_combinations(): 
@@ -307,6 +392,7 @@ def print_all_combinations():
                 
                 run += 1
                 print(f"Run {run}:", intended_topology)
+
 
 
 # def run():
@@ -372,6 +458,10 @@ def run_once(nodes_app1, nodes_app2, nodes_app3):
     # run_exp(f"mplb_{iteration}", rpses, "LB", append_to_times=to_append)
 
 if __name__ == '__main__':
+    
+    # actual_topology = get_nodes_for_pods()
+    # print(actual_topology)
+    
     # Run the experiment
     run()
     
@@ -379,3 +469,4 @@ if __name__ == '__main__':
     
     # print_all_combinations()    
     # set_topology("app2")
+    

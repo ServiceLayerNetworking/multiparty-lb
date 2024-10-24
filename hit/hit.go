@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"sync"
@@ -179,12 +180,14 @@ func makeReqToEndpoint(
 }
 
 type Interval struct {
-	repeatIntervalMs int
+	repeatIntervalMs float64
 	distribution     string
 	// poisson          distuv.Poisson
 }
 
-func (interval *Interval) Initialize(repeatIntervalMs int, distributionName string) {
+func (interval *Interval) Initialize(
+	repeatIntervalMs float64, distributionName string) {
+
 	interval.repeatIntervalMs = repeatIntervalMs
 	interval.distribution = distributionName
 
@@ -212,14 +215,14 @@ func repeatRequests(
 	endpoints []Endpoint,
 	lb *LoadBalancer,
 	resChan chan Response,
-	repeatIntervalMs int,
+	repeatIntervalMs float64,
 	endTimeMs int,
 	lastReqCountChan chan int,
 	isReadable bool,
 	distributionName string,
 	headers map[string]string) {
 
-	fmt.Printf("Making requests for %dms at %dms interval\n", endTimeMs,
+	fmt.Printf("Making requests for %dms at %.2fms interval\n", endTimeMs,
 		repeatIntervalMs)
 
 	endTime := time.Duration(endTimeMs) * time.Millisecond
@@ -247,7 +250,9 @@ func repeatRequests(
 			endTicker.Stop()
 
 			lastReqCountChan <- reqCounter
-			return
+
+			// Don't return, we need to continously send requests to avoid bias
+			// return
 		}
 	}
 }
@@ -263,7 +268,7 @@ func areRequestsFinished(resReceivedCount int, resEndCount int) bool {
 	if resReceivedCount < resEndCount {
 		return false
 	}
-	// false if we are communicated the last rescount, and we have received all
+	// true if we are communicated the last rescount, and we have received all
 	//  responses
 	return true
 }
@@ -296,13 +301,13 @@ func repeatNodalRequests(
 	endpoints []Endpoint,
 	lb *NodalLoadBalancer,
 	resChan chan Response,
-	repeatIntervalMs int,
+	repeatIntervalMs float64,
 	endTimeMs int,
 	lastReqCountChan chan int,
 	isReadable bool,
 	distributionName string) {
 
-	fmt.Printf("Making requests for %dms at %dms interval\n", endTimeMs,
+	fmt.Printf("Making requests for %dms at %.2fms interval\n", endTimeMs,
 		repeatIntervalMs)
 
 	endTime := time.Duration(endTimeMs) * time.Millisecond
@@ -340,13 +345,13 @@ func repeatGlobalRequests(
 	endpoints []Endpoint,
 	lb *GlobalLoadBalancer,
 	resChan chan Response,
-	repeatIntervalMs int,
+	repeatIntervalMs float64,
 	endTimeMs int,
 	lastReqCountChan chan int,
 	isReadable bool,
 	distributionName string) {
 
-	fmt.Printf("Making requests for %dms at %dms interval\n", endTimeMs,
+	fmt.Printf("Making requests for %dms at %.2fms interval\n", endTimeMs,
 		repeatIntervalMs)
 
 	endTime := time.Duration(endTimeMs) * time.Millisecond
@@ -404,7 +409,7 @@ type Endpoint struct {
 
 type Config struct {
 	Endpoints     []Endpoint        `json:"endpoints"`
-	ReqIntervalMs int               `json:"reqIntervalMs"`
+	ReqIntervalMs float64           `json:"reqIntervalMs"`
 	DurationMs    int               `json:"durationMs"`
 	LogFileName   string            `json:"logFileName"`
 	StallTimeMs   int               `json:"stallTimeMs"`
@@ -422,7 +427,7 @@ func getConfigs() ([]Config, bool, string, bool, bool, bool) {
 	var urls arrayFlags
 	flag.Var(&urls, "url", "an endpoint's URL to send requests to")
 
-	reqRatePerSec := flag.Int("rps", 1, "Requests to make per sec")
+	reqRatePerSec := flag.Float64("rps", 1.0, "Requests to make per sec")
 	durationInSec := flag.Int("d", 4, "Duration in sec")
 	logFileName := flag.String("l", "", "Log file name")
 	headers := flag.String("headers", "", "Headers to send with the request")
@@ -468,7 +473,7 @@ func getConfigs() ([]Config, bool, string, bool, bool, bool) {
 			configs[i] = Config{
 				Endpoints:     raw_config.Endpoints,
 				ReqIntervalMs: raw_config.ReqIntervalMs,
-				DurationMs:    raw_config.DurationMs * 1000,
+				DurationMs:    raw_config.DurationMs,
 				LogFileName:   raw_config.LogFileName,
 				StallTimeMs:   raw_config.StallTimeMs,
 			}
@@ -497,7 +502,7 @@ func getConfigs() ([]Config, bool, string, bool, bool, bool) {
 
 		configs := []Config{{
 			Endpoints:     endpoints,
-			ReqIntervalMs: int(1000 / *reqRatePerSec),
+			ReqIntervalMs: 1000.0 / *reqRatePerSec,
 			DurationMs:    *durationInSec * 1000,
 			LogFileName:   *logFileName,
 			StallTimeMs:   *stallTimeMs,
@@ -520,6 +525,8 @@ func hit(
 	isReadable bool,
 	distributionName string,
 	cpuModifier *CPUWeightModifier,
+	hasHitEndedCh chan bool,
+	okayToAbortCh chan bool,
 	wg *sync.WaitGroup) {
 
 	defer wg.Done()
@@ -541,7 +548,7 @@ func hit(
 
 	// printing benchmark config
 	fmt.Fprintf(logWriter,
-		"Running test for %s [%dms req interval] [%dms duration]:\n",
+		"Running test for %s [%.2fms req interval] [%dms duration]:\n",
 		reqURLs, reqIntervalMs, durationMs)
 	logWriter.Flush()
 
@@ -584,25 +591,38 @@ func hit(
 	// now, repeatedly listen for responses and the last response number,
 	// 	end when the last response is received
 
-	lastResCount := -1 // dummy value till we are informed of this
+	lastResCount := math.MaxInt // dummy value till we are informed of this
 	resReceivedCount := 1
 	for {
+
 		select {
+
 		case resp := <-resChan:
 			lb.NotifyReqCompleted(resp.ReqNum)
 			cpuModifier.NotifyReqCompleted(resp.ReqEndpoint.Node)
-			logResponseStats(logWriter, resp, resReceivedCount, isReadable)
-			resReceivedCount += 1
+
+			// request should only be logged if it is
+			// 	<= last request to be measured
+			if resp.ReqNum <= lastResCount {
+				logResponseStats(logWriter, resp, resReceivedCount, isReadable)
+				resReceivedCount += 1
+			}
 		case lastReqCount := <-lastReqCountChan:
 			lastResCount = lastReqCount
 		}
 
-		if areRequestsFinished(resReceivedCount, lastResCount) {
+		// if we have received all responses, then break
+		if resReceivedCount >= lastResCount {
 			break
 		}
 	}
 
-	fmt.Println("Done")
+	// signal that this hit has finished measurements
+	hasHitEndedCh <- true
+	// wait for all hits to have finished measurements
+	<-okayToAbortCh
+
+	fmt.Println("Aborted hit for ", config.Endpoints)
 }
 
 func hitNodal(
@@ -631,7 +651,7 @@ func hitNodal(
 
 	// printing benchmark config
 	fmt.Fprintf(logWriter,
-		"Running test for %s [%dms req interval] [%dms duration]:\n",
+		"Running test for %s [%f.2ms req interval] [%dms duration]:\n",
 		reqURLs, reqIntervalMs, durationMs)
 	logWriter.Flush()
 	fmt.Printf("Load balancer algorithm: %s\n", "Nodal LR")
@@ -703,7 +723,7 @@ func hitGlobal(
 
 	// printing benchmark config
 	fmt.Fprintf(logWriter,
-		"Running test for %s [%dms req interval] [%dms duration]:\n",
+		"Running test for %s [%.2fms req interval] [%dms duration]:\n",
 		reqURLs, reqIntervalMs, durationMs)
 	logWriter.Flush()
 	fmt.Printf("Load balancer algorithm: %s\n", "Nodal LR")
@@ -746,6 +766,20 @@ func hitGlobal(
 		if areRequestsFinished(resReceivedCount, lastResCount) {
 			break
 		}
+	}
+}
+
+func coordinateAborting(numConfigs int,
+	hasHitEndedCh chan bool, okayToAbortCh chan bool) {
+
+	// wait for all the hit instances to finish
+	for range numConfigs {
+		<-hasHitEndedCh
+	}
+
+	// send signal to all the hit instances to finish
+	for range numConfigs {
+		okayToAbortCh <- true
 	}
 }
 
@@ -801,9 +835,13 @@ func main() {
 			cpuModifier.Start()
 		}
 
+		okayToAbortCh, hasHitEndedCh := make(chan bool), make(chan bool)
+		go coordinateAborting(len(configs), hasHitEndedCh, okayToAbortCh)
+
 		for _, config := range configs {
 			wg.Add(1)
-			go hit(config, isReadable, distributionName, &cpuModifier, wg)
+			go hit(config, isReadable, distributionName, &cpuModifier,
+				hasHitEndedCh, okayToAbortCh, wg)
 		}
 	}
 

@@ -21,6 +21,9 @@ spec:
           ports:
             - containerPort: 3333
               protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
       tolerations:
         - key: "node"
           value: "node1"

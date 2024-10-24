@@ -1,0 +1,10 @@
+{"time":1729225879619805525,"CPUUtilizations":{"app1-0":"0.473990","app1-1":"0.385058","app2-0":"0.684997","app2-1":"0.538883","app3-0":"0.267460","hostagent-node0-0":"0.744566","hostagent-node1-0":"0.600994","hostagent-node2-0":"2.008438","hostagent-node3-0":"1.087784","hostagent-node4-0":"0.851599","hostagent-node5-0":"0.629736"},"CPUShares":{},"CPUQuotas":{},"LBWeights":{}}
+ReqStats: []
+{"time":1729225880131535439,"CPUUtilizations":{"app1-0":"0.184850","app1-1":"0.541019","app2-0":"0.339494","app2-1":"0.604494","app3-0":"0.547227","hostagent-node0-0":"0.467082","hostagent-node1-0":"1.232200","hostagent-node2-0":"2.286479","hostagent-node3-0":"1.066103","hostagent-node4-0":"0.398962","hostagent-node5-0":"0.431555"},"CPUShares":{},"CPUQuotas":{},"LBWeights":{}}
+ReqStats: []
+{"time":1729225880642293770,"CPUUtilizations":{"app1-0":"0.616584","app1-1":"0.557273","app2-0":"0.615205","app2-1":"0.307925","app3-0":"0.273311","hostagent-node0-0":"0.350873","hostagent-node1-0":"2.136937","hostagent-node2-0":"1.605919","hostagent-node3-0":"1.079987","hostagent-node4-0":"0.402602","hostagent-node5-0":"0.309131"},"CPUShares":{},"CPUQuotas":{},"LBWeights":{}}
+ReqStats: []
+{"time":1729225881152500597,"CPUUtilizations":{"app1-0":"0.238782","app1-1":"0.609193","app2-0":"0.456331","app2-1":"0.534973","app3-0":"0.385221","hostagent-node0-0":"0.578793","hostagent-node1-0":"0.886168","hostagent-node2-0":"1.463804","hostagent-node3-0":"0.857084","hostagent-node4-0":"0.772032","hostagent-node5-0":"0.583502"},"CPUShares":{},"CPUQuotas":{},"LBWeights":{}}
+ReqStats: []
+{"time":1729225881663371258,"CPUUtilizations":{"app1-0":"0.332990","app1-1":"0.601805","app2-0":"0.599340","app2-1":"0.298133","app3-0":"0.238020","hostagent-node0-0":"0.517953","hostagent-node1-0":"1.346603","hostagent-node2-0":"2.000479","hostagent-node3-0":"0.853930","hostagent-node4-0":"0.466222","hostagent-node5-0":"0.352622"},"CPUShares":{},"CPUQuotas":{},"LBWeights":{}}
+ReqStats: []
