@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"strconv"
@@ -41,6 +42,10 @@ const (
 	DEFAULT_HASH_MOD = 10
 
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
+
+	// load balancing strategy
+	LOAD_BALANCING_STRATEGY = "weighted_leastrequest" // [weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LEAST_REQUEST_STRATEGY  = "effective_load"        // [effective_load]
 )
 
 var (
@@ -326,6 +331,140 @@ func getRandomTraceId() string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strconv.Itoa(rand.Int()))))
 }
 
+/*
+MPLB
+
+This function implements the load balancing strategy used to select the next
+endpoint to send the request to.
+WARNING: This func can only be called in OnHttpRequestHeaders.
+
+dst: the destination service name.
+weights: a list of weights for each endpoint of the dst.
+
+	The sum of the weights should be 100.
+	Example: [50, 50] means 50% of the requests will go to the first endpoint
+		and 50% to the second.
+*/
+func getNextDstEndpoint(dst string, weights []float64) (int, error) {
+
+	if len(weights) == 0 {
+		return -1, errors.New("No weights provided")
+	}
+
+	if LOAD_BALANCING_STRATEGY == "weighted_random" {
+		return getNextDstEndpointWeightedRandom(weights)
+
+	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
+		return -1, errors.New("Not implemented yet")
+
+	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" {
+		return getNextDstEndpointWeightedLeastRequest(dst, weights)
+
+	} else {
+		return -1, errors.New("Invalid load balancing strategy")
+
+	}
+}
+func notifyRequestCompletedToLB(dstPod string) {
+
+	parts := strings.Split(dstPod, "-")
+	endpointNumStr := parts[len(parts)-1]
+	endpointNum, err := strconv.Atoi(endpointNumStr)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't parse endpoint number: %v", err)
+		return
+	}
+	dst := strings.Join(parts[:len(parts)-1], "-")
+
+	if LOAD_BALANCING_STRATEGY == "weighted_random" {
+	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
+	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" {
+		IncrementSharedData(endpointOutstandingReqKey(dst, endpointNum), -1)
+	}
+}
+func getNextDstEndpointWeightedRandom(weights []float64) (int, error) {
+	coin := rand.Float64()
+	total := 0.0
+
+	for endpointNum, weight := range weights {
+		pct := weight
+		total += pct / 100.0
+		if coin <= total {
+			return endpointNum, nil
+		}
+	}
+
+	return -1, errors.New("No endpoint found [Likely cause: sum of weights != 100]")
+}
+func getOutstandingRequests(dst string, endpointNum int) (int, error) {
+	valBytes, _, err :=
+		proxywasm.GetSharedData(endpointOutstandingReqKey(dst, endpointNum))
+	if err != nil {
+		return 0, err
+	}
+
+	val := binary.LittleEndian.Uint64(valBytes)
+	return int(val), nil
+}
+
+// the following impl is not perfect:
+//
+//	there can be race conditions that prevent it from producing the correct result
+func getNextDstEndpointWeightedLeastRequest(
+	dst string, weights []float64) (int, error) {
+
+	var selectedEndpoint int
+	minLoad := math.MaxFloat64
+	candidates := []int{}
+
+	for endpointNum, weight := range weights {
+
+		outstandingReqs, err := getOutstandingRequests(dst, endpointNum)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't get outstanding requests for endpoint %s-%d: %v",
+				dst, endpointNum, err)
+			return -1, err
+		}
+
+		effectiveLoad := float64(outstandingReqs) / (weight / 100.0)
+		if effectiveLoad < minLoad {
+			minLoad = effectiveLoad
+			candidates = []int{} // Start a new list of candidates
+		} else if effectiveLoad == minLoad {
+			candidates = append(candidates, endpointNum) // Add to candidates
+		}
+	}
+
+	// Randomly select a endpoint from the candidates
+	selectedEndpoint = candidates[rand.Intn(len(candidates))]
+
+	// Increment the active request count for the selected server
+	IncrementSharedData(endpointOutstandingReqKey(dst, selectedEndpoint), 1)
+
+	return selectedEndpoint, nil
+}
+
+func parseLBWeights(weightsStr string) ([]float64, error) {
+
+	weightsStrs := strings.Split(weightsStr, "|")
+
+	weights := make([]float64, len(weightsStrs))
+
+	for i, weightStr := range weightsStrs {
+
+		weight, err := strconv.ParseFloat(weightStr, 64)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't parse weight: %v", err)
+			return nil, err
+		}
+
+		weights[i] = weight
+	}
+
+	return weights, nil
+}
+
 func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 
 	// proxywasm.LogCriticalf("OnHttpRequestHeaders entered")
@@ -390,7 +529,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				"Error adding x-slate-start-time header: %v", headerErr)
 		}
 
-		// set what endpoint this request should be sent to
+		// get stored weights from central controller
 		weightsBStr, _, err := proxywasm.GetSharedData(dst)
 		weightsStr := string(weightsBStr)
 		if err != nil || weightsStr == "nil" {
@@ -401,29 +540,30 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				proxywasm.LogCriticalf("Error removing header: %v", headerErr)
 			}
 		} else {
-			// draw from distribution
-			coin := rand.Float64()
-			total := 0.0
-			weights := strings.Split(weightsStr, "|")
-			for endpointNum, weight := range weights {
-				pct, err := strconv.ParseFloat(weight, 64)
-				if err != nil {
-					proxywasm.LogCriticalf("Couldn't parse weight: %v", err)
-					return types.ActionContinue
-				}
-				total += pct / 100.0
-				if coin <= total {
-					header := fmt.Sprintf("%s-%d", dst, endpointNum)
-					proxywasm.LogCriticalf("Setting x-lb-endpt:" + header)
-					headerErr := proxywasm.ReplaceHttpRequestHeader(
-						"x-lb-endpt", header)
-					if headerErr != nil {
-						proxywasm.LogCriticalf(
-							"Error adding header: %v", headerErr)
-					}
-					// break
-					return types.ActionContinue
-				}
+
+			// parse the weights from central controller
+			weights, err := parseLBWeights(weightsStr)
+			if err != nil {
+				proxywasm.LogCriticalf("Couldn't parse weights: %v", err)
+				return types.ActionContinue
+			}
+
+			// get the next endpoint to send the request to
+			endpointNum, err := getNextDstEndpoint(dst, weights)
+			if err != nil {
+				proxywasm.LogCriticalf("Couldn't get next endpoint: %v", err)
+				return types.ActionContinue
+			}
+
+			// set the header that would be used by sidecar to route the request
+			header := fmt.Sprintf("%s-%d", dst, endpointNum)
+			proxywasm.LogCriticalf("Setting x-lb-endpt:" + header)
+			headerErr := proxywasm.ReplaceHttpRequestHeader(
+				"x-lb-endpt", header)
+			if headerErr != nil {
+				proxywasm.LogCriticalf(
+					"Error adding header: %v", headerErr)
+				return types.ActionContinue
 			}
 		}
 		// return types.ActionContinue
@@ -545,6 +685,8 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	currentTime := time.Now().UnixMilli()
 	endTimeStr := fmt.Sprintf("%d", currentTime)
 	proxywasm.LogCriticalf("OnHttpStreamDone: StartTime: %s, EndTime: %s", startTimeStr, endTimeStr)
+
+	notifyRequestCompletedToLB(dstPod)
 
 	// get the current array of timestamps
 	tsList, _, err := proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
@@ -692,7 +834,7 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 	if body == "" {
 		return
 	}
-	svcInfos := strings.Split(body, " ")
+	svcInfos := strings.Split(body, " ")[1:]
 	for _, svcInfo := range svcInfos {
 		svcInfoSplit := strings.Split(svcInfo, ":")
 		if len(svcInfoSplit) != 2 {
@@ -1286,6 +1428,10 @@ func emptyBytes(b []byte) bool {
 		}
 	}
 	return true
+}
+
+func endpointOutstandingReqKey(dstSvc string, endpointNum int) string {
+	return fmt.Sprintf("%s-%d-or", dstSvc, endpointNum)
 }
 
 func endpointListKey(method string, path string) string {
