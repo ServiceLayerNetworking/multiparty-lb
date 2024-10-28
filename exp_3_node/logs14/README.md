@@ -9,3 +9,4 @@ run,iteration,description
 7,6,repeat iter 5 but with increased rpses=[40 80 120]
 7,7,repeat iter 6 but with increased rpses=[50 100 150]
 9,1,repeat run 7 iter 5 with config of run 9
+9,1,repeat run 7 iter 5 with config of run 9 but with weighted least request

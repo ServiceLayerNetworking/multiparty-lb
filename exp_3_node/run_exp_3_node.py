@@ -351,7 +351,7 @@ def run():
                     # Define the RPS for each app
                     rpses = [90, 60, 30]
                     
-                    for iteration in range(1, 1+1):
+                    for iteration in [2]:
                         
                         print(f"Starting iteration {iteration} for run_id {run_id}...")
                         

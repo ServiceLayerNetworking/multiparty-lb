@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -347,6 +348,12 @@ weights: a list of weights for each endpoint of the dst.
 */
 func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
+	// // for debgging:
+	// if dst == "app1" {
+	// 	proxywasm.LogCriticalf("Setting Fixed Weights for app1: %v", weights)
+	// 	weights = []float64{70, 30}
+	// }
+
 	if len(weights) == 0 {
 		return -1, errors.New("No weights provided")
 	}
@@ -355,7 +362,7 @@ func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 		return getNextDstEndpointWeightedRandom(weights)
 
 	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
-		return -1, errors.New("Not implemented yet")
+		return getNextDstEndpointWeightedRoundRobin(dst, weights)
 
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" {
 		return getNextDstEndpointWeightedLeastRequest(dst, weights)
@@ -396,41 +403,107 @@ func getNextDstEndpointWeightedRandom(weights []float64) (int, error) {
 
 	return -1, errors.New("No endpoint found [Likely cause: sum of weights != 100]")
 }
-func getOutstandingRequests(dst string, endpointNum int) (int, error) {
-	valBytes, _, err :=
-		proxywasm.GetSharedData(endpointOutstandingReqKey(dst, endpointNum))
+
+// Function that sets a value for outstanding requests obj only when obj only if the input cas matches
+func setOutstandingReqs(
+	cas uint32, dst string, outstandingReqs *[]int) error {
+
+	// get new WeightedRoundRobin stats
+	buf, err := json.Marshal(outstandingReqs)
 	if err != nil {
-		return 0, err
+		proxywasm.LogCriticalf("Couldn't marshal outstandingReqs: %v", err)
+		panic(err)
 	}
 
-	val := binary.LittleEndian.Uint64(valBytes)
-	return int(val), nil
+	// set the new initial value
+	err = proxywasm.SetSharedData(outstandingReqsKey(dst), buf, cas)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't set shared data for key %s: %v",
+			outstandingReqsKey(dst), err)
+
+		// if cas mismatch, it means some other Envoy thread has set the value,
+		if errors.Is(err, types.ErrorStatusCasMismatch) {
+			proxywasm.LogCriticalf(
+				"CAS Mismatch on OutstandingReqs, failing: %v", err)
+		}
+	}
+
+	return err
 }
 
-// the following impl is not perfect:
-//
-//	there can be race conditions that prevent it from producing the correct result
+func getOutstandingRequests(
+	dst string, numEndpoints int) (*[]int, uint32, error) {
+
+	// get outstanding requests for all endpoints of the dst
+	valBytes, cas, err := proxywasm.GetSharedData(outstandingReqsKey(dst))
+
+	if err != nil {
+		proxywasm.LogCriticalf(
+			"Couldn't get shared data for endpoint %s-%d: %v", dst, err)
+
+		// initialize outstanding requests
+		outstandingReqs := make([]int, numEndpoints)
+		err = setOutstandingReqs(cas, dst, &outstandingReqs)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't initialize outstanding requests: %v", err)
+		}
+
+		// try again
+		return getOutstandingRequests(dst, numEndpoints)
+	}
+
+	outstandingReqs := []int{}
+	err = json.Unmarshal(valBytes, &outstandingReqs)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't unmarshal outstandingReqs: %v", err)
+		return nil, 0, err
+	}
+
+	return &outstandingReqs, cas, nil
+}
+
 func getNextDstEndpointWeightedLeastRequest(
 	dst string, weights []float64) (int, error) {
+
+	outstandingReqs, cas, err := getOutstandingRequests(dst, len(weights))
+	if err != nil {
+		proxywasm.LogCriticalf(
+			"Couldn't get outstanding requests for endpoint %s: %v",
+			dst, err)
+		return -1, err
+	}
+
+	// perform least request
+	selectedEndpoint, outstandingReqs :=
+		doEffectiveLoadWLR(weights, outstandingReqs)
+
+	// set the new outstanding requests
+	err = setOutstandingReqs(cas, dst, outstandingReqs)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't set outstanding requests: %v", err)
+
+		// try again, another thread has changed outstanding requests since we
+		// 	last read them
+		return getNextDstEndpointWeightedLeastRequest(dst, weights)
+	}
+
+	return selectedEndpoint, nil
+}
+
+func doEffectiveLoadWLR(
+	weights []float64, outstandingReqs *[]int) (int, *[]int) {
 
 	var selectedEndpoint int
 	minLoad := math.MaxFloat64
 	candidates := []int{}
 
 	for endpointNum, weight := range weights {
-
-		outstandingReqs, err := getOutstandingRequests(dst, endpointNum)
-		if err != nil {
-			proxywasm.LogCriticalf(
-				"Couldn't get outstanding requests for endpoint %s-%d: %v",
-				dst, endpointNum, err)
-			return -1, err
-		}
-
-		effectiveLoad := float64(outstandingReqs) / (weight / 100.0)
+		effectiveLoad :=
+			float64((*outstandingReqs)[endpointNum]) / (weight / 100.0)
 		if effectiveLoad < minLoad {
 			minLoad = effectiveLoad
-			candidates = []int{} // Start a new list of candidates
+			candidates = []int{endpointNum} // Start a new list of candidates
 		} else if effectiveLoad == minLoad {
 			candidates = append(candidates, endpointNum) // Add to candidates
 		}
@@ -440,7 +513,197 @@ func getNextDstEndpointWeightedLeastRequest(
 	selectedEndpoint = candidates[rand.Intn(len(candidates))]
 
 	// Increment the active request count for the selected server
-	IncrementSharedData(endpointOutstandingReqKey(dst, selectedEndpoint), 1)
+	(*outstandingReqs)[selectedEndpoint]++
+
+	return selectedEndpoint, outstandingReqs
+}
+
+func GetSharedIntData(key string, defaultVal int) int {
+
+	valBytes, _, err := proxywasm.GetSharedData(key)
+
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get shared data for key %s: %v", key, err)
+
+		// set the value to defaultVal
+		buf := make([]byte, 8)
+		binary.LittleEndian.PutUint64(buf, uint64(defaultVal))
+		proxywasm.SetSharedData(key, buf, 0)
+		return defaultVal
+	}
+
+	val := binary.LittleEndian.Uint64(valBytes)
+	return int(val)
+}
+
+type WeightedRoundRobin struct {
+	Weights        []float64 `json:"weights"`         // Weights of each endpoint
+	CurrentIndex   int       `json:"current_index"`   // The index of the last selected endpoint
+	CurrentWeight  float64   `json:"current_weight"`  // The current running weight
+	GCDWeight      float64   `json:"gcd_weight"`      // GCD of all weights (helps with the step size in round-robin)
+	MaxWeight      float64   `json:"max_weight"`      // Maximum weight among all endpoints
+	TotalEndpoints int       `json:"total_endpoints"` // Total number of endpoints
+}
+
+// Helper function to find the greatest common divisor (GCD)
+func gcd(a, b float64) float64 {
+	for b != 0 {
+		a, b = b, float64(int(a)%int(b))
+	}
+	return a
+}
+
+// Helper function to find GCD of a slice of numbers
+func gcdSlice(weights []float64) float64 {
+	if len(weights) == 0 {
+		return 1
+	}
+	g := weights[0]
+	for _, w := range weights[1:] {
+		g = gcd(g, w)
+		if g == 1 {
+			break
+		}
+	}
+	return g
+}
+
+func getInitialWRRStats(weights []float64) *WeightedRoundRobin {
+	wrr := &WeightedRoundRobin{
+		Weights:        weights,
+		CurrentIndex:   -1,
+		CurrentWeight:  0,
+		GCDWeight:      gcdSlice(weights),
+		MaxWeight:      maxFloatArray(weights),
+		TotalEndpoints: len(weights),
+	}
+	return wrr
+}
+
+// Function that sets a value for the WeightedRoundRobin obj only if the input cas matches
+func setWeightedRoundRobinStats(
+	cas uint32, dst string, wrr *WeightedRoundRobin) error {
+
+	// get new WeightedRoundRobin stats
+	buf, err := json.Marshal(wrr)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't marshal WeightedRoundRobin: %v", err)
+		panic(err)
+	}
+
+	// set the new initial value
+	err = proxywasm.SetSharedData(weightedRoundRobinStatsKey(dst), buf, cas)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't set shared data for key %s: %v",
+			weightedRoundRobinStatsKey(dst), err)
+
+		// if cas mismatch, it means some other Envoy thread has set the value,
+		if errors.Is(err, types.ErrorStatusCasMismatch) {
+			proxywasm.LogCriticalf(
+				"CAS Mismatch on WeightedRoundRobin, failing: %v", err)
+		}
+	}
+
+	return err
+}
+func isFloatArrayEqual(a, b []float64) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+func getWeightedRoundRobinStats(
+	dst string, weights []float64) (*WeightedRoundRobin, uint32, error) {
+
+	val, cas, err := proxywasm.GetSharedData(weightedRoundRobinStatsKey(dst))
+
+	if err != nil {
+		// this means it has not been initialized yet
+		proxywasm.LogCriticalf("Couldn't get shared data for key %s: %v",
+			weightedRoundRobinStatsKey(dst), err)
+
+		// initialize the WeightedRoundRobin Stats
+		proxywasm.LogCriticalf("Initializing WeightedRoundRobin for %s", dst)
+		err = setWeightedRoundRobinStats(cas, dst, getInitialWRRStats(weights))
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't initialize WeightedRoundRobin: %v", err)
+		}
+
+		// restart function to get the updated value
+		return getWeightedRoundRobinStats(dst, weights)
+	}
+
+	wrr := &WeightedRoundRobin{}
+	err = json.Unmarshal(val, wrr)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't unmarshal WeightedRoundRobin: %v", err)
+		return nil, 0, err
+	}
+
+	// if weights have changed, reinitialize the WeightedRoundRobin
+	if !isFloatArrayEqual(weights, wrr.Weights) {
+
+		// reinitialize the WeightedRoundRobin Stats
+		proxywasm.LogCriticalf("Reinitializing WeightedRoundRobin for %s", dst)
+		err = setWeightedRoundRobinStats(cas, dst, getInitialWRRStats(weights))
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't initialize WeightedRoundRobin: %v", err)
+		}
+
+		// restart function to get the updated value
+		return getWeightedRoundRobinStats(dst, weights)
+	}
+
+	return wrr, cas, nil
+}
+
+func getNextDstEndpointWeightedRoundRobin(
+	dst string, weights []float64) (int, error) {
+
+	// return -1, errors.New("Not implemented")
+
+	wrr, cas, err := getWeightedRoundRobinStats(dst, weights)
+	if err != nil {
+		return -1, errors.New("Couldn't get WeightedRoundRobin stats")
+	}
+
+	var selectedEndpoint int
+
+	for {
+		wrr.CurrentIndex = (wrr.CurrentIndex + 1) % wrr.TotalEndpoints
+		if wrr.CurrentIndex == 0 {
+			wrr.CurrentWeight -= wrr.GCDWeight
+			if wrr.CurrentWeight <= 0 {
+				wrr.CurrentWeight = wrr.MaxWeight
+				if wrr.CurrentWeight == 0 {
+					return -1, errors.New(
+						"invalid weights: all weights are zero")
+				}
+			}
+		}
+
+		if wrr.Weights[wrr.CurrentIndex] >= wrr.CurrentWeight {
+			selectedEndpoint = wrr.CurrentIndex
+			break
+		}
+	}
+
+	// set the new WeightedRoundRobin Stats
+	err = setWeightedRoundRobinStats(cas, dst, wrr)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't set WeightedRoundRobin stats: %v", err)
+
+		// try again, another thread has changed wrr stats since we last read
+		// 	them
+		return getNextDstEndpointWeightedRoundRobin(dst, weights)
+	}
 
 	return selectedEndpoint, nil
 }
@@ -531,42 +794,57 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 
 		// get stored weights from central controller
 		weightsBStr, _, err := proxywasm.GetSharedData(dst)
-		weightsStr := string(weightsBStr)
-		if err != nil || weightsStr == "nil" {
+
+		if err != nil {
+			proxywasm.LogCriticalf("Shared data doesn't exist data for %s: %v", dst, err)
 			// no rules available yet.
 			proxywasm.LogCriticalf("Removing x-lb-endpt")
 			headerErr := proxywasm.RemoveHttpRequestHeader("x-lb-endpt")
 			if headerErr != nil {
 				proxywasm.LogCriticalf("Error removing header: %v", headerErr)
 			}
+
 		} else {
+			weightsStr := string(weightsBStr)
+			if weightsStr == "nil" {
+				proxywasm.LogCriticalf("Nil weights available for %s", dst)
+				// no rules available yet.
+				proxywasm.LogCriticalf("Removing x-lb-endpt")
+				headerErr := proxywasm.RemoveHttpRequestHeader("x-lb-endpt")
+				if headerErr != nil {
+					proxywasm.LogCriticalf("Error removing header: %v", headerErr)
+				}
 
-			// parse the weights from central controller
-			weights, err := parseLBWeights(weightsStr)
-			if err != nil {
-				proxywasm.LogCriticalf("Couldn't parse weights: %v", err)
-				return types.ActionContinue
-			}
+			} else {
 
-			// get the next endpoint to send the request to
-			endpointNum, err := getNextDstEndpoint(dst, weights)
-			if err != nil {
-				proxywasm.LogCriticalf("Couldn't get next endpoint: %v", err)
-				return types.ActionContinue
-			}
+				// parse the weights from central controller
+				weights, err := parseLBWeights(weightsStr)
+				if err != nil {
+					proxywasm.LogCriticalf("Couldn't parse weights: %v", err)
+					return types.ActionContinue
+				}
 
-			// set the header that would be used by sidecar to route the request
-			header := fmt.Sprintf("%s-%d", dst, endpointNum)
-			proxywasm.LogCriticalf("Setting x-lb-endpt:" + header)
-			headerErr := proxywasm.ReplaceHttpRequestHeader(
-				"x-lb-endpt", header)
-			if headerErr != nil {
-				proxywasm.LogCriticalf(
-					"Error adding header: %v", headerErr)
+				// get the next endpoint to send the request to
+				endpointNum, err := getNextDstEndpoint(dst, weights)
+				if err != nil {
+					proxywasm.LogCriticalf("Couldn't get next endpoint: %v", err)
+					return types.ActionContinue
+				}
+
+				// set the header that would be used by sidecar to route the request
+				header := fmt.Sprintf("%s-%d", dst, endpointNum)
+				proxywasm.LogCriticalf("Setting x-lb-endpt:" + header)
+				headerErr := proxywasm.ReplaceHttpRequestHeader(
+					"x-lb-endpt", header)
+				if headerErr != nil {
+					proxywasm.LogCriticalf(
+						"Error adding header: %v", headerErr)
+				}
+
 				return types.ActionContinue
 			}
 		}
-		// return types.ActionContinue
+		return types.ActionContinue
 	}
 
 	// bookkeeping to make sure we don't double count requests. decremented in OnHttpStreamDone
@@ -876,6 +1154,8 @@ func IncrementSharedData(key string, amount int64) {
 			IncrementSharedData(key, amount)
 		}
 	}
+
+	proxywasm.LogCriticalf("Incremented shared data %v by %v. New value: %d", key, amount, val)
 }
 
 func GetUint64SharedDataOrZero(key string) uint64 {
@@ -1385,6 +1665,20 @@ func getNodeID(nodeName string) (int, error) {
 	return nodeID, nil
 }
 
+func maxFloatArray(arr []float64) float64 {
+	if len(arr) == 0 {
+		return 0 // Return 0 or some other value if the array is empty
+	}
+
+	max := arr[0]
+	for _, value := range arr {
+		if value > max {
+			max = value
+		}
+	}
+	return max
+}
+
 func inboundCountKey(traceId string) string {
 	return traceId + "-inbound-request-count"
 }
@@ -1432,6 +1726,14 @@ func emptyBytes(b []byte) bool {
 
 func endpointOutstandingReqKey(dstSvc string, endpointNum int) string {
 	return fmt.Sprintf("%s-%d-or", dstSvc, endpointNum)
+}
+
+func outstandingReqsKey(dstSvc string) string {
+	return dstSvc + "-or"
+}
+
+func weightedRoundRobinStatsKey(dstSvc string) string {
+	return dstSvc + "-wrr"
 }
 
 func endpointListKey(method string, path string) string {

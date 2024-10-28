@@ -8,6 +8,7 @@ kubectl delete -f wasm.yaml
 sleep 5
 kubectl apply -f wasm.yaml
 sleep 5
+kubectl rollout restart deployment istio-ingressgateway -n istio-system
 kubectl rollout restart statefulset
 sleep 5
 

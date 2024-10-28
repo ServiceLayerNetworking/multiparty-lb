@@ -145,7 +145,10 @@ func makeReqToEndpoint(
 	// 	},
 	// }
 	// res, err := client.Do(req)
-	res, err := http.DefaultClient.Do(req)
+	client := &http.Client{
+		Timeout: 10 * time.Second, // Set a timeout for the entire request
+	}
+	res, err := client.Do(req)
 	latency := time.Since(startReq)
 
 	if err != nil {
