@@ -4,3 +4,6 @@
 [submodule "DeathStarBench"]
 	path = DeathStarBench
 	url = https://github.com/talha-waheed/DeathStarBench/
+[submodule "hit"]
+	path = hit
+	url = https://github.com/talha-waheed/hit.git
