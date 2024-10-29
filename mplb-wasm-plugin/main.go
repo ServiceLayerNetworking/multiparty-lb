@@ -45,8 +45,8 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY = "weighted_leastrequest" // [weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LEAST_REQUEST_STRATEGY  = "effective_load"        // [effective_load]
+	LOAD_BALANCING_STRATEGY = "weighted_random" // [weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LEAST_REQUEST_STRATEGY  = "effective_load"  // [effective_load]
 )
 
 var (
@@ -349,10 +349,10 @@ weights: a list of weights for each endpoint of the dst.
 func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
 	// // for debgging:
-	// if dst == "app1" {
-	// 	proxywasm.LogCriticalf("Setting Fixed Weights for app1: %v", weights)
-	// 	weights = []float64{70, 30}
-	// }
+	if dst == "app1" {
+		proxywasm.LogCriticalf("Setting Fixed Weights for app1: %v", weights)
+		weights = []float64{70, 30}
+	}
 
 	if len(weights) == 0 {
 		return -1, errors.New("No weights provided")
@@ -372,6 +372,7 @@ func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
 	}
 }
+
 func notifyRequestCompletedToLB(dstPod string) {
 
 	parts := strings.Split(dstPod, "-")
@@ -383,12 +384,34 @@ func notifyRequestCompletedToLB(dstPod string) {
 	}
 	dst := strings.Join(parts[:len(parts)-1], "-")
 
+	// get the outstanding requests for all endpoints of the dst
+	outstandingReqs, cas, err := getOutstandingRequests(dst, endpointNum+1)
+	if err != nil {
+		proxywasm.LogCriticalf(
+			"Couldn't get outstanding requests for endpoint %s: %v", dst, err)
+		return
+	}
+
 	if LOAD_BALANCING_STRATEGY == "weighted_random" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" {
-		IncrementSharedData(endpointOutstandingReqKey(dst, endpointNum), -1)
+
+		// decrement the active request count for the selected server
+		(*outstandingReqs)[endpointNum]--
+
+		// set the new outstanding requests
+		err := setOutstandingReqs(cas, dst, outstandingReqs)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't set outstanding requests at notifyRequestCompletedToLB: %v", err)
+
+			// try again, another thread has changed outstanding requests since
+			// 	we last read them
+			notifyRequestCompletedToLB(dstPod)
+		}
 	}
 }
+
 func getNextDstEndpointWeightedRandom(weights []float64) (int, error) {
 	coin := rand.Float64()
 	total := 0.0
@@ -458,6 +481,24 @@ func getOutstandingRequests(
 	if err != nil {
 		proxywasm.LogCriticalf("Couldn't unmarshal outstandingReqs: %v", err)
 		return nil, 0, err
+	}
+
+	// if numofEndpoints have increased, add state for new endpoints
+	if numEndpoints > len(outstandingReqs) {
+
+		// add state for new endpoints
+		proxywasm.LogCriticalf(
+			"Adding outstanding request state for new endpoints of %s", dst)
+		outstandingReqs = append(outstandingReqs,
+			make([]int, numEndpoints-len(outstandingReqs))...)
+		err = setOutstandingReqs(cas, dst, &outstandingReqs)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't set the new outstanding requests: %v", err)
+		}
+
+		// restart function to get the updated value
+		return getOutstandingRequests(dst, numEndpoints)
 	}
 
 	return &outstandingReqs, cas, nil
