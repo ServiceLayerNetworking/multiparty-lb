@@ -348,10 +348,16 @@ weights: a list of weights for each endpoint of the dst.
 */
 func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
-	// // for debgging:
+	// for debgging:
 	if dst == "app1" {
-		proxywasm.LogCriticalf("Setting Fixed Weights for app1: %v", weights)
 		weights = []float64{70, 30}
+		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	} else if dst == "app2" {
+		weights = []float64{47.5, 52.5}
+		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	} else if dst == "app3" {
+		weights = []float64{100}
+		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
 	}
 
 	if len(weights) == 0 {
@@ -379,7 +385,8 @@ func notifyRequestCompletedToLB(dstPod string) {
 	endpointNumStr := parts[len(parts)-1]
 	endpointNum, err := strconv.Atoi(endpointNumStr)
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't parse endpoint number: %v", err)
+		proxywasm.LogCriticalf("Couldn't parse endpoint number from %s: %v",
+			dstPod, err)
 		return
 	}
 	dst := strings.Join(parts[:len(parts)-1], "-")
@@ -449,6 +456,9 @@ func setOutstandingReqs(
 			proxywasm.LogCriticalf(
 				"CAS Mismatch on OutstandingReqs, failing: %v", err)
 		}
+	} else {
+		proxywasm.LogCriticalf("Set outstanding requests for %s: %v", dst,
+			*outstandingReqs)
 	}
 
 	return err
@@ -462,7 +472,7 @@ func getOutstandingRequests(
 
 	if err != nil {
 		proxywasm.LogCriticalf(
-			"Couldn't get shared data for endpoint %s-%d: %v", dst, err)
+			"Couldn't get shared data for endpoint %s: %v", dst, err)
 
 		// initialize outstanding requests
 		outstandingReqs := make([]int, numEndpoints)
@@ -986,7 +996,14 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	// get x-dst-pod from response headers
 	dstPod, err := proxywasm.GetHttpResponseHeader("x-dst-pod")
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get request header x-dst-pod in the response: %v", err)
+		proxywasm.LogCriticalf("Couldn't get response header x-dst-pod in the response: %v", err)
+		proxywasm.LogCriticalf("Trying to get x-lb-endpt from the request header")
+		dstPod, err = proxywasm.GetHttpRequestHeader("x-lb-endpt")
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't get request header x-lb-endpt in the response: %v", err)
+		} else {
+			proxywasm.LogCriticalf("Got x-lb-endpt: %s", dstPod)
+		}
 	}
 
 	// CORNER CASE PREVENTION: (logging at frontend when request gateway->frontend)
@@ -1007,23 +1024,35 @@ func (ctx *httpContext) OnHttpStreamDone() {
 
 	notifyRequestCompletedToLB(dstPod)
 
-	// get the current array of timestamps
-	tsList, _, err := proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
-	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
-		return
+	isTsListChangeSuccessful := false
+
+	for !isTsListChangeSuccessful {
+
+		// get the current array of timestamps
+		tsList, cas, err := proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't get shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
+			// this should never happen
+			return
+		}
+
+		timeStampStr := fmt.Sprintf("\n%s %s %s %s", dstSvc, dstPod, startTimeStr, endTimeStr)
+
+		// append the new timestamp to the list
+		tsList = append(tsList, []byte(timeStampStr)...)
+
+		// set the new list
+		if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, tsList, cas); err != nil {
+			proxywasm.LogCriticalf("unable to set shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
+			if errors.Is(err, types.ErrorStatusCasMismatch) {
+				proxywasm.LogCriticalf("CAS Mismatch on TIMESTAMPS_SHARED_QUEUE, failing: %v", err)
+			}
+		} else {
+			proxywasm.LogCriticalf("added timestamp to shared data")
+			isTsListChangeSuccessful = true
+		}
 	}
 
-	timeStampStr := fmt.Sprintf("\n%s %s %s %s", dstSvc, dstPod, startTimeStr, endTimeStr)
-
-	// append the new timestamp to the list
-	tsList = append(tsList, []byte(timeStampStr)...)
-
-	// set the new list
-	if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, tsList, 0); err != nil {
-		proxywasm.LogCriticalf("unable to set shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
-		return
-	}
 	// get the response headers
 	respHeaders, err := proxywasm.GetHttpResponseHeaders()
 	if err != nil {
