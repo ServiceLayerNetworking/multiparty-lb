@@ -8,7 +8,10 @@ from json import dumps
 import json
 from typing import Tuple, List, Dict
 
-previous_w = {}
+Tenant_Min = Dict[str, gp.Var]
+Tenant_Consumed = Dict[str, gp.Var]
+
+previous_w: Dict[str,float] = {}
 
 def run_model(_host_cap, _t0, _t1, _t2):
 
@@ -437,11 +440,323 @@ def run_admission_control(
     """
     
     pass
+      
+def rerun_generic_linear_model(
+    m: gp.Model,
+    t_min: Tenant_Min,
+    t_consumed: Tenant_Consumed,
+    _hosts: List[Host],
+    _tenants: List[Tenant],
+    _workers: List[Worker]) -> Tuple[str, gp.Model, Tenant_Min, Tenant_Consumed]:
+    
+    global previous_w
+    
+    # confirm if the topology is the same, if not, rerun the optimization from scratch
+    was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
+    if not was_previous_the_same_topology:
+        return run_generic_linear_model(_hosts, _tenants, _workers)
+
+    #  ============================= Modify Variables =============================
+    
+    for tenant in _tenants:
+        t_min_value = min(tenant.fshareload, tenant.load)
+        t_min[tenant.name].LB = t_min_value
+        t_min[tenant.name].UB = t_min_value
+        
+    for tenant in _tenants:
+        print(f"{tenant.name}: (lb: {min(tenant.fshareload, tenant.load)}, ub: {tenant.load})")
+        t_consumed[tenant.name].LB = min(tenant.fshareload, tenant.load)
+        t_consumed[tenant.name].UB = tenant.load
+        
+    # ============================ Update Model =============================
+    
+    m.update()
+    
+    # ============================== Optimize! =================================
+    
+    m.optimize()
+    
+    # =========================== Done Optimization ============================
+    
+    if m.Status == GRB.OPTIMAL:
+        vars = {v.varName: v.x for v in m.getVars()}
+        print(vars)
+        
+    if m.Status == GRB.OPTIMAL:        
+        
+        vars = {v.varName: v.x for v in m.getVars()}
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+            else:
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        # set the previous weights to the current weights
+        previous_w = {worker.name: vars[f"w_{worker.name}"] for worker in _workers}
+        print("New previous weights:", previous_w)            
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_consumed
+
+    else:
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = 0.0
+            else:
+                results[worker.tenant][worker.name] = 0.0
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_consumed
+
+
+def run_generic_linear_model(
+    _hosts: List[Host],
+    _tenants: List[Tenant],
+    _workers: List[Worker]) -> Tuple[str, gp.Model, Tenant_Min, Tenant_Consumed]:
+    
+    global previous_w
+    
+    # =========================== Begin Optimization ===========================
+    
+    # MIP  model formulation
+    m = gp.Model("lb")
+    
+    #  ============================= Set Variables =============================
+    
+    # set host capacity for each host
+    cap = {}
+    for h in _hosts:
+        cap[h.name] = m.addVar(lb=h.cap, ub=h.cap, vtype=GRB.CONTINUOUS,
+                        name=f"cap_{h.name}")
+    
+    # # set variables for the tenant loads
+    # t = {}
+    # for tenant in _tenants:
+    #     t[tenant.name] = m.addVar(lb=tenant.load, ub=tenant.load, 
+    #                               vtype=GRB.CONTINUOUS, name=f"t_{tenant.name}")
+    
+    # set variables for the workers
+    w = {}   
+    for worker in _workers:
+        w[worker.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
+                           name=f"w_{worker.name}")
+    
+    print(w)
+
+    t_min = {}
+    for tenant in _tenants:
+        t_min_value = min(tenant.fshareload, tenant.load)
+        t_min[tenant.name] = m.addVar(lb=t_min_value, ub=t_min_value,
+                                      vtype=GRB.CONTINUOUS,
+                                 name=f"t_min_{tenant.name}")
+        
+    t_consumed = {}
+    for tenant in _tenants:
+        print(f"{tenant.name}: (lb: {min(tenant.fshareload, tenant.load)}, ub: {tenant.load})")
+        # t_consumed[tenant.name] = m.addVar(lb=0.0,
+        #                                    vtype=GRB.CONTINUOUS,
+        #                          name=f"t_consumed_{tenant.name}")
+        # We could also add the constraints here instead of adding them later, maybe that saves time in optimization
+        t_consumed[tenant.name] = m.addVar(lb=min(tenant.fshareload, tenant.load), 
+                                           ub=tenant.load,
+                                           vtype=GRB.CONTINUOUS,
+                                 name=f"t_consumed_{tenant.name}")
+    
+    t_excess_consumed = {}
+    for tenant in _tenants:
+        t_excess_consumed[tenant.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
+                                 name=f"t_excess_consumed_{tenant.name}")
+    
+    t_log_excess_consumed = {}
+    for tenant in _tenants:
+        t_log_excess_consumed[tenant.name] = m.addVar(vtype=GRB.CONTINUOUS,
+                                                      lb=-GRB.INFINITY,
+                                                      ub=GRB.INFINITY,
+                                 name=f"t_log_excess_consumed_{tenant.name}")
+    
+    one = m.addVar(lb=1.0, ub=1.0, vtype=GRB.CONTINUOUS, name="one")
+    
+    # ======================= Set Utilization Objective ========================
+    
+    sum_fshareloads = sum(tenant.fshareload for tenant in _tenants)
+    
+    weighted_sum_of_t_excess_consumption = gp.quicksum(
+        ((tenant.fshareload / sum_fshareloads) * t_log_excess_consumed[tenant.name]
+         for tenant in _tenants))
+    
+    # sum_workers = gp.quicksum((w[worker.name] for worker in _workers))
+         
+    m.setObjectiveN(-weighted_sum_of_t_excess_consumption, index=0, priority=2)
+    
+    # ============================ Set Constraints =============================
+    
+    # for each tenant, set t_log_excess_consumed = log(t_consumed)
+    for tenant in _tenants:
+        m.addGenConstrLog(t_excess_consumed[tenant.name],
+                          t_log_excess_consumed[tenant.name])
+    
+    # for each tenant, set t_excess_consumed = t_consumed - t_min
+    for tenant in _tenants:
+        m.addConstr(
+            t_excess_consumed[tenant.name] == 
+            t_consumed[tenant.name] - t_min[tenant.name],
+            name=f"t_excess_consumed_{tenant.name}")
+    
+    # at each h, sum(w ∈ h) <= cap
+    for host in _hosts:
+        m.addConstr(gp.quicksum(
+            (w[worker.name] for worker in _workers if worker.host == host.name)) 
+                    <= cap[host.name],
+                    name=f"h_{host.name}")
+        
+    # for each tenant t, set t_consumed = sum(w ∈ t)
+    for tenant in _tenants:
+        m.addConstr(
+            t_consumed[tenant.name] == gp.quicksum(
+                (w[worker.name]
+                for worker in _workers if worker.tenant == tenant.name)),
+            name=f"t_consumed_{tenant.name}")
+        
+    # # at each t, t_consumed <= t
+    # for tenant in _tenants:
+    #     m.addConstr(
+    #         t_consumed[tenant.name] <= tenant.load,
+    #         name=f"t_upper_{tenant.name}")
+    
+    # # for each tenant, t_consumed >= t_min
+    # for tenant in _tenants:
+    #     m.addConstr(
+    #         t_consumed[tenant.name] >= min(tenant.fshareload, tenant.load),
+    #         name=f"t_lower_{tenant.name}")
+        
+    # ========================== Variance Objective ============================
+    
+    host_utilizations = []
+    for host in _hosts:
+        host_utilizations.append(gp.quicksum((w[worker.name] for worker in _workers if worker.host == host.name)))
+    
+    n = len(host_utilizations)
+    
+    # Auxiliary variables for absolute differences
+    differences = {}
+    for i in range(n):
+        for j in range(i + 1, n):  # Only consider each pair once (i < j)
+            differences[i, j] = m.addVar(vtype=GRB.CONTINUOUS, name=f"d_{i}_{j}")
+
+    # Constraints to link auxiliary host_utilizations with the absolute difference of pairs
+    for i in range(n):
+        for j in range(i + 1, n):
+            m.addConstr(differences[i, j] >= host_utilizations[i] - host_utilizations[j], f"DiffPos_{i}_{j}")
+            m.addConstr(differences[i, j] >= host_utilizations[j] - host_utilizations[i], f"DiffNeg_{i}_{j}")
+    
+    # Objective: Minimize the sum of all absolute differences
+    m.setObjectiveN(gp.quicksum(differences[i, j] for i in range(n) for j in range(i + 1, n)), index=1, priority=1)
+
+    # ========== Minimize distance between current and prev weights ============
+    
+    # do this only if you have all the previous weights
+    was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
+    
+    if was_previous_the_same_topology:
+        
+        print("Same topology;", "doing the distance optimization")
+        
+        n = len(_workers)
+        abs_diff = m.addVars(n, vtype=GRB.CONTINUOUS, name="abs_diff")
+        
+        # set the new objective to minimize the distance between the weights
+        for i, worker in enumerate(_workers):
+            m.addConstr(abs_diff[i] >= w[worker.name] - previous_w[worker.name])
+            m.addConstr(abs_diff[i] >= previous_w[worker.name] - w[worker.name])
+        
+        m.setObjectiveN(gp.quicksum(abs_diff[i] for i in range(n)), index=2, priority=0)
+        
+    else:
+        
+        print("Different topology;", "adding distance objective with 0 weight") 
+        
+        n = len(_workers)
+        abs_diff = m.addVars(n, vtype=GRB.CONTINUOUS, name="abs_diff")
+        
+        # set the new objective to minimize the distance between the weights
+        for i, worker in enumerate(_workers):
+            m.addConstr(abs_diff[i] >= w[worker.name] - 0.0)
+            m.addConstr(abs_diff[i] >= 0.0 - w[worker.name])
+        
+        m.setObjectiveN(gp.quicksum(abs_diff[i] for i in range(n)), index=2, priority=0)
+    
+    # ============================== Optimize! =================================
+    
+    m.optimize()
+    
+    # =========================== Done Optimization ============================
+    
+    if m.Status == GRB.OPTIMAL:
+        vars = {v.varName: v.x for v in m.getVars()}
+        print(vars)
+        
+    if m.Status == GRB.OPTIMAL:        
+        
+        vars = {v.varName: v.x for v in m.getVars()}
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+            else:
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        # set the previous weights to the current weights
+        previous_w = {worker.name: vars[f"w_{worker.name}"] for worker in _workers}
+        print("New previous weights:", previous_w)            
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_consumed
+
+    else:
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = 0.0
+            else:
+                results[worker.tenant][worker.name] = 0.0
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_consumed
         
 def run_generic_model(
     _hosts: List[Host],
     _tenants: List[Tenant],
-    _workers: List[Worker]):
+    _workers: List[Worker]) -> str:
     
     global previous_w
     
@@ -612,7 +927,7 @@ def run_generic_model(
             # =========================== Optimization minimize distanc between weights ============================
             
             # do this only if you have all the previous weights
-            was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers)
+            was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
             
             if was_previous_the_same_topology:
                 
@@ -638,7 +953,25 @@ def run_generic_model(
                 
             else:
                 
-                print("Different topology;", "not doing the distance optimization")
+                print("Different topology;", "adding distance objective with 0 weight") 
+                
+                # set that the variance objective is no more as much as what it was in the last optimization
+                max_var = m.ObjVal
+                m.addConstr(variance <= max_var)
+                
+                n = len(_workers)
+                abs_diff = m.addVars(n, vtype=GRB.CONTINUOUS, name="abs_diff")
+                
+                # set the new objective to minimize the distance between the weights
+                for i, worker in enumerate(_workers):
+                    m.addConstr(abs_diff[i] >= w[worker.name] - 0.0)
+                    m.addConstr(abs_diff[i] >= 0.0 - w[worker.name])
+                
+                m.setObjective(gp.quicksum(abs_diff[i] for i in range(n)), GRB.MINIMIZE)
+                
+                m.optimize()
+                
+                print("Different topology;", "did the distance optimization")
     
     # =========================== Done Optimization ============================
     

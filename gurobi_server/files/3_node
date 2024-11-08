@@ -2,15 +2,15 @@
     [
         {
             "name": "node1",
-            "cap": 4
+            "cap": 210
         },
         {
             "name": "node2",
-            "cap": 4
+            "cap": 210
         },
         {
             "name": "node3",
-            "cap": 4
+            "cap": 210
         }
     ],
     [
