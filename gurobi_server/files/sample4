@@ -1,0 +1,36 @@
+[
+    [
+        {"name": "node1", "cap": 2000
+        },
+        {"name": "node2", "cap": 2000
+        },
+        {"name": "node3", "cap": 2000
+        },
+        {"name": "node4", "cap": 32000
+        }
+    ],
+    [
+        {"name": "app3", "load": 100, "fshareload": 1000
+        },
+        {"name": "app1", "load": 300, "fshareload": 2000
+        },
+        {"name": "app2", "load": 200, "fshareload": 3000
+        },
+        {"name": "app4", "load": 0, "fshareload": 32000
+        }
+    ],
+    [
+        {"name": "app1-node1", "tenant": "app1", "host": "node1"
+        },
+        {"name": "app2-node2", "tenant": "app2", "host": "node2"
+        },
+        {"name": "app3-node1", "tenant": "app3", "host": "node1"
+        },
+        {"name": "app1-node2", "tenant": "app1", "host": "node2"
+        },
+        {"name": "app2-node3", "tenant": "app2", "host": "node3"
+        },
+        {"name": "app4-node4", "tenant": "app4", "host": "node4"
+        }
+    ]
+]

@@ -11,7 +11,7 @@ from kubernetes import client, config
 DURATION = 60 # 1 minute
 SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 2 * 60 # 5 minutes
 SLEEP_TIME_AFTER_EACH_RUN = 0 # 120 seconds
-LOG_FOLDER = "logs14"
+LOG_FOLDER = "logs15"
 
 def get_gateway_ip():
     """
@@ -337,21 +337,21 @@ def run():
                 
                 if run_id in [9]:
                     
-                    restart_k8s()
+                    # restart_k8s()
                         
-                    time.sleep(15)
+                    # time.sleep(15)
                     
-                    # Set topology for app1, app2, app3
-                    set_topology("app1", nodes_app1)
-                    set_topology("app2", nodes_app2)
-                    set_topology("app3", nodes_app3)
+                    # # Set topology for app1, app2, app3
+                    # set_topology("app1", nodes_app1)
+                    # set_topology("app2", nodes_app2)
+                    # set_topology("app3", nodes_app3)
                         
-                    time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
+                    # time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                     
                     # Define the RPS for each app
                     rpses = [90, 60, 30]
                     
-                    for iteration in [2]:
+                    for iteration in [3]:
                         
                         print(f"Starting iteration {iteration} for run_id {run_id}...")
                         
@@ -366,13 +366,13 @@ def run():
                         to_append = get_topology_str(intended_topology)
                         print(to_append)
                         
-                        # Run the experiment
-                        print("Press enter to continue...")
-                        input()
-                        run_exp(f"lr_{run_id}_{iteration}", rpses, "NONE", append_to_times=to_append)
+                        # # Run the experiment
+                        # print("Press enter to continue...")
+                        # input()
+                        # run_exp(f"lr_{run_id}_{iteration}", rpses, "NONE", append_to_times=to_append)
                         
                         print("Press enter to continue...")
-                        input()
+                        # input()
                         run_exp(f"mplb_{run_id}_{iteration}", rpses, "LB", append_to_times=to_append)
 
 def print_all_combinations(): 
