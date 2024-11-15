@@ -13,6 +13,7 @@ import pandas as pd
 
 Tenant_Min = Dict[str, gp.Var]
 Tenant_Consumed = Dict[str, gp.Var]
+Tenant_Load = Dict[str, gp.Var]
 
 previous_w: Dict[str,float] = {}
  
@@ -960,6 +961,511 @@ def run_generic_linear_multioptimization_model(
         
         return to_return, m, t_min, t_consumed
 
+# Linear Single Combined Objective
+def run_generic_linear_single_objective_model_nov15(
+    _hosts: List[Host],
+    _tenants: List[Tenant],
+    _workers: List[Worker]) -> Tuple[str, gp.Model, Tenant_Min, Tenant_Load]:
+    
+    global previous_w
+    
+    # =========================== Begin Optimization ===========================
+    
+    # MIP  model formulation
+    m = gp.Model("lb")
+    
+    #  ============================= Set Variables =============================
+    
+    # set host capacity for each host
+    cap = {}
+    for h in _hosts:
+        cap[h.name] = m.addVar(lb=h.cap, ub=h.cap, vtype=GRB.CONTINUOUS,
+                        name=f"cap_{h.name}")
+        
+    # set variables for the workers
+    w = {}
+    log_w = {}
+    for worker in _workers:
+        w[worker.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
+                           name=f"w_{worker.name}")
+        log_w[worker.name] = m.addVar(vtype=GRB.CONTINUOUS,
+                                      lb=-GRB.INFINITY,
+                                      ub=GRB.INFINITY,
+                                      name=f"log_w_{worker.name}")
+    
+    # state for tenant (to be used for rerunning optimization)
+    t_load = {}
+    t_min = {}
+    for tenant in _tenants:
+        t_load[tenant.name] = m.addVar(lb=tenant.load, ub=tenant.load, vtype=GRB.CONTINUOUS,
+                                       name=f"t_{tenant.name}")
+        t_min_value = min(tenant.fshareload, tenant.load)
+        t_min[tenant.name] = m.addVar(lb=t_min_value, ub=t_min_value, vtype=GRB.CONTINUOUS,
+                                     name=f"t_min_{tenant.name}")
+    
+    # set spare resources used by a tenant
+    sr = {}
+    log_sr = {}
+    for tenant in _tenants:
+        sr[tenant.name] = m.addVar(lb=-GRB.INFINITY,
+                                   ub=GRB.INFINITY,
+                                   vtype=GRB.CONTINUOUS,
+                                   name=f"sr_{tenant.name}")
+        log_sr[tenant.name] = m.addVar(lb=-GRB.INFINITY,
+                                        ub=GRB.INFINITY,
+                                        vtype=GRB.CONTINUOUS,
+                                        name=f"log_sr_{tenant.name}")
+    
+    # set spare capacities at hosts
+    sp = {}
+    log_sp = {}
+    for host in _hosts:
+        sp[host.name] = m.addVar(lb=0.0,
+                                 ub=host.cap,
+                                 vtype=GRB.CONTINUOUS, name=f"sp_{host.name}")
+        log_sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS,
+                                     lb=-GRB.INFINITY,
+                                     ub=GRB.INFINITY,
+                                     name=f"log_sp_{host.name}")
+    
+    # ======================= Set Optimization Objective =======================
+        
+    # Objective 1: max sum(U(sr_t+, w_t), ∀t)
+    #                  where
+    #                  U(sr_t+, w_t) = w_t * log(sr_t+)
+    #                  w_t = fs_t
+    # ∴ obj1 = sum(fs_t * log(sr_t+), ∀t); maximize this
+    obj1 = gp.quicksum((tenant.fshareload * log_sr[tenant.name] for tenant in _tenants))
+    # m.setObjectiveN(-obj1, index=0, priority=2)
+    
+    # Objective 2: max sum(U(sp_h), ∀h)
+    #                  where
+    #                  U(sp_h) = log(sp_h)
+    # ∴ obj2 = sum(log(sp_h), ∀h); maximize this
+    obj2 = gp.quicksum([log_sp[host.name] for host in _hosts])
+    # m.setObjectiveN(-obj2, index=1, priority=1)
+    
+    # Objective 3: max sum(U(w), ∀w)
+    #                  where
+    #                  U(w) = log(w)
+    # ∴ obj3 = sum(log(w), ∀w); maximize this
+    obj3 = gp.quicksum([log_w[worker.name] for worker in _workers])
+    # m.setObjectiveN(-obj3, index=2, priority=0)
+    
+    obj1_w = np.sum([host.cap for host in _hosts])
+    obj2_w = 0.1
+    obj3_w = 0.001
+    obj = obj1_w * obj1 + obj2_w * obj2 + obj3_w * obj3
+    m.setObjective(obj, GRB.MAXIMIZE)
+        
+    # m.setParam('FuncPieces', 0)  # Increase number of pieces in linearization
+    
+    # ============================ Set Constraints =============================
+    
+    # Constraint 1: for all host h, sum(w ∈ t) <= cap(h)
+    m.addConstrs(
+        (gp.quicksum((w[worker.name] for worker in _workers if worker.host == host.name)) <= cap[host.name]
+         for host in _hosts),
+        name="h_cap"
+    )
+    
+    # Constraint 2: for all tenants w, sum(w ∈ t) < t_load
+    m.addConstrs(
+        (gp.quicksum((w[worker.name] for worker in _workers if worker.tenant == tenant.name)) <= t_load[tenant.name]
+         for tenant in _tenants), 
+        name="t_ub"
+    )
+    
+    # Constraint 3: for all tenants w, sum(w ∈ t) > min(tenant.fshareload, tenant.load)
+    for tenant in _tenants:
+        m.addConstr(
+            gp.quicksum((w[worker.name] for worker in _workers if worker.tenant == tenant.name)) >= t_min[tenant.name],
+            name=f"t_lb_{tenant.name}"
+        )
+    
+    # ------ Secondary constraints ------
+    
+    # Constraint 4: for all tenants, sr_t = sum(w ∈ t) - min(tenant.fshareload, tenant.load),
+    #                                log_sr_t = log(sr_t)
+    m.addConstrs(
+        ((sr[tenant.name] == gp.quicksum((w[worker.name] for worker in _workers if worker.tenant == tenant.name)) - t_min[tenant.name]) for tenant in _tenants),
+        name="sr"
+    )
+    for tenant in _tenants:
+        m.addGenConstrLog(sr[tenant.name], log_sr[tenant.name], name="log_sr")
+    
+    # Constraint 5: for all hosts, sp_h = cap(h) - sum(w ∈ h),
+    #                              log_sp_h = log(sp_h)
+    m.addConstrs(
+        ((sp[host.name] == gp.quicksum((w[worker.name] for worker in _workers if worker.host == host.name))) for host in _hosts),
+        name="sp"
+    )
+    for host in _hosts:
+        m.addGenConstrLog(sp[host.name], log_sp[host.name], name=f"log_sp_{host.name}")
+        
+    # Constraint 6: for all workers, log_w = log(w)
+    for worker in _workers:
+        m.addGenConstrLog(w[worker.name], log_w[worker.name], name=f"log_w_{worker.name}")
+    
+    # ============================== Optimize! =================================
+    
+    # m.setParam('FeasibilityTol', 1e-9)  # Set a tighter feasibility tolerance, if desired
+    m.optimize()
+    
+    # # Sequential Optimization
+    
+    # FUNC_PIECES = 0
+    
+    # # Optimize for obj1
+    # m.setParam('FuncPieces', FUNC_PIECES)
+    # m.setObjective(obj1, GRB.MAXIMIZE)
+    # m.optimize()
+    
+    # # Set constriants on sr for each tenant
+    # m.addConstrs(
+    #     (sr[tenant.name] >= sr[tenant.name].X for tenant in _tenants),
+    #     name="sr_lb_obj2"
+    # )
+    # m.update()
+    
+    # # Optimize for obj2
+    # m.setParam('FuncPieces', FUNC_PIECES)
+    # m.setObjective(obj2, GRB.MAXIMIZE)
+    # m.optimize()
+    
+    # # Set constriants on sp for each host
+    # m.addConstrs(
+    #     (sp[host.name] >= sp[host.name].X for host in _hosts),
+    #     name="sp_lb_obj3"
+    # )
+    # m.update()
+    
+    # # Optimize for obj3
+    # m.setParam('FuncPieces', FUNC_PIECES)
+    # m.setObjective(obj3, GRB.MAXIMIZE)
+    # m.optimize()
+    
+    # =========================== Done Optimization ============================
+    
+    if m.Status != GRB.OPTIMAL:
+        
+        print([str(host) for host in _hosts])
+        print([str(tenant) for tenant in _tenants])
+        print([str(worker) for worker in _workers])
+        
+        # raise Exception(f"Optimization failed with {len(_hosts)} hosts, {len(_tenants)} tenants, and {len(_workers)} workers")
+    
+    if m.Status == GRB.OPTIMAL:
+        vars = {v.varName: v.x for v in m.getVars()}
+        print(vars)
+        
+    if m.Status == GRB.OPTIMAL:        
+        
+        vars = {v.varName: v.x for v in m.getVars()}
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+            else:
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        # set the previous weights to the current weights
+        previous_w = {worker.name: vars[f"w_{worker.name}"] for worker in _workers}
+        print("New previous weights:", previous_w)            
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_load
+
+    else:
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = 0.0
+            else:
+                results[worker.tenant][worker.name] = 0.0
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_load
+
+# Linear Single Combined Objective
+def run_generic_linear_single_objective_model_nov15_abs_diff(
+    _hosts: List[Host],
+    _tenants: List[Tenant],
+    _workers: List[Worker]) -> Tuple[str, gp.Model, Tenant_Min, Tenant_Load]:
+    
+    global previous_w
+    
+    # =========================== Begin Optimization ===========================
+    
+    # MIP  model formulation
+    m = gp.Model("lb")
+    
+    #  ============================= Set Variables =============================
+    
+    # set host capacity for each host
+    cap = {}
+    for h in _hosts:
+        cap[h.name] = m.addVar(lb=h.cap, ub=h.cap, vtype=GRB.CONTINUOUS,
+                        name=f"cap_{h.name}")
+        
+    # set variables for the workers
+    w = {}
+    # log_w = {}
+    for worker in _workers:
+        w[worker.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
+                           name=f"w_{worker.name}")
+        # log_w[worker.name] = m.addVar(vtype=GRB.CONTINUOUS,
+        #                               lb=-GRB.INFINITY,
+        #                               ub=GRB.INFINITY,
+        #                               name=f"log_w_{worker.name}")
+    
+    # state for tenant (to be used for rerunning optimization)
+    t_load = {}
+    t_min = {}
+    for tenant in _tenants:
+        t_load[tenant.name] = m.addVar(lb=tenant.load, ub=tenant.load, vtype=GRB.CONTINUOUS,
+                                       name=f"t_{tenant.name}")
+        t_min_value = min(tenant.fshareload, tenant.load)
+        t_min[tenant.name] = m.addVar(lb=t_min_value, ub=t_min_value, vtype=GRB.CONTINUOUS,
+                                     name=f"t_min_{tenant.name}")
+    
+    # set spare resources used by a tenant
+    sr = {}
+    log_sr = {}
+    for tenant in _tenants:
+        sr[tenant.name] = m.addVar(lb=-GRB.INFINITY,
+                                   ub=GRB.INFINITY,
+                                   vtype=GRB.CONTINUOUS,
+                                   name=f"sr_{tenant.name}")
+        log_sr[tenant.name] = m.addVar(lb=-GRB.INFINITY,
+                                        ub=GRB.INFINITY,
+                                        vtype=GRB.CONTINUOUS,
+                                        name=f"log_sr_{tenant.name}")
+    
+    # set spare capacities at hosts
+    sp = {}
+    log_sp = {}
+    for host in _hosts:
+        sp[host.name] = m.addVar(lb=0.0,
+                                 ub=host.cap,
+                                 vtype=GRB.CONTINUOUS, name=f"sp_{host.name}")
+        log_sp[host.name] = m.addVar(vtype=GRB.CONTINUOUS,
+                                     lb=-GRB.INFINITY,
+                                     ub=GRB.INFINITY,
+                                     name=f"log_sp_{host.name}")
+    
+    # ======================= Set Optimization Objective =======================
+        
+    # Objective 1: max sum(U(sr_t+, w_t), ∀t)
+    #                  where
+    #                  U(sr_t+, w_t) = w_t * log(sr_t+)
+    #                  w_t = fs_t
+    # ∴ obj1 = sum(fs_t * log(sr_t+), ∀t); maximize this
+    obj1 = gp.quicksum((tenant.fshareload * log_sr[tenant.name] for tenant in _tenants))
+    # m.setObjectiveN(-obj1, index=0, priority=2)
+    
+    # Objective 2: max sum(U(sp_h), ∀h)
+    #                  where
+    #                  U(sp_h) = log(sp_h)
+    # ∴ obj2 = sum(log(sp_h), ∀h); maximize this
+    obj2 = gp.quicksum([log_sp[host.name] for host in _hosts])
+    # m.setObjectiveN(-obj2, index=1, priority=1)
+    
+    # Objective 3: max sum(U(w), ∀w)
+    #                  where
+    #                  U(w) = log(w)
+    # ∴ obj3 = sum(log(w), ∀w); maximize this
+    # obj3 = gp.quicksum([log_w[worker.name] for worker in _workers])
+    # m.setObjectiveN(-obj3, index=2, priority=0)
+    
+    # =========================== Optimization minimize distanc between weights ============================
+            
+    # do this only if you have all the previous weights
+    was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
+    
+    abs_diff = []
+    for i in range(len(_workers)):
+        print(f"abs_diff_{i}")
+        abs_diff += [m.addVar(vtype=GRB.CONTINUOUS, name=f"abs_diff_{i}")]
+    
+    # set the new objective to minimize the distance between the weights
+    if was_previous_the_same_topology:
+        for i, worker in enumerate(_workers):
+            m.addConstr(abs_diff[i] >= w[worker.name] - previous_w[worker.name], name=f"abs_diff_{i}_1")
+            m.addConstr(abs_diff[i] >= previous_w[worker.name] - w[worker.name], name=f"abs_diff_{i}_2")
+    else:
+        for i, worker in enumerate(_workers):
+            m.addConstr(abs_diff[i] >= w[worker.name] - 0.0, name=f"abs_diff_{i}_1")
+            m.addConstr(abs_diff[i] >= 0.0 - w[worker.name], name=f"abs_diff_{i}_2")
+
+    obj3 = gp.quicksum(abs_diff[i] for i in range(len(_workers)))
+    
+    m.optimize()
+    
+    obj1_w = np.sum([host.cap for host in _hosts])
+    obj2_w = 0.1
+    obj3_w = 0.001
+    obj = obj1_w * obj1 + obj2_w * obj2 - obj3_w * obj3
+    m.setObjective(obj, GRB.MAXIMIZE)
+        
+    # m.setParam('FuncPieces', 0)  # Increase number of pieces in linearization
+    
+    # ============================ Set Constraints =============================
+    
+    # Constraint 1: for all host h, sum(w ∈ t) <= cap(h)
+    m.addConstrs(
+        (gp.quicksum((w[worker.name] for worker in _workers if worker.host == host.name)) <= cap[host.name]
+         for host in _hosts),
+        name="h_cap"
+    )
+    
+    # Constraint 2: for all tenants w, sum(w ∈ t) < t_load
+    m.addConstrs(
+        (gp.quicksum((w[worker.name] for worker in _workers if worker.tenant == tenant.name)) <= t_load[tenant.name]
+         for tenant in _tenants), 
+        name="t_ub"
+    )
+    
+    # Constraint 3: for all tenants w, sum(w ∈ t) > min(tenant.fshareload, tenant.load)
+    for tenant in _tenants:
+        m.addConstr(
+            gp.quicksum((w[worker.name] for worker in _workers if worker.tenant == tenant.name)) >= t_min[tenant.name],
+            name=f"t_lb_{tenant.name}"
+        )
+    
+    # ------ Secondary constraints ------
+    
+    # Constraint 4: for all tenants, sr_t = sum(w ∈ t) - min(tenant.fshareload, tenant.load),
+    #                                log_sr_t = log(sr_t)
+    m.addConstrs(
+        ((sr[tenant.name] == gp.quicksum((w[worker.name] for worker in _workers if worker.tenant == tenant.name)) - t_min[tenant.name]) for tenant in _tenants),
+        name="sr"
+    )
+    for tenant in _tenants:
+        m.addGenConstrLog(sr[tenant.name], log_sr[tenant.name], name="log_sr")
+    
+    # Constraint 5: for all hosts, sp_h = cap(h) - sum(w ∈ h),
+    #                              log_sp_h = log(sp_h)
+    m.addConstrs(
+        ((sp[host.name] == gp.quicksum((w[worker.name] for worker in _workers if worker.host == host.name))) for host in _hosts),
+        name="sp"
+    )
+    for host in _hosts:
+        m.addGenConstrLog(sp[host.name], log_sp[host.name], name=f"log_sp_{host.name}")
+        
+    # # Constraint 6: for all workers, log_w = log(w)
+    # for worker in _workers:
+    #     m.addGenConstrLog(w[worker.name], log_w[worker.name], name=f"log_w_{worker.name}")
+    
+    # ============================== Optimize! =================================
+    
+    # m.setParam('FeasibilityTol', 1e-9)  # Set a tighter feasibility tolerance, if desired
+    m.optimize()
+    
+    # # Sequential Optimization
+    
+    # FUNC_PIECES = 0
+    
+    # # Optimize for obj1
+    # m.setParam('FuncPieces', FUNC_PIECES)
+    # m.setObjective(obj1, GRB.MAXIMIZE)
+    # m.optimize()
+    
+    # # Set constriants on sr for each tenant
+    # m.addConstrs(
+    #     (sr[tenant.name] >= sr[tenant.name].X for tenant in _tenants),
+    #     name="sr_lb_obj2"
+    # )
+    # m.update()
+    
+    # # Optimize for obj2
+    # m.setParam('FuncPieces', FUNC_PIECES)
+    # m.setObjective(obj2, GRB.MAXIMIZE)
+    # m.optimize()
+    
+    # # Set constriants on sp for each host
+    # m.addConstrs(
+    #     (sp[host.name] >= sp[host.name].X for host in _hosts),
+    #     name="sp_lb_obj3"
+    # )
+    # m.update()
+    
+    # # Optimize for obj3
+    # m.setParam('FuncPieces', FUNC_PIECES)
+    # m.setObjective(obj3, GRB.MAXIMIZE)
+    # m.optimize()
+    
+    # =========================== Done Optimization ============================
+    
+    if m.Status != GRB.OPTIMAL:
+        
+        print([str(host) for host in _hosts])
+        print([str(tenant) for tenant in _tenants])
+        print([str(worker) for worker in _workers])
+        
+        # raise Exception(f"Optimization failed with {len(_hosts)} hosts, {len(_tenants)} tenants, and {len(_workers)} workers")
+    
+    if m.Status == GRB.OPTIMAL:
+        vars = {v.varName: v.x for v in m.getVars()}
+        print(vars)
+        
+    if m.Status == GRB.OPTIMAL:        
+        
+        vars = {v.varName: v.x for v in m.getVars()}
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+            else:
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        # set the previous weights to the current weights
+        previous_w = {worker.name: vars[f"w_{worker.name}"] for worker in _workers}
+        print("New previous weights:", previous_w)            
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_load
+
+    else:
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = 0.0
+            else:
+                results[worker.tenant][worker.name] = 0.0
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_load
+
+
 # Linear Single Objective: Just do the first objective (maximize the sum of utilizations of tenants proportionally fairly according to their fshareloads)
 def run_generic_linear_single_objective_model(
     _hosts: List[Host],
@@ -1070,12 +1576,16 @@ def run_generic_linear_single_objective_model(
     pfair_sums_of_t_w_utils = []
     for tenant in _tenants:
         pfair_sum_of_t_w_utils = gp.quicksum(
-            (w[worker.name] for worker in _workers if worker.tenant == tenant.name))
+            (log_w[worker.name] for worker in _workers if worker.tenant == tenant.name))
         pfair_sums_of_t_w_utils += [pfair_sum_of_t_w_utils]
         
     m.addConstr(sum_of_pfair_sums_of_t_w_utils == 
                 gp.quicksum(pfair_sums_of_t_w_utils))
 
+    OBJ1_WEIGHT = np.sum([host.cap for host in _hosts])
+    OBJ2_WEIGHT = 1
+    OBJ3_EPSILON = 0.001
+    
     # combined objective
     obj = OBJ1_WEIGHT * weighted_sum_of_t_excess_consumption + \
             OBJ2_WEIGHT * pfair_sum_of_h_sp + \
@@ -1123,6 +1633,9 @@ def run_generic_linear_single_objective_model(
     # for each host, log_sp = log(sp)
     for host in _hosts:
         m.addGenConstrLog(sp[host.name], log_sp[host.name])
+    
+    for worker in _workers:
+        m.addGenConstrLog(w[worker.name], log_w[worker.name])
     
     # ============================== Optimize! =================================
     
@@ -1185,6 +1698,7 @@ def run_generic_linear_single_objective_model(
         print(to_return)
         
         return to_return, m, t_min, t_consumed
+
 
 # Linear-Multiple: 2nd obj is minimizing the abs differences of spare capacities at each node. Optimizations are done sequentially for each objective.
 def rerun_generic_linear_multioptimization_model(
@@ -1366,6 +1880,103 @@ def rerun_generic_linear_multioptimization_model(
         print(to_return)
         
         return to_return, m, t_min, t_consumed
+
+# Linear Single Objective: Just do the first objective (maximize the sum of utilizations of tenants proportionally fairly according to their fshareloads)
+def rerun_generic_linear_single_objective_model_nov15(
+    m: gp.Model,
+    t_min: Tenant_Min,
+    t_load: Tenant_Load,
+    _hosts: List[Host],
+    _tenants: List[Tenant],
+    _workers: List[Worker]) -> Tuple[str, gp.Model, Tenant_Min, Tenant_Load]:
+    
+    global previous_w
+    
+    statuses = []
+    
+    # confirm if the topology is the same, if not, rerun the optimization from scratch
+    was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
+    if not was_previous_the_same_topology:
+        raise Exception("The topology has changed, please rerun the optimization from scratch")
+        
+        return run_generic_linear_model(_hosts, _tenants, _workers)
+    
+    #  ============================= Modify Variables =============================
+    
+    for tenant in _tenants:
+        
+        t_min_value = min(tenant.fshareload, tenant.load)
+        if t_min[tenant.name].LB != t_min_value:
+            t_min[tenant.name].LB = t_min_value
+            t_min[tenant.name].UB = t_min_value
+            
+        if t_load[tenant.name].LB != tenant.load:
+            t_load[tenant.name].LB = tenant.load
+            t_load[tenant.name].UB = tenant.load        
+    
+    # ============================ Update Model =============================
+    
+    m.update()
+    
+    # ============================== Optimize (1) =================================
+    
+    m.optimize()
+        
+    statuses.append(m.Status)
+    
+    if m.Status != GRB.OPTIMAL:
+        
+        print([str(host) for host in _hosts])
+        print([str(tenant) for tenant in _tenants])
+        print([str(worker) for worker in _workers])
+        
+        raise Exception(f"Optimization failed with {len(_hosts)} hosts, {len(_tenants)} tenants, and {len(_workers)} workers")    
+    
+    if m.Status == GRB.OPTIMAL:
+        vars = {v.varName: v.x for v in m.getVars()}
+        print(vars)
+        
+    if m.Status == GRB.OPTIMAL:        
+        
+        vars = {v.varName: v.x for v in m.getVars()}
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+            else:
+                results[worker.tenant][worker.name] = vars[f"w_{worker.name}"]
+        to_return = {
+            "status": statuses,
+            "result": results
+        }
+        
+        # set the previous weights to the current weights
+        previous_w = {worker.name: vars[f"w_{worker.name}"] for worker in _workers}
+        print("New previous weights:", previous_w)            
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_load
+
+    else:
+        
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+                results[worker.tenant][worker.name] = 0.0
+            else:
+                results[worker.tenant][worker.name] = 0.0
+        to_return = {
+            "status": statuses,
+            "result": results
+        }
+        
+        print(to_return)
+        
+        return to_return, m, t_min, t_load
 
 # Linear Single Objective: Just do the first objective (maximize the sum of utilizations of tenants proportionally fairly according to their fshareloads)
 def rerun_generic_linear_single_objective_model(
@@ -2103,9 +2714,9 @@ def run_new_scale_experiment(n_hosts):
         #     hosts, tenants, workers, n_workers_per_ms)
         
         data += run_on_all_input_cases(
-            "single_obj",
-            run_generic_linear_single_objective_model,
-            rerun_generic_linear_single_objective_model,
+            "single_obj_nov15_obj3_abs_diff",
+            run_generic_linear_single_objective_model_nov15_abs_diff,
+            rerun_generic_linear_single_objective_model_nov15,
             hosts, tenants, workers, n_workers_per_ms)
         
         # data += run_on_all_input_cases(
@@ -2120,123 +2731,10 @@ def run_new_scale_experiment(n_hosts):
 
 df = pd.DataFrame(columns=['variation', 'n_hosts', 'n_tenants', 'n_workers', 'time_taken', 'tenant_loads', 'result'])
 
-n_hosts = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200] * 5 + [300] * 5
-n_hosts += [400, 500] * 5
-n_hosts += [600] * 5
+n_hosts = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000] * 5
 
-n_hosts = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000] * 10
-
-n_hosts = [400] * 10
+# n_hosts += [2000, 3000, 4000, 5000] * 5
 
 print(n_hosts)
 input()
 run_new_scale_experiment(n_hosts)
-
-# df = pd.concat([df, pd.DataFrame(run_scale_experiment(), columns=['n_hosts', 'time_taken'])])
-# df
-
-# for _ in range(1, 10):
-#     for n_hosts in [1, 3, 5, 10, 100, 150, 200, 250, 300, 350]:
-#         data = run_scale_experiment([n_hosts])
-#         with open("scale_experiment_log.json", "a") as f:
-#             for run in data:
-#                 f.write(dumps({
-#                     "variation": run[0],
-#                     "n_hosts": run[1],
-#                     "n_tenants": run[2],
-#                     "n_workers": run[3],
-#                     "time_taken": run[4],
-#                     "tenant_loads": run[5],
-#                     "result": run[6]
-#                 }) + "\n")
-#         # df = pd.concat([df, pd.DataFrame(data, columns=['variation', 'n_hosts', 'n_tenants', 'n_workers', 'time_taken', 'tenant_loads', 'result'])])
-
-# for _ in range(1, 10):
-#     for n_hosts in [400, 450, 500, 550, 600]:
-#         data = run_scale_experiment([n_hosts])
-#         with open("scale_experiment_log.json", "a") as f:
-#             for run in data:
-#                 f.write(dumps({
-#                     "variation": run[0],
-#                     "n_hosts": run[1],
-#                     "n_tenants": run[2],
-#                     "n_workers": run[3],
-#                     "time_taken": run[4],
-#                     "tenant_loads": run[5],
-#                     "result": run[6]
-#                 }) + "\n")
-#         # df = pd.concat([df, pd.DataFrame(data, columns=['variation', 'n_hosts', 'n_tenants', 'n_workers', 'time_taken', 'tenant_loads', 'result'])])
-
-# for _ in range(1, 3):
-#     for n_hosts in range(1, 40+1):
-#         data = run_scale_experiment([n_hosts])
-#         for run in data:
-#             write_run_to_log(run)
-
-# for _ in range(1, 10):
-#     for n_hosts in range(31, 40+1):
-#         data = run_scale_experiment([n_hosts])
-#         for run in data:
-#             write_run_to_log(run)
-            
-# for _ in range(1, 10):
-#     for n_hosts in [50, 60, 70, 80, 90, 100]:
-#         data = run_scale_experiment([n_hosts])
-#         for run in data:
-#             write_run_to_log(run)
-            
-# for _ in range(1, 10):
-#     for n_hosts in [150, 200, 250, 300]:
-#         data = run_scale_experiment([n_hosts])
-#         for run in data:
-#             write_run_to_log(run)
-            
-# for n_hosts in [400, 450, 500, 550, 600]:
-#     data = run_scale_experiment([n_hosts])
-#     for run in data:
-#         write_run_to_log(run)
-            
-# for _ in range(1, 10):
-#     for n_hosts in [400, 450, 500]:
-#         data = run_scale_experiment([n_hosts])
-#         for run in data:
-#             write_run_to_log(run)
-            
-# for _ in range(1, 10):
-#     for n_hosts in [550, 600]:
-#         data = run_scale_experiment([n_hosts])
-#         for run in data:
-#             write_run_to_log(run)
-
-# def test_change_tenant_loads():
-    
-#     _, tenants, _, _ = get_topology(200)
-    
-#     for i, tenant in enumerate(tenants):
-#         print(f"Tenant {i}: {str(tenant)}")
-#     tenants = change_tenant_loads(tenants, 10, 10)
-    
-#     print("New Tenants:")
-#     for i, tenant in enumerate(tenants):
-#         print(f"Tenant {i}: {str(tenant)}")
-    
-# test_change_tenant_loads()
-
-# [
-#     ('tenant1_7: tenant=tenant1, host=host19', 0.1223701209829442),
-#     ('tenant7_1: tenant=tenant7, host=host19', 0.11159946280458233),
-#     ('tenant12_21: tenant=tenant12, host=host19', 0.0),
-#     ('tenant12_46: tenant=tenant12, host=host19', 0.0),
-#     ('tenant18_8: tenant=tenant18, host=host19', 0.0),
-#     ('tenant23_13: tenant=tenant23, host=host19', 0.0),
-#     ('tenant24_27: tenant=tenant24, host=host19', 0.0),
-#     ('tenant36_5: tenant=tenant36, host=host19', 0.09945848062253526),
-#     ('tenant40_3: tenant=tenant40, host=host19', 0.0),
-#     ('tenant40_20: tenant=tenant40, host=host19', 0.6014644233653359),
-#     ('tenant41_6: tenant=tenant41, host=host19', 0.06510751222460237),
-#     ('tenant41_54: tenant=tenant41, host=host19', 0.0),
-#     ('tenant44_4: tenant=tenant44, host=host19', 0.0),
-#     ('tenant44_30: tenant=tenant44, host=host19', 0.0)
-# ]
-
-# 1-0.06510751222460237-0.6014644233653359-0.09945848062253526-0.11159946280458233-0.1223701209829442

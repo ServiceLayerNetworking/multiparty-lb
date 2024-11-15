@@ -1,0 +1,15 @@
+{
+    "status": 2,
+    "result": {
+        "app1": {
+            "app1-node1": 80.0
+        },
+        "app2": {
+            "app2-node2": 40.0,
+            "app2-node1": 70.0
+        },
+        "app3": {
+            "app3-node2": 110.0
+        }
+    }
+}

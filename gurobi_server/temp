@@ -1,0 +1,95 @@
+Input: [[{'name': 'node1', 'cap': 200}, {'name': 'node2', 'cap': 200}, {'name': 'node3', 'cap': 200}, {'name': 'node4', 'cap': 200}], [{'name': 'app3', 'load': 100, 'fshareload': 100}, {'name': 'app1', 'load': 300, 'fshareload': 200}, {'name': 'app2', 'load': 200, 'fshareload': 300}, {'name': 'app4', 'load': 0, 'fshareload': 200}], [{'name': 'app1-node1', 'tenant': 'app1', 'host': 'node1'}, {'name': 'app2-node2', 'tenant': 'app2', 'host': 'node2'}, {'name': 'app3-node1', 'tenant': 'app3', 'host': 'node1'}, {'name': 'app1-node2', 'tenant': 'app1', 'host': 'node2'}, {'name': 'app2-node3', 'tenant': 'app2', 'host': 'node3'}, {'name': 'app4-node4', 'tenant': 'app4', 'host': 'node4'}]]
+Set parameter Username
+Academic license - for non-commercial use only - expires 2025-09-20
+Gurobi Optimizer version 11.0.3 build v11.0.3rc0 (linux64 - "Ubuntu 22.04.4 LTS")
+
+CPU model: Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz, instruction set [SSE2|AVX|AVX2]
+Thread count: 16 physical cores, 32 logical processors, using up to 32 threads
+
+Optimize a model with 29 rows, 37 columns and 63 nonzeros
+Model fingerprint: 0x01c0395b
+Model has 8 general constraints
+Variable types: 37 continuous, 0 integer (0 binary)
+Coefficient statistics:
+  Matrix range     [1e+00, 3e+02]
+  Objective range  [1e+00, 3e+02]
+  Bounds range     [2e+02, 2e+02]
+  RHS range        [1e+02, 3e+02]
+
+---------------------------------------------------------------------------
+Multi-objectives: starting optimization with 2 objectives ... 
+---------------------------------------------------------------------------
+
+Multi-objectives: applying initial presolve ...
+---------------------------------------------------------------------------
+
+Presolve added 81 rows and 529 columns
+Presolve time: 0.01s
+Presolved: 110 rows, 566 columns, 6834 nonzeros
+---------------------------------------------------------------------------
+
+Multi-objectives: optimize objective 1 () ...
+---------------------------------------------------------------------------
+
+Presolve removed 45 rows and 216 columns
+Presolve time: 0.02s
+Presolved: 65 rows, 350 columns, 4404 nonzeros
+Variable types: 323 continuous, 27 integer (7 binary)
+
+Root relaxation: objective -1.105241e+04, 20 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+*    0     0               0    -11052.40845 -11052.408  0.00%     -    0s
+
+Explored 1 nodes (20 simplex iterations) in 0.05 seconds (0.03 work units)
+Thread count was 32 (of 32 available processors)
+
+Solution count 1: -11052.4 
+No other solutions better than -11052.4
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective -1.105240844637e+04, best bound -1.105240844637e+04, gap 0.0000%
+---------------------------------------------------------------------------
+
+Multi-objectives: optimize objective 2 () ...
+---------------------------------------------------------------------------
+
+
+Loaded user MIP start with objective 63.7792
+
+Presolve removed 3 rows and 9 columns
+Presolve time: 0.01s
+Presolved: 108 rows, 557 columns, 6652 nonzeros
+Variable types: 512 continuous, 45 integer (10 binary)
+
+Root relaxation: objective -1.580752e+01, 142 iterations, 0.00 seconds (0.00 work units)
+
+    Nodes    |    Current Node    |     Objective Bounds      |     Work
+ Expl Unexpl |  Obj  Depth IntInf | Incumbent    BestBd   Gap | It/Node Time
+
+     0     0  -15.80752    0    5   63.77924  -15.80752   125%     -    0s
+H    0     0                     -15.7495258  -15.80752  0.37%     -    0s
+H    0     0                     -15.8075246  -15.80752  0.00%     -    0s
+
+Cutting planes:
+  Gomory: 1
+  MIR: 2
+
+Explored 1 nodes (142 simplex iterations) in 0.08 seconds (0.05 work units)
+Thread count was 32 (of 32 available processors)
+
+Solution count 3: -15.8075 -15.7495 63.7792 
+No other solutions better than -15.8075
+
+Optimal solution found (tolerance 1.00e-04)
+Best objective -1.580752460883e+01, best bound -1.580752460883e+01, gap 0.0000%
+
+---------------------------------------------------------------------------
+Multi-objectives: solved in 0.08 seconds (0.05 work units), solution count 3
+
+{'cap_node1': 200.0, 'cap_node2': 200.0, 'cap_node3': 200.0, 'cap_node4': 200.0, 'w_app1-node1': 67.24326656674893, 'log_w_app1-node1': 0.0, 'w_app2-node2': 30.81126868500209, 'log_w_app2-node2': 0.0, 'w_app3-node1': 100.0, 'log_w_app3-node1': 0.0, 'w_app1-node2': 132.75673343325107, 'log_w_app1-node2': 0.0, 'w_app2-node3': 169.1887313149979, 'log_w_app2-node3': 0.0, 'w_app4-node4': 0.0, 'log_w_app4-node4': 0.0, 'sr_app3': 0.0, 'sr_plus_app3': 999999.9999999995, 'log_sr_plus_app3': 13.815510557964274, 'sr_app1': 0.0, 'sr_plus_app1': 999999.9999999995, 'log_sr_plus_app1': 13.815510557964274, 'sr_app2': -100.0, 'sr_plus_app2': 999999.9999999995, 'log_sr_plus_app2': 13.815510557964274, 'sr_app4': -200.0, 'sr_plus_app4': 999999.9999999995, 'log_sr_plus_app4': 13.815510557964274, 'sp_node1': 32.75673343325107, 'log_sp_node1': 3.485879301641607, 'sp_node2': 36.43199788174684, 'log_sp_node2': 3.595447451178728, 'sp_node3': 30.811268685002084, 'log_sp_node3': 3.4278804894629107, 'sp_node4': 200.0, 'log_sp_node4': 5.298317366548036, 'obj1': 11052.408446371419}
+New previous weights: {'app1-node1': 67.24326656674893, 'app2-node2': 30.81126868500209, 'app3-node1': 100.0, 'app1-node2': 132.75673343325107, 'app2-node3': 169.1887313149979, 'app4-node4': 0.0}
+{'status': 2, 'result': {'app1': {'app1-node1': 67.24326656674893, 'app1-node2': 132.75673343325107}, 'app2': {'app2-node2': 30.81126868500209, 'app2-node3': 169.1887313149979}, 'app3': {'app3-node1': 100.0}, 'app4': {'app4-node4': 0.0}}}
+139.00 ms

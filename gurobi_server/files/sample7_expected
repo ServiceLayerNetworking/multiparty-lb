@@ -1,0 +1,22 @@
+[
+    [
+        {"name": "node1", "cap": 100
+        },
+        {"name": "node2", "cap": 400
+        }
+    ],
+    [
+        {"name": "app1", "load": 100, "fshareload": 1
+        },
+        {"name": "app2", "load": 405.6, "fshareload": 10
+        }
+    ],
+    [
+        {"name": "app1-node1", "tenant": "app1", "host": "node1"
+        },
+        {"name": "app2-node2", "tenant": "app2", "host": "node2"
+        },
+        {"name": "app2-node1", "tenant": "app2", "host": "node1"
+        }
+    ]
+]
