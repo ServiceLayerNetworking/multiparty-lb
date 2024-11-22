@@ -5,3 +5,6 @@ custom-resources.yamle
 tigera-operator.yaml
 istio-1.22.3
 istio-*
+
+cri-dockerd-*
+tinygo_*
