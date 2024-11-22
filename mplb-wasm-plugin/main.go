@@ -45,8 +45,8 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY = "weighted_random" // [weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LEAST_REQUEST_STRATEGY  = "effective_load"  // [effective_load]
+	LOAD_BALANCING_STRATEGY = "weighted_roundrobin" // [weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LEAST_REQUEST_STRATEGY  = "effective_load"      // [effective_load]
 )
 
 var (
@@ -348,17 +348,17 @@ weights: a list of weights for each endpoint of the dst.
 */
 func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
-	// for debgging:
-	if dst == "app1" {
-		weights = []float64{70, 30}
-		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
-	} else if dst == "app2" {
-		weights = []float64{47.5, 52.5}
-		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
-	} else if dst == "app3" {
-		weights = []float64{100}
-		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
-	}
+	// // for debgging:
+	// if dst == "app1" {
+	// 	weights = []float64{70, 30}
+	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	// } else if dst == "app2" {
+	// 	weights = []float64{47.5, 52.5}
+	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	// } else if dst == "app3" {
+	// 	weights = []float64{100}
+	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	// }
 
 	if len(weights) == 0 {
 		return -1, errors.New("No weights provided")
@@ -588,24 +588,24 @@ func GetSharedIntData(key string, defaultVal int) int {
 }
 
 type WeightedRoundRobin struct {
-	Weights        []float64 `json:"weights"`         // Weights of each endpoint
-	CurrentIndex   int       `json:"current_index"`   // The index of the last selected endpoint
-	CurrentWeight  float64   `json:"current_weight"`  // The current running weight
-	GCDWeight      float64   `json:"gcd_weight"`      // GCD of all weights (helps with the step size in round-robin)
-	MaxWeight      float64   `json:"max_weight"`      // Maximum weight among all endpoints
-	TotalEndpoints int       `json:"total_endpoints"` // Total number of endpoints
+	Weights        []int `json:"weights"`         // Weights of each endpoint
+	CurrentIndex   int   `json:"current_index"`   // The index of the last selected endpoint
+	CurrentWeight  int   `json:"current_weight"`  // The current running weight
+	GCDWeight      int   `json:"gcd_weight"`      // GCD of all weights (helps with the step size in round-robin)
+	MaxWeight      int   `json:"max_weight"`      // Maximum weight among all endpoints
+	TotalEndpoints int   `json:"total_endpoints"` // Total number of endpoints
 }
 
 // Helper function to find the greatest common divisor (GCD)
-func gcd(a, b float64) float64 {
+func gcd(a, b int) int {
 	for b != 0 {
-		a, b = b, float64(int(a)%int(b))
+		a, b = b, a%b
 	}
 	return a
 }
 
 // Helper function to find GCD of a slice of numbers
-func gcdSlice(weights []float64) float64 {
+func gcdSlice(weights []int) int {
 	if len(weights) == 0 {
 		return 1
 	}
@@ -620,13 +620,18 @@ func gcdSlice(weights []float64) float64 {
 }
 
 func getInitialWRRStats(weights []float64) *WeightedRoundRobin {
+	weightsInt := make([]int, len(weights))
+	for i, w := range weights {
+		weightsInt[i] = int(w)
+	}
+
 	wrr := &WeightedRoundRobin{
-		Weights:        weights,
+		Weights:        weightsInt,
 		CurrentIndex:   -1,
 		CurrentWeight:  0,
-		GCDWeight:      gcdSlice(weights),
-		MaxWeight:      maxFloatArray(weights),
-		TotalEndpoints: len(weights),
+		GCDWeight:      gcdSlice(weightsInt),
+		MaxWeight:      maxIntArray(weightsInt),
+		TotalEndpoints: len(weightsInt),
 	}
 	return wrr
 }
@@ -657,12 +662,12 @@ func setWeightedRoundRobinStats(
 
 	return err
 }
-func isFloatArrayEqual(a, b []float64) bool {
+func areWeightsEqual(a []float64, b []int) bool {
 	if len(a) != len(b) {
 		return false
 	}
 	for i, v := range a {
-		if v != b[i] {
+		if int(v) != b[i] {
 			return false
 		}
 	}
@@ -698,7 +703,7 @@ func getWeightedRoundRobinStats(
 	}
 
 	// if weights have changed, reinitialize the WeightedRoundRobin
-	if !isFloatArrayEqual(weights, wrr.Weights) {
+	if !areWeightsEqual(weights, wrr.Weights) {
 
 		// reinitialize the WeightedRoundRobin Stats
 		proxywasm.LogCriticalf("Reinitializing WeightedRoundRobin for %s", dst)
@@ -1723,7 +1728,7 @@ func TimestampListGetRPS(method string, path string) uint64 {
 
 func getNodeID(nodeName string) (int, error) {
 
-	// Example node: node1.k8s-twaheed.mlnetwork.emulab.net
+	// Example node: node1.k8s-mplb.mlnetwork.emulab.net
 
 	nodeName = strings.Split(nodeName, ".")[0]
 	nodeIDStr := nodeName[4:]
@@ -1735,7 +1740,7 @@ func getNodeID(nodeName string) (int, error) {
 	return nodeID, nil
 }
 
-func maxFloatArray(arr []float64) float64 {
+func maxIntArray(arr []int) int {
 	if len(arr) == 0 {
 		return 0 // Return 0 or some other value if the array is empty
 	}

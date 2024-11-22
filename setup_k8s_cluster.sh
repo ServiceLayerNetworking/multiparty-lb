@@ -22,12 +22,12 @@ kubectl apply -f https://raw.githubusercontent.com/pythianarora/total-practice/m
 echo "[SCRIPT] Setting labels on each node..."
 for i in $(seq 1 $NODES);
 do
-  kubectl label node node$i.k8s-twaheed.mlnetwork.emulab.net node-role.kubernetes.io/worker=node$i --overwrite
+  kubectl label node node$i.k8s-mplb.mlnetwork.emulab.net node-role.kubernetes.io/worker=node$i --overwrite
 done
 
 echo "[SCRIPT] Installing istio..."
 curl -L https://istio.io/downloadIstio | sh -
-cd istio-1.22.3
+cd "$(find . -maxdepth 1 -type d -name "istio-*" | head -n 1)"
 echo "export PATH=$PWD/bin:$PATH" >> ~/.bashrc && source ~/.bashrc
 cd ..
 
@@ -44,9 +44,9 @@ kubectl apply -f dst-rules_virtual-svcs/node-env-var-labels.yaml
 kubectl apply -f mplb-wasm-plugin/wasm.yaml
 
 echo "[SCRIPT] Applying taints to three nodes..."
-kubectl taint nodes node1.k8s-twaheed.mlnetwork.emulab.net node=node1:NoSchedule --overwrite
-kubectl taint nodes node2.k8s-twaheed.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
-kubectl taint nodes node3.k8s-twaheed.mlnetwork.emulab.net node=node3:NoSchedule --overwrite
+kubectl taint nodes node1.k8s-mplb.mlnetwork.emulab.net node=node1:NoSchedule --overwrite
+kubectl taint nodes node2.k8s-mplb.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
+kubectl taint nodes node3.k8s-mplb.mlnetwork.emulab.net node=node3:NoSchedule --overwrite
 
 # echo "[SCRIPT] Starting HotelReservation..."
 # kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes

@@ -11,7 +11,7 @@ from kubernetes import client, config
 DURATION = 60 # 1 minute
 SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 2 * 60 # 5 minutes
 SLEEP_TIME_AFTER_EACH_RUN = 0 # 120 seconds
-LOG_FOLDER = "logs15"
+LOG_FOLDER = "logs20"
 
 def get_gateway_ip():
     """
@@ -28,7 +28,7 @@ def run_wrk(q, variation, app_num, rps):
     
     c, t = (1, 1) if rps <= 25 else (5, 5)
     
-    cmd = f"../hit/hit -d {DURATION} -rps {rps} -l {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log -headers \"" + "{\\\"Host\\\": " +  f"\\\"app{app_num}.mplb.com\\" + "\"}\"" + f" -url \"http://{IP}/?loopCount=25&base=6&exp=6\""
+    cmd = f"../hit/hit -d {DURATION} -distr exponential -rps {rps} -l {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log -headers \"" + "{\\\"Host\\\": " +  f"\\\"app{app_num}.mplb.com\\" + "\"}\"" + f" -url \"http://{IP}/?loopCount=25&base=6&exp=6\""
     # cmd = f"../wrk2/wrk -H \"Host: app{app_num}.mplb.com\" -t {t} -c {c} -d {DURATION} -L \"http://{IP}/?loopCount=25&base=6&exp=6\" -R{rps} > {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log"
     print(f"Command: {cmd}")
     
@@ -80,7 +80,7 @@ def run_hit(q, variation, app_nums, rpses):
     with open(f"{curr_dir}/{LOG_FOLDER}/{variation}_hit.json", "w") as f:
         f.write(json.dumps(configs))
         
-    cmd = f"../hit/hit -f {curr_dir}/{LOG_FOLDER}/{variation}_hit.json"
+    cmd = f"../hit/hit -distr exponential -f {curr_dir}/{LOG_FOLDER}/{variation}_hit.json"
     print(f"Command: {cmd}")
     
     start_time = time.time()
@@ -351,7 +351,7 @@ def run():
                     # Define the RPS for each app
                     rpses = [90, 60, 30]
                     
-                    for iteration in [3]:
+                    for iteration in [1, 2]:
                         
                         print(f"Starting iteration {iteration} for run_id {run_id}...")
                         
@@ -366,14 +366,16 @@ def run():
                         to_append = get_topology_str(intended_topology)
                         print(to_append)
                         
-                        # # Run the experiment
+                        # # # Run the experiment
                         # print("Press enter to continue...")
                         # input()
-                        # run_exp(f"lr_{run_id}_{iteration}", rpses, "NONE", append_to_times=to_append)
+                        # run_exp(f"exp_lr_{run_id}_{iteration}", rpses, "NONE", append_to_times=to_append)
                         
-                        print("Press enter to continue...")
+                        # print("Press enter to continue...")
                         # input()
-                        run_exp(f"mplb_{run_id}_{iteration}", rpses, "LB", append_to_times=to_append)
+                        run_exp(f"exp_mplb_wrr_{run_id}_{iteration}", rpses, "LB", append_to_times=to_append)
+                        
+                        time.sleep(20)
 
 def print_all_combinations(): 
     

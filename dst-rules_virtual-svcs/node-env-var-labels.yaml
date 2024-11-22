@@ -7,9 +7,9 @@ metadata:
 spec:
   selector:
     matchLabels:
-      kubernetes.io/hostname: node0.k8s-twaheed.mlnetwork.emulab.net
+      kubernetes.io/hostname: node0.k8s-mplb.mlnetwork.emulab.net
   environmentVariables:
-    ISTIO_META_NODE_NAME: node0.k8s-twaheed.mlnetwork.emulab.net
+    ISTIO_META_NODE_NAME: node0.k8s-mplb.mlnetwork.emulab.net
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: ProxyConfig
@@ -19,9 +19,9 @@ metadata:
 spec:
   selector:
     matchLabels:
-      kubernetes.io/hostname: node1.k8s-twaheed.mlnetwork.emulab.net
+      kubernetes.io/hostname: node1.k8s-mplb.mlnetwork.emulab.net
   environmentVariables:
-    ISTIO_META_NODE_NAME: node1.k8s-twaheed.mlnetwork.emulab.net
+    ISTIO_META_NODE_NAME: node1.k8s-mplb.mlnetwork.emulab.net
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: ProxyConfig
@@ -31,9 +31,9 @@ metadata:
 spec:
   selector:
     matchLabels:
-      kubernetes.io/hostname: node2.k8s-twaheed.mlnetwork.emulab.net
+      kubernetes.io/hostname: node2.k8s-mplb.mlnetwork.emulab.net
   environmentVariables:
-    ISTIO_META_NODE_NAME: node2.k8s-twaheed.mlnetwork.emulab.net
+    ISTIO_META_NODE_NAME: node2.k8s-mplb.mlnetwork.emulab.net
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: ProxyConfig
@@ -43,9 +43,9 @@ metadata:
 spec:
   selector:
     matchLabels:
-      kubernetes.io/hostname: node3.k8s-twaheed.mlnetwork.emulab.net
+      kubernetes.io/hostname: node3.k8s-mplb.mlnetwork.emulab.net
   environmentVariables:
-    ISTIO_META_NODE_NAME: node3.k8s-twaheed.mlnetwork.emulab.net
+    ISTIO_META_NODE_NAME: node3.k8s-mplb.mlnetwork.emulab.net
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: ProxyConfig
@@ -55,9 +55,9 @@ metadata:
 spec:
   selector:
     matchLabels:
-      kubernetes.io/hostname: node4.k8s-twaheed.mlnetwork.emulab.net
+      kubernetes.io/hostname: node4.k8s-mplb.mlnetwork.emulab.net
   environmentVariables:
-    ISTIO_META_NODE_NAME: node4.k8s-twaheed.mlnetwork.emulab.net
+    ISTIO_META_NODE_NAME: node4.k8s-mplb.mlnetwork.emulab.net
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: ProxyConfig
@@ -67,6 +67,6 @@ metadata:
 spec:
   selector:
     matchLabels:
-      kubernetes.io/hostname: node5.k8s-twaheed.mlnetwork.emulab.net
+      kubernetes.io/hostname: node5.k8s-mplb.mlnetwork.emulab.net
   environmentVariables:
-    ISTIO_META_NODE_NAME: node5.k8s-twaheed.mlnetwork.emulab.net
+    ISTIO_META_NODE_NAME: node5.k8s-mplb.mlnetwork.emulab.net

@@ -36,7 +36,7 @@
        "kubernetes.io/config.seen": "2024-09-13T01:16:06.747491315Z",
        "cni.projectcalico.org/containerID": "fdc44b6512ec06262ae77501afd1c4b8819e07c63df64524228d642b8c1610e7"
       },
-      "NODE_NAME": "node1.k8s-twaheed.mlnetwork.emulab.net",
+      "NODE_NAME": "node1.k8s-mplb.mlnetwork.emulab.net",
       "PROXY_CONFIG": {
        "controlPlaneAuthPolicy": "MUTUAL_TLS",
        "binaryPath": "/usr/local/bin/envoy",
