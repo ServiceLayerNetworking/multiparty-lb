@@ -170,7 +170,7 @@ func (k8sClient *KubernetesClient) GetNodes() []Node {
 		cpuCapacity := node.Status.Capacity[v1.ResourceCPU]
 		cpuMilliCores := int(cpuCapacity.MilliValue())
 		if nodeNum >= 1 && nodeNum <= 3 {
-			cpuMilliCores = 2100
+			cpuMilliCores = M_CPUS_IN_NODE
 		}
 		nodeList = append(nodeList,
 			Node{

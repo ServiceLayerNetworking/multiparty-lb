@@ -52,7 +52,7 @@ spec:
               - key: kubernetes.io/hostname
                 operator: In
                 values:
-                - node0.k8s-twaheed.mlnetwork.emulab.net
+                - node0.k8s-mplb.mlnetwork.emulab.net
 ---
 apiVersion: v1
 kind: Service
