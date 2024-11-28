@@ -8,10 +8,12 @@ import yaml
 import json
 from kubernetes import client, config
 
-DURATION = 60 # 1 minute
-SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 2 * 60 # 5 minutes
-SLEEP_TIME_AFTER_EACH_RUN = 0 # 120 seconds
-LOG_FOLDER = "logs20"
+DURATION = 60 # 5s
+ADDITIONAL_TIME_FOR_CC_TO_RUN = 5 # 5 seconds
+SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
+SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
+SLEEP_TIME_AFTER_EACH_RUN = 1 * 10 # 1 minute
+LOG_FOLDER = "logs23"
 
 def get_gateway_ip():
     """
@@ -42,7 +44,7 @@ def run_wrk(q, variation, app_num, rps):
 def run_cc(q, variation, enforcement):
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={(DURATION + 10) * 1000}"
+    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={(DURATION + ADDITIONAL_TIME_FOR_CC_TO_RUN) * 1000}"
     print(f"Command: {cmd}")
     
     start_time = time.time()
@@ -52,11 +54,16 @@ def run_cc(q, variation, enforcement):
     q.put(("cc", start_time, end_time, 
            f"CC finished with exit status: {exit_status}"))
 
-def run_hit(q, variation, app_nums, rpses):
+def run_hit(q, variation, proc_distr, app_nums, rpses, distr):
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     
     configs = []
+    
+    if proc_distr == "none":
+        url = f"http://{IP}/?loopCount=25&base=6&exp=6"
+    else:
+        url = f"http://{IP}/?loopCount=EXP<25>&base=6&exp=6"
     
     for i, app_num in enumerate(app_nums):
         
@@ -65,7 +72,7 @@ def run_hit(q, variation, app_nums, rpses):
         configs.append({
             "endpoints": [
                 {
-                    "url": f"http://{IP}/?loopCount=25&base=6&exp=6",
+                    "url": url,
                     "node": 1,
                     "app": app_num,
                     "headers": "{\"Host\":\"app" + str(app_num) + ".mplb.com\"}"
@@ -80,7 +87,7 @@ def run_hit(q, variation, app_nums, rpses):
     with open(f"{curr_dir}/{LOG_FOLDER}/{variation}_hit.json", "w") as f:
         f.write(json.dumps(configs))
         
-    cmd = f"../hit/hit -distr exponential -f {curr_dir}/{LOG_FOLDER}/{variation}_hit.json"
+    cmd = f"../hit/hit -distr {distr} -f {curr_dir}/{LOG_FOLDER}/{variation}_hit.json"
     print(f"Command: {cmd}")
     
     start_time = time.time()
@@ -92,7 +99,7 @@ def run_hit(q, variation, app_nums, rpses):
         
         
 
-def run_exp(variation, rpses, enforcement, append_to_times=""):
+def run_exp(variation, rpses, enforcement, distr, proc_distr, append_to_times=""):
       
     print(f"|||||||||||||||||||||||||||||||||||||||||||||||||||||")
     print(f"Running experiment with {variation} at {rpses} RPS")
@@ -100,7 +107,7 @@ def run_exp(variation, rpses, enforcement, append_to_times=""):
     # send a request to the gurobi server to reset previous weights
     os.system("curl http://localhost:5000/reset")
 
-    qeues = []
+    queues = []
     
     # run the wrk command in a separate thread
     # for i, rps in enumerate(rpses):
@@ -108,20 +115,22 @@ def run_exp(variation, rpses, enforcement, append_to_times=""):
     #     #     continue
     #     q = Queue()
     #     Thread(target=run_wrk, args=(q, variation, i+1, rps)).start()
-    #     qeues.append(q)
+    #     queues.append(q)
+        
+    n_apps = len(rpses)
         
     # run the app workloads through a single hit
     q = Queue()
-    Thread(target=run_hit, args=(q, variation, [1, 2, 3], rpses)).start()
+    Thread(target=run_hit, args=(q, variation, proc_distr, list(range(1, n_apps+1)), rpses, distr)).start()
         
     q = Queue()
     Thread(target=run_cc, args=(q, variation, enforcement)).start()
-    qeues.append(q)
+    queues.append(q)
     
     times = []
     
     # wait for the wrk commands to finish
-    for q in qeues:
+    for q in queues:
         thread_name, start_time, end_time, finish_status = q.get()
         times.append((thread_name, start_time, end_time))
         print(finish_status)
@@ -327,6 +336,7 @@ def run():
     
     run_id = 0
     
+    
     # Sweep through all combinations
     for nodes_app1 in itertools.combinations(nodes, 2):
         for nodes_app2 in itertools.combinations(nodes, 2):
@@ -335,11 +345,11 @@ def run():
                 
                 run_id += 1 
                 
-                if run_id in [9]:
+                if run_id in [1]:
                     
                     # restart_k8s()
                         
-                    # time.sleep(15)
+                    # time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
                     
                     # # Set topology for app1, app2, app3
                     # set_topology("app1", nodes_app1)
@@ -349,33 +359,35 @@ def run():
                     # time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                     
                     # Define the RPS for each app
-                    rpses = [90, 60, 30]
+                    # rpses = [90, 60, 30]
+                    rpses = [60*2]
                     
-                    for iteration in [1, 2]:
-                        
-                        print(f"Starting iteration {iteration} for run_id {run_id}...")
-                        
-                        intended_topology = {
-                            "app1": nodes_app1,
-                            "app2": nodes_app2,
-                            "app3": nodes_app3
-                        }
-                        print(intended_topology)
-                        # input()
-                        
-                        to_append = get_topology_str(intended_topology)
-                        print(to_append)
-                        
-                        # # # Run the experiment
-                        # print("Press enter to continue...")
-                        # input()
-                        # run_exp(f"exp_lr_{run_id}_{iteration}", rpses, "NONE", append_to_times=to_append)
-                        
-                        # print("Press enter to continue...")
-                        # input()
-                        run_exp(f"exp_mplb_wrr_{run_id}_{iteration}", rpses, "LB", append_to_times=to_append)
-                        
-                        time.sleep(20)
+                    for iteration in [4]:
+                    
+                        for distr in ["exponential"]:
+                            
+                            for proc_distr in ["exponential"]:
+                                    
+                                    print(f"Starting iteration {iteration} for run_id {run_id}...")
+                                    
+                                    intended_topology = {
+                                        "app1": nodes_app1,
+                                        "app2": nodes_app2,
+                                        "app3": nodes_app3
+                                    }
+                                    print(intended_topology)
+                                    
+                                    to_append = get_topology_str(intended_topology)
+                                    print(to_append)
+                                    
+                                    if proc_distr == "exponential":
+                                        iteration += 10
+                                    
+                                    # # input()
+                                    # run_exp(f"{distr}_lr_{run_id}_{iteration}", rpses, "NONE", distr, proc_distr, append_to_times=to_append)
+                                    
+                                    # input()
+                                    run_exp(f"{distr}_mplb_lr_{run_id}_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
 
 def print_all_combinations(): 
     
@@ -453,7 +465,8 @@ def run_once(nodes_app1, nodes_app2, nodes_app3):
     # input()
     
     # Define the RPS for each app
-    rpses = [75, 50, 25]
+    # rpses = [75, 50, 25]
+    rpses = [100]
 
     # Run the experiment
     run_exp(f"lr_arb1_{0}", rpses, "NONE", append_to_times=to_append)

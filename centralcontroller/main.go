@@ -25,13 +25,13 @@ import (
 
 const (
 	CFS_PERIOD_US     = 100000
-	CPUS_IN_NODE      = 210
+	CPUS_IN_NODE      = 200
 	MINIMUM_CPU_QUOTA = 1000
 
 	SERVER_PORT = "9988"
 	SERVER_TYPE = "tcp"
 
-	M_CPUS_IN_NODE                      = 2100
+	M_CPUS_IN_NODE                      = 2000
 	CPU_UTILIZATION_INTERVAL_MS         = 500
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 50
 
