@@ -1,0 +1,3 @@
+- Results for one app - 2 pods - 1 pod per node case
+- runs 1, 2, 3 -> req_processing_time constant
+- runs 11, 12, 13 -> req_processing_time exponentially distributed
