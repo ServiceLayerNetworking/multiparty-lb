@@ -9,11 +9,12 @@ import json
 from kubernetes import client, config
 
 DURATION = 60 # 5s
-ADDITIONAL_TIME_FOR_CC_TO_RUN = 5 # 5 seconds
+ADDITIONAL_TIME_FOR_CC_TO_RUN = 15 # 5 seconds
 SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
-SLEEP_TIME_AFTER_EACH_RUN = 1 * 10 # 1 minute
-LOG_FOLDER = "logs23"
+SLEEP_TIME_AFTER_EACH_RUN = 1 * 15 # 1 minute
+SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
+LOG_FOLDER = "logs26"
 
 def get_gateway_ip():
     """
@@ -60,7 +61,7 @@ def run_hit(q, variation, proc_distr, app_nums, rpses, distr):
     
     configs = []
     
-    if proc_distr == "none":
+    if proc_distr == "none" or proc_distr == "uniform":
         url = f"http://{IP}/?loopCount=25&base=6&exp=6"
     else:
         url = f"http://{IP}/?loopCount=EXP<25>&base=6&exp=6"
@@ -325,6 +326,45 @@ def restart_k8s():
     global IP
     IP = get_gateway_ip()
     
+def update_history_size_in_wasm(new_history_size):
+    
+    # edit `LOCALITY_AWARE_HISTORY_SIZE = (\d+)` in lb_locality_aware_weighted_random.go to new_history_size with `LOCALITY_AWARE_HISTORY_SIZE = new_history_size`
+    
+    with open("../mplb-wasm-plugin/lb_locality_aware_weighted_random.go", "r") as f:
+        lines = f.readlines()
+        
+    for i, line in enumerate(lines):
+        if "\tLOCALITY_AWARE_HISTORY_SIZE = " in line:
+            lines[i] = f"\tLOCALITY_AWARE_HISTORY_SIZE = {new_history_size}\n"
+            
+    with open("../mplb-wasm-plugin/lb_locality_aware_weighted_random.go", "w") as f:
+        f.writelines(lines)
+        
+def update_load_balance_strategy(new_strategy):
+    
+    with open("../mplb-wasm-plugin/main.go", "r") as f:
+        lines = f.readlines()
+        
+    for i, line in enumerate(lines):
+        if "[locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]" in line:
+            lines[i] = f"\tLOAD_BALANCING_STRATEGY            = \"{new_strategy}\" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]\n"
+            
+    with open("../mplb-wasm-plugin/main.go", "w") as f:
+        f.writelines(lines)
+        
+def build_wasm():
+    os.chdir("../")
+    os.system("bash restart_wasm.sh")
+    os.chdir("./exp_3_node")
+    print(f"Sleeping for {SLEEP_TIME_AFTER_WASM_BUILD}s after building wasm...")
+    time.sleep(SLEEP_TIME_AFTER_WASM_BUILD)
+    
+LB_NAME = {
+    "leastrequest": "lr",
+    "weighted_random": "wr",
+    "locality_aware_weighted_random": "lawr"
+}
+    
 def run():
     
     # change dir to previous directory
@@ -345,49 +385,56 @@ def run():
                 
                 run_id += 1 
                 
-                if run_id in [1]:
+                if run_id in [3, 7, 9]:
                     
-                    # restart_k8s()
+                    restart_k8s()
                         
-                    # time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
+                    time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
                     
-                    # # Set topology for app1, app2, app3
-                    # set_topology("app1", nodes_app1)
-                    # set_topology("app2", nodes_app2)
-                    # set_topology("app3", nodes_app3)
+                    # Set topology for app1, app2, app3
+                    set_topology("app1", nodes_app1)
+                    set_topology("app2", nodes_app2)
+                    set_topology("app3", nodes_app3)
+                    
+                    # print("Topology set. Press enter to continue...")
+                    # input()
+                    time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                         
-                    # time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
-                    
-                    # Define the RPS for each app
-                    # rpses = [90, 60, 30]
-                    rpses = [60*2]
-                    
-                    for iteration in [4]:
-                    
-                        for distr in ["exponential"]:
+                    # rpses = [60*2]
+                        
+                    for lb in ["leastrequest", "weighted_random", "locality_aware_weighted_random"]:
+                        
+                        update_load_balance_strategy(lb)
+                        build_wasm()
+                                
+                        # Define the RPS for 1 cpu
+                        for rps in [35]:
                             
-                            for proc_distr in ["exponential"]:
+                            rpses = [rps*3, rps*2, rps*1]
+                        
+                            for iteration in [4, 5]:
+                            
+                                for distr in ["none", "exponential"]:
                                     
-                                    print(f"Starting iteration {iteration} for run_id {run_id}...")
-                                    
-                                    intended_topology = {
-                                        "app1": nodes_app1,
-                                        "app2": nodes_app2,
-                                        "app3": nodes_app3
-                                    }
-                                    print(intended_topology)
-                                    
-                                    to_append = get_topology_str(intended_topology)
-                                    print(to_append)
-                                    
-                                    if proc_distr == "exponential":
-                                        iteration += 10
-                                    
-                                    # # input()
-                                    # run_exp(f"{distr}_lr_{run_id}_{iteration}", rpses, "NONE", distr, proc_distr, append_to_times=to_append)
-                                    
-                                    # input()
-                                    run_exp(f"{distr}_mplb_lr_{run_id}_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
+                                    for proc_distr in ["none", "exponential"]:
+                                            
+                                        # print(f"Starting iteration {iteration} for run_id {run_id}...")
+                                        
+                                        intended_topology = {
+                                            "app1": nodes_app1,
+                                            "app2": nodes_app2,
+                                            "app3": nodes_app3
+                                        }
+                                        print(intended_topology)
+                                        
+                                        to_append = get_topology_str(intended_topology)
+                                        print(to_append)
+                                        
+                                        # # input()
+                                        # run_exp(f"{distr}_lr_{run_id}_{iteration}", rpses, "NONE", distr, proc_distr, append_to_times=to_append)
+                                        
+                                        # input()
+                                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{run_id}_{rps}rps_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
 
 def print_all_combinations(): 
     

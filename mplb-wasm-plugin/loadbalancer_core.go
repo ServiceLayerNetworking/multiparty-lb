@@ -73,18 +73,18 @@ func notifyRequestCompletedToLB(dstPod string) {
 	}
 	dst := strings.Join(parts[:len(parts)-1], "-")
 
-	// get the outstanding requests for all endpoints of the dst
-	outstandingReqs, cas, err := getOutstandingRequests(dst, endpointNum+1)
-	if err != nil {
-		proxywasm.LogCriticalf(
-			"Couldn't get outstanding requests for endpoint %s: %v", dst, err)
-		return
-	}
-
 	if LOAD_BALANCING_STRATEGY == "weighted_random" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" ||
 		LOAD_BALANCING_STRATEGY == "leastrequest" {
+
+		// get the outstanding requests for all endpoints of the dst
+		outstandingReqs, cas, err := getOutstandingRequests(dst, -1)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't get outstanding requests for endpoint %s: %v", dst, err)
+			return
+		}
 
 		// decrement the active request count for the selected server
 		if (*outstandingReqs)[endpointNum] > 0 {
@@ -92,7 +92,7 @@ func notifyRequestCompletedToLB(dstPod string) {
 		}
 
 		// set the new outstanding requests
-		err := setOutstandingReqs(cas, dst, outstandingReqs)
+		err = setOutstandingReqs(cas, dst, outstandingReqs)
 		if err != nil {
 			proxywasm.LogCriticalf(
 				"Couldn't set outstanding requests at notifyRequestCompletedToLB: %v", err)
@@ -101,8 +101,31 @@ func notifyRequestCompletedToLB(dstPod string) {
 			// 	we last read them
 			notifyRequestCompletedToLB(dstPod)
 		}
+
 	} else if LOAD_BALANCING_STRATEGY == "locality_aware_weighted_random" {
-		// not implemented
-		doSomething()
+
+		// get the outstanding requests for all endpoints of the dst
+		stats, cas, err := getLocalityAwareStats(dst, -1)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't get laStats for endpoint %s: %v", dst, err)
+			return
+		}
+
+		// decrement the active request count for the selected server
+		if stats.outstandingReqsAtEndpoint[endpointNum] > 0 {
+			stats.outstandingReqsAtEndpoint[endpointNum]--
+		}
+
+		// set the new laStats
+		err = setLocalityAwareStats(cas, dst, stats)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't set lastats at notifyRequestCompletedToLB: %v", err)
+
+			// try again, another thread has changed laStats since
+			// 	we last read them
+			notifyRequestCompletedToLB(dstPod)
+		}
 	}
 }

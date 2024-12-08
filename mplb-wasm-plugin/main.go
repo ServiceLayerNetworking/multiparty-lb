@@ -43,8 +43,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY            = "leastrequest" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOCALITY_AWARE_N_REQS_TO_LOOK_BACK = 5
+	LOAD_BALANCING_STRATEGY            = "locality_aware_weighted_random" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 )
 
 var (
@@ -1371,6 +1370,10 @@ func endpointOutstandingReqKey(dstSvc string, endpointNum int) string {
 
 func outstandingReqsKey(dstSvc string) string {
 	return dstSvc + "-or"
+}
+
+func localityAwareStatsKey(dstSvc string) string {
+	return dstSvc + "-las"
 }
 
 func weightedRoundRobinStatsKey(dstSvc string) string {

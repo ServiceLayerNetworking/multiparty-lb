@@ -43,6 +43,8 @@ func setOutstandingReqs(
 func getOutstandingRequests(
 	dst string, numEndpoints int) (*[]int, uint32, error) {
 
+	isNumEndpointsValid := numEndpoints != -1
+
 	// get outstanding requests for all endpoints of the dst
 	valBytes, cas, err := proxywasm.GetSharedData(outstandingReqsKey(dst))
 
@@ -51,6 +53,11 @@ func getOutstandingRequests(
 			"Couldn't get shared data for endpoint %s: %v", dst, err)
 
 		// initialize outstanding requests
+		if !isNumEndpointsValid {
+			// we don't know the number of endpoints, so we can't initialize
+			return nil, 0, errors.New("OR not yet initialized for " + dst)
+		}
+		// we know the number of endpoints, so we can initialize
 		outstandingReqs := make([]int, numEndpoints)
 		err = setOutstandingReqs(cas, dst, &outstandingReqs)
 		if err != nil {
@@ -70,7 +77,7 @@ func getOutstandingRequests(
 	}
 
 	// if numofEndpoints have increased, add state for new endpoints
-	if numEndpoints > len(outstandingReqs) {
+	if isNumEndpointsValid && numEndpoints > len(outstandingReqs) {
 
 		// add state for new endpoints
 		proxywasm.LogCriticalf(

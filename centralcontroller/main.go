@@ -33,7 +33,7 @@ const (
 
 	M_CPUS_IN_NODE                      = 2000
 	CPU_UTILIZATION_INTERVAL_MS         = 500
-	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 50
+	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 
 	OVERHEAD           = 10 // 10% overhead
 	POD_QUOTA_OVERHEAD = 10 // 5% overhead
@@ -714,8 +714,14 @@ func getOptimalLBWeights(
 	avgAppUtils, newRoundsAppCPUUtils := getRollingAverage(
 		currentAppUtils, roundsAppCPUUtils)
 
+	// round all app utils to whole numbers
+	appUtilsForGurobi := make(map[string]float64)
+	for appNum, util := range avgAppUtils {
+		appUtilsForGurobi[appNum] = float64(int(util))
+	}
+
 	// get weights from gurobi
-	gurobiResponse := getGenericWeightsFromGurobi(nodes, avgAppUtils)
+	gurobiResponse := getGenericWeightsFromGurobi(nodes, appUtilsForGurobi)
 
 	// print Gurobi weights:
 	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)

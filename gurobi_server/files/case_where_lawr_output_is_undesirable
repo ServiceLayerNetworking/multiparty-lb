@@ -1,0 +1,30 @@
+[
+    [
+        {"name": "node1", "cap": 200
+        },
+        {"name": "node2", "cap": 200
+        },
+        {"name": "node3", "cap": 200
+        }
+    ],
+    [
+        {"name": "appA", "load": 360, "fshareload": 300
+        },
+        {"name": "appB", "load": 500, "fshareload": 200
+        },
+        {"name": "appC", "load": 0, "fshareload": 100
+        }
+    ],
+    [
+        {"name": "appA-node1", "tenant": "appA", "host": "node1"
+        },
+        {"name": "appA-node2", "tenant": "appA", "host": "node2"
+        },
+        {"name": "appB-node2", "tenant": "appB", "host": "node2"
+        },
+        {"name": "appB-node3", "tenant": "appB", "host": "node3"
+        },
+        {"name": "appC-node3", "tenant": "appC", "host": "node3"
+        }
+    ]
+]
