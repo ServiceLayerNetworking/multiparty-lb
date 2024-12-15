@@ -14,7 +14,7 @@ SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_EACH_RUN = 1 * 15 # 1 minute
 SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
-LOG_FOLDER = "logs26"
+LOG_FOLDER = "logs28"
 
 def get_gateway_ip():
     """
@@ -32,6 +32,7 @@ def run_wrk(q, variation, app_num, rps):
     c, t = (1, 1) if rps <= 25 else (5, 5)
     
     cmd = f"../hit/hit -d {DURATION} -distr exponential -rps {rps} -l {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log -headers \"" + "{\\\"Host\\\": " +  f"\\\"app{app_num}.mplb.com\\" + "\"}\"" + f" -url \"http://{IP}/?loopCount=25&base=6&exp=6\""
+    # e.g.: hit/hit -d 10 -distr exponential -rps 10 -l logs.t -headers "{\"Host\": \"app1.mplb.com\"}" -url "http://$GATEWAY_IP/?loopCount=EXP<25>&base=6&exp=6"
     # cmd = f"../wrk2/wrk -H \"Host: app{app_num}.mplb.com\" -t {t} -c {c} -d {DURATION} -L \"http://{IP}/?loopCount=25&base=6&exp=6\" -R{rps} > {LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_wrk.log"
     print(f"Command: {cmd}")
     
@@ -362,7 +363,8 @@ def build_wasm():
 LB_NAME = {
     "leastrequest": "lr",
     "weighted_random": "wr",
-    "locality_aware_weighted_random": "lawr"
+    "locality_aware_weighted_random": "lawr",
+    "weighted_roundrobin": "wrr"
 }
     
 def run():
@@ -385,24 +387,24 @@ def run():
                 
                 run_id += 1 
                 
-                if run_id in [3, 7, 9]:
+                if run_id in [3]:
                     
-                    restart_k8s()
+                    # restart_k8s()
                         
-                    time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
+                    # time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
                     
-                    # Set topology for app1, app2, app3
-                    set_topology("app1", nodes_app1)
-                    set_topology("app2", nodes_app2)
-                    set_topology("app3", nodes_app3)
+                    # # Set topology for app1, app2, app3
+                    # set_topology("app1", nodes_app1)
+                    # set_topology("app2", nodes_app2)
+                    # set_topology("app3", nodes_app3)
                     
-                    # print("Topology set. Press enter to continue...")
-                    # input()
-                    time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
+                    # # print("Topology set. Press enter to continue...")
+                    # # input()
+                    # time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                         
                     # rpses = [60*2]
                         
-                    for lb in ["leastrequest", "weighted_random", "locality_aware_weighted_random"]:
+                    for lb in ["leastrequest", "weighted_random", "weighted_roundrobin"]: #"locality_aware_weighted_random"]:
                         
                         update_load_balance_strategy(lb)
                         build_wasm()
@@ -412,12 +414,15 @@ def run():
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [4, 5]:
+                            for iteration in [1, 2, 3]:
                             
                                 for distr in ["none", "exponential"]:
                                     
                                     for proc_distr in ["none", "exponential"]:
-                                            
+                                
+                                        if distr == proc_distr:
+                                            continue
+                                    
                                         # print(f"Starting iteration {iteration} for run_id {run_id}...")
                                         
                                         intended_topology = {
@@ -434,7 +439,7 @@ def run():
                                         # run_exp(f"{distr}_lr_{run_id}_{iteration}", rpses, "NONE", distr, proc_distr, append_to_times=to_append)
                                         
                                         # input()
-                                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{run_id}_{rps}rps_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
+                                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}fw_{run_id}_{rps}rps_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
 
 def print_all_combinations(): 
     

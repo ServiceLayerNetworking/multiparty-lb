@@ -9,3 +9,9 @@ GOARCH=wasm GOOS=js /usr/local/bin/tinygo build -o wasm-out/slate_plugin.wasm -g
 
 docker build -t ghcr.io/talha-waheed/mplb-plugin:latest .
 docker push ghcr.io/talha-waheed/mplb-plugin:latest
+
+# for authenticating docker:
+# sudo usermod -aG docker $USER
+# newgrp docker
+# groups
+# echo "YOUR_PERSONAL_ACCESS_TOKEN" | docker login ghcr.io -u talha-waheed --password-stdin

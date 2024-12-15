@@ -24,17 +24,17 @@ weights: a list of weights for each endpoint of the dst.
 */
 func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
-	// // for debgging:
-	// if dst == "app1" {
-	// 	weights = []float64{70, 30}
-	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
-	// } else if dst == "app2" {
-	// 	weights = []float64{47.5, 52.5}
-	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
-	// } else if dst == "app3" {
-	// 	weights = []float64{100}
-	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
-	// }
+	// for debgging:
+	if dst == "app1" {
+		weights = []float64{50, 50}
+		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	} else if dst == "app2" {
+		weights = []float64{50, 50}
+		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	} else if dst == "app3" {
+		weights = []float64{100}
+		proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	}
 
 	if len(weights) == 0 {
 		return -1, errors.New("No weights provided")
