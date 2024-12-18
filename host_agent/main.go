@@ -503,31 +503,41 @@ func getOSFile(readPath string) (string, error) {
 	// return string(readBuf), err
 }
 
-func getCPUUtilizations(podUIDs map[string]string) string {
+// blocking, to be called asynchonously in go routine
+func fetchPodCPUUtil(podName string, uid string, respChan chan string) {
 
-	response := "utils:"
-
-	initialCPUUtils := make(map[string]int64)
-	finalCPUUtils := make(map[string]int64)
-
-	for podName, uid := range podUIDs {
-		initialCPUUtils[podName] = getPodCPUUtil(uid)
-	}
+	initialCPUUtil := getPodCurrentCPUUsageTime(uid)
 	intialTime := time.Now().UnixMicro()
 
 	time.Sleep(CPU_UTILIZATION_INTERVAL_MS * time.Millisecond)
 
-	for podName, uid := range podUIDs {
-		finalCPUUtils[podName] = getPodCPUUtil(uid)
-	}
+	finalCPUUtil := getPodCurrentCPUUsageTime(uid)
 	timeElapsed := time.Now().UnixMicro() - intialTime
 
-	for podName := range podUIDs {
-		response += fmt.Sprintf(" %s:%f",
-			podName,
-			(float64(finalCPUUtils[podName]-initialCPUUtils[podName])/
-				float64(timeElapsed))*100)
+	respChan <- fmt.Sprintf("%s:%f",
+		podName,
+		(float64(finalCPUUtil-initialCPUUtil)/
+			float64(timeElapsed))*100)
+}
+
+func getCPUUtilizations(podUIDs map[string]string) string {
+
+	response := "utils:"
+
+	respChan := make(chan string, len(podUIDs))
+
+	// fetch CPU utilization for each pod
+	for podName, uid := range podUIDs {
+		go fetchPodCPUUtil(podName, uid, respChan)
 	}
+
+	// append them to the response
+	for range podUIDs {
+		response += <-respChan + " "
+	}
+
+	// strip response
+	response = strings.TrimSpace(response)
 
 	return response
 }
@@ -555,7 +565,7 @@ func getCPUUtilizations(podUIDs map[string]string) string {
 // 	return "/sys/fs/cgroup/cpu/kubepods/" + qosClass[0] + "pod" + uid
 // }
 
-func getPodCPUUtil(uid string) int64 {
+func getPodCurrentCPUUsageTime(uid string) int64 {
 	// get the CPU utilization of the pod
 	// return the CPU utilization
 
