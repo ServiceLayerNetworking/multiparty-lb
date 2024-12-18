@@ -1,0 +1,212 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"regexp"
+	"strconv"
+	"strings"
+)
+
+type ClusterStateManager struct {
+	Nodes             []Node
+	RoundsAppCPUUtils []map[string]float64
+}
+
+func (c *ClusterStateManager) Initialize(nodes []Node) {
+	c.Nodes = nodes
+	c.RoundsAppCPUUtils = make([]map[string]float64, 0)
+
+}
+
+func (c *ClusterStateManager) GetOptimalLBWeights(
+	nodeCPUUtilizations []string) string {
+
+	// parse current cpu utilizations
+	currentAppUtils := getPerAppUtilizations(nodeCPUUtilizations)
+	// effectiveAppUtils := makeNoiseZero(currentAppUtils, NOISE)
+	// effectiveAppUtils = addOverhead(effectiveAppUtils, OVERHEAD)
+
+	// get rolling average
+	avgAppUtils, newRoundsAppCPUUtils := getRollingAverage(
+		currentAppUtils, c.RoundsAppCPUUtils)
+	c.RoundsAppCPUUtils = newRoundsAppCPUUtils
+
+	// round all app utils to whole numbers
+	appUtilsForGurobi := make(map[string]float64)
+	for appNum, util := range avgAppUtils {
+		appUtilsForGurobi[appNum] = float64(int(util))
+	}
+
+	// get weights from gurobi
+	gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, appUtilsForGurobi)
+
+	// print Gurobi weights:
+	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
+
+	lbWeights := parseGurobiResponse(gurobiResponse)
+
+	// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
+	// 	newRoundsAppCPUUtils
+
+	return lbWeights
+}
+
+func getPerAppUtilizations(nodeCPUUtilizations []string) map[string]float64 {
+
+	appUtils := make(map[string]float64)
+	for _, cpuUtil := range nodeCPUUtilizations {
+
+		// example cpuUtil to parse: "cpuUtilizations app1-node1:45 app2-node1:69"
+
+		cpuUtilStrs := strings.Split(cpuUtil, " ")[1:]
+		for _, cpuUtilStr := range cpuUtilStrs {
+
+			util := strings.Split(cpuUtilStr, ":")
+			appName := util[0]
+
+			// don't consider hostagents for gurobi calculations
+			if strings.Contains(appName, "hostagent") {
+				continue
+			}
+
+			// get "app1-node1" from "app1-node1-0"
+			pattern := `^(.+)-\d+$`
+			// Compile the regex
+			re := regexp.MustCompile(pattern)
+			// Find the first match
+			match := re.FindStringSubmatch(util[0])
+
+			if len(match) > 1 {
+				// match[0] is the full match, match[1] is the first capturing group
+				appName = match[1]
+			}
+
+			podUtil, err := strconv.ParseFloat(util[1], 64)
+			check(err)
+
+			appUtils[appName] += podUtil
+		}
+
+	}
+	return appUtils
+}
+
+func getRollingAverage(
+	currentAppUtils map[string]float64,
+	roundsAppCPUUtils []map[string]float64) (map[string]float64, []map[string]float64) {
+
+	// update rounds
+	newRoundsAppCPUUtils := append(roundsAppCPUUtils, currentAppUtils)
+	if len(newRoundsAppCPUUtils) > ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS {
+		newRoundsAppCPUUtils = newRoundsAppCPUUtils[1:]
+	}
+
+	// get avg utils
+	avgAppUtils := make(map[string]float64)
+	for _, appUtils := range newRoundsAppCPUUtils {
+		for appNum, util := range appUtils {
+			avgAppUtils[appNum] += util
+		}
+	}
+	for appNum := range avgAppUtils {
+		avgAppUtils[appNum] /= float64(len(newRoundsAppCPUUtils))
+	}
+
+	return avgAppUtils, newRoundsAppCPUUtils
+}
+
+func getGenericWeightsFromGurobi(
+	nodes []Node, appUtils map[string]float64) string {
+
+	hosts := make([]HostJSON, 0)
+	for _, node := range nodes {
+		// // TEMPORARY: don't consider nodes 0, 4, 5
+		// if strings.Contains(node.Name, "node0") ||
+		// 	strings.Contains(node.Name, "node4") ||
+		// 	strings.Contains(node.Name, "node5") {
+		// 	continue
+		// }
+		hosts = append(hosts, HostJSON{
+			Name: node.Name,
+			Cap:  float64(node.MilliCores) / 10.0,
+		})
+	}
+	hostsJSON, err := json.Marshal(hosts)
+	check(err)
+
+	tenants := make([]TenantJSON, 0)
+	for appName, util := range appUtils {
+		// don't consider hostagents for gurobi calculations
+		if strings.Contains(appName, "hostagent") {
+			continue
+		}
+		tenants = append(tenants, TenantJSON{
+			Name:       appName,
+			Load:       util,
+			FShareLoad: getFShareLoad(nodes, appName),
+		})
+	}
+	tenantsJSON, err := json.Marshal(tenants)
+	check(err)
+
+	pods := make([]PodJSON, 0)
+	for _, node := range nodes {
+		for _, pod := range node.Pods {
+			// don't consider hostagents for gurobi calculations
+			if strings.Contains(pod.Name, "hostagent") {
+				continue
+			}
+			pods = append(pods, PodJSON{
+				Name:   pod.Name,
+				Tenant: pod.AppName,
+				Host:   node.Name,
+			})
+		}
+	}
+	podsJSON, err := json.Marshal(pods)
+	check(err)
+
+	baseURL := "http://localhost:5000/"
+	payload := fmt.Sprintf(
+		"[%s,%s,%s]", string(hostsJSON), string(tenantsJSON), string(podsJSON))
+
+	slog.Info(fmt.Sprintf("Payload sending to Gurobi: %s\n", payload))
+
+	resBody, err := sendPostRequest(baseURL, payload)
+	check(err)
+
+	return string(resBody)
+}
+
+func parseGurobiResponse(gurobiResponse string) string {
+	var response GurobiGenericResponse
+	err := json.Unmarshal([]byte(gurobiResponse), &response)
+	check(err)
+
+	lbWeights := ""
+	for appName, podResult := range response.Result {
+		lbWeights += appName + ":"
+		sortedValues := getValuesFromMapSortedByKeys(podResult)
+		var appSum float64
+		for _, value := range sortedValues {
+			appSum += value
+		}
+		sortedWeights := make([]float64, len(sortedValues))
+		for i, value := range sortedValues {
+			if appSum == 0 {
+				sortedWeights[i] = 100.0 / float64(len(sortedValues))
+			} else {
+				sortedWeights[i] = (value * 100) / appSum
+			}
+		}
+
+		strSortedWeights := make([]string, len(sortedWeights))
+		for i, weight := range sortedWeights {
+			strSortedWeights[i] = fmt.Sprintf("%f", weight)
+		}
+		lbWeights += strings.Join(strSortedWeights, "|") + " "
+	}
+	return lbWeights
+}
