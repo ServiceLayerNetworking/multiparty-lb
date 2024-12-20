@@ -34,6 +34,10 @@ const (
 	CPU_UTILIZATION_INTERVAL_MS         = 500
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 
+	USE_RPS_INSTEAD_OF_CPU = true
+	RPS_WINDOW_MS          = 500
+	NODE_RPS_CAP           = 35
+
 	OVERHEAD           = 10 // 10% overhead
 	POD_QUOTA_OVERHEAD = 10 // 5% overhead
 	NOISE              = 2  // 2% noise
@@ -434,7 +438,7 @@ func ccWithLBEnforcement(
 		nodeCPUUtilizations, reqStats := getCPUUtilAndReqStatsFromCluster(nodes)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
-		lbWeights := cs.GetOptimalLBWeights(nodeCPUUtilizations)
+		lbWeights := cs.GetOptimalLBWeights(nodeCPUUtilizations, reqStats)
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(

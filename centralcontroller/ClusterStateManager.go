@@ -15,42 +15,93 @@ type ClusterStateManager struct {
 }
 
 func (c *ClusterStateManager) Initialize(nodes []Node) {
-	c.Nodes = nodes
+
 	c.RoundsAppCPUUtils = make([]map[string]float64, 0)
 
+	if USE_RPS_INSTEAD_OF_CPU {
+		// change the cap of every node
+		for i := range nodes {
+			nodes[i].MilliCores = NODE_RPS_CAP * 10
+		}
+	}
+	c.Nodes = nodes
 }
 
 func (c *ClusterStateManager) GetOptimalLBWeights(
-	nodeCPUUtilizations []string) string {
+	nodeCPUUtilizations []string, reqStats []ReqStat) string {
 
-	// parse current cpu utilizations
-	currentAppUtils := getPerAppUtilizations(nodeCPUUtilizations)
-	// effectiveAppUtils := makeNoiseZero(currentAppUtils, NOISE)
-	// effectiveAppUtils = addOverhead(effectiveAppUtils, OVERHEAD)
+	if USE_RPS_INSTEAD_OF_CPU {
 
-	// get rolling average
-	avgAppUtils, newRoundsAppCPUUtils := getRollingAverage(
-		currentAppUtils, c.RoundsAppCPUUtils)
-	c.RoundsAppCPUUtils = newRoundsAppCPUUtils
+		currentAppUtils := getPerAppRPS(reqStats)
 
-	// round all app utils to whole numbers
-	appUtilsForGurobi := make(map[string]float64)
-	for appNum, util := range avgAppUtils {
-		appUtilsForGurobi[appNum] = float64(int(util))
+		// get weights from gurobi
+		gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, currentAppUtils)
+
+		// print Gurobi weights:
+		fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
+
+		lbWeights := parseGurobiResponse(gurobiResponse)
+		return lbWeights
+
+	} else {
+		currentAppUtils := getPerAppUtilizations(nodeCPUUtilizations)
+
+		// effectiveAppUtils := makeNoiseZero(currentAppUtils, NOISE)
+		// effectiveAppUtils = addOverhead(effectiveAppUtils, OVERHEAD)
+
+		// get rolling average
+		avgAppUtils, newRoundsAppCPUUtils := getRollingAverage(
+			currentAppUtils, c.RoundsAppCPUUtils)
+		c.RoundsAppCPUUtils = newRoundsAppCPUUtils
+
+		// round all app utils to whole numbers
+		appUtilsForGurobi := make(map[string]float64)
+		for appNum, util := range avgAppUtils {
+			appUtilsForGurobi[appNum] = float64(int(util))
+		}
+
+		// get weights from gurobi
+		gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, appUtilsForGurobi)
+
+		// print Gurobi weights:
+		fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
+
+		lbWeights := parseGurobiResponse(gurobiResponse)
+
+		// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
+		// 	newRoundsAppCPUUtils
+
+		return lbWeights
+	}
+}
+
+func getPerAppRPS(reqStats []ReqStat) map[string]float64 {
+
+	// get the max endtimems from all reqStats
+	var maxEndTimeMs int64 = 0
+	for _, reqStat := range reqStats {
+		if reqStat.EndTimeMs > maxEndTimeMs {
+			maxEndTimeMs = reqStat.EndTimeMs
+		}
 	}
 
-	// get weights from gurobi
-	gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, appUtilsForGurobi)
+	// get the number of requests completed in the last RPS_WINDOW_MS
+	svcComletedReqs := make(map[string]int)
+	for _, reqStat := range reqStats {
+		if maxEndTimeMs-reqStat.EndTimeMs <= RPS_WINDOW_MS {
+			// remove .mplb.com from the dstSvc
+			dstSvc := strings.ReplaceAll(reqStat.DstSvc, ".mplb.com", "")
+			svcComletedReqs[dstSvc]++
+		}
+	}
 
-	// print Gurobi weights:
-	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
+	// get the RPS for each service
+	svcRPS := make(map[string]float64)
+	for svc, completedReqs := range svcComletedReqs {
+		svcRPS[svc] = float64(completedReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
+	}
 
-	lbWeights := parseGurobiResponse(gurobiResponse)
-
-	// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
-	// 	newRoundsAppCPUUtils
-
-	return lbWeights
+	return svcRPS
 }
 
 func getPerAppUtilizations(nodeCPUUtilizations []string) map[string]float64 {
