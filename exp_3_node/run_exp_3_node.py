@@ -404,24 +404,24 @@ def run():
                         
                     # rpses = [60*2]
                         
-                    for lb in ["leastrequest", "weighted_random", "weighted_roundrobin"]: #"locality_aware_weighted_random"]:
+                    for lb in ["weighted_random"]: #"locality_aware_weighted_random"]:
                         
-                        update_load_balance_strategy(lb)
-                        build_wasm()
+                        # update_load_balance_strategy(lb)
+                        # build_wasm()
                                 
                         # Define the RPS for 1 cpu
                         for rps in [35]:
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [1, 2, 3]:
+                            for iteration in [2, 3]:
                             
                                 for distr in ["none", "exponential"]:
                                     
                                     for proc_distr in ["none", "exponential"]:
                                 
-                                        if distr == proc_distr:
-                                            continue
+                                        # if distr != proc_distr:
+                                        #     continue
                                     
                                         # print(f"Starting iteration {iteration} for run_id {run_id}...")
                                         
@@ -439,7 +439,7 @@ def run():
                                         # run_exp(f"{distr}_lr_{run_id}_{iteration}", rpses, "NONE", distr, proc_distr, append_to_times=to_append)
                                         
                                         # input()
-                                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}fw_{run_id}_{rps}rps_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
+                                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}rpsb_{run_id}_{rps}rps_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
 
 def print_all_combinations(): 
     
