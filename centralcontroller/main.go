@@ -289,7 +289,7 @@ func main() {
 	}
 
 	// Set default LB weights
-	setDefaultLBWeights(nodes, appNames)
+	setNilLBWeights(nodes, appNames)
 
 	// Set default CPU Shares
 	setDefaultCPUShares(nodes)
@@ -303,6 +303,10 @@ func main() {
 	} else {
 
 		if enforcement == "LB" {
+
+			// Set default LB weights
+			setDefaultLBWeights(nodes, appNames)
+
 			go ccWithLBEnforcement(cpuLogFile, nodes, podNamesToLog)
 
 		} else {
@@ -1157,9 +1161,48 @@ func getNilWeights(appNames []string) string {
 	return lbWeights
 }
 
-func setDefaultLBWeights(nodes []Node, appNames []string) {
+func getEqualWeightsForEachPod(nodes []Node, appNames []string) string {
+	appNumOfPods := make(map[string]int)
+	for _, appName := range appNames {
+		appNumOfPods[appName] = 0
+	}
+	for _, node := range nodes {
+		for _, pod := range node.Pods {
+			appNumOfPods[pod.AppName]++
+		}
+	}
+
+	lbWeights := ""
+	for _, appName := range appNames {
+		lbWeights += appName + ":"
+		for i := 0; i < appNumOfPods[appName]; i++ {
+			lbWeights += fmt.Sprintf(
+				"%.1f|", 100.0/float64(appNumOfPods[appName]))
+		}
+		lbWeights = lbWeights[:len(lbWeights)-1] + " "
+	}
+
+	lbWeights = strings.TrimSpace(lbWeights)
+	return lbWeights
+}
+
+func setNilLBWeights(nodes []Node, appNames []string) {
 
 	lbWeights := getNilWeights(appNames)
+
+	for i := range nodes {
+		msg := "applyLBWeights " + lbWeights
+		response := nodes[i].SendMessageAndGetResponse(msg)
+		if response != "Success" {
+			slog.Warn("Failed to apply LB Weights on node: " +
+				nodes[i].IP)
+		}
+	}
+}
+
+func setDefaultLBWeights(nodes []Node, appNames []string) {
+
+	lbWeights := getEqualWeightsForEachPod(nodes, appNames)
 
 	for i := range nodes {
 		msg := "applyLBWeights " + lbWeights

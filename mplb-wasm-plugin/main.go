@@ -33,6 +33,7 @@ const (
 	KEY_RPS_SHARED_QUEUE_SIZE = "slate_rps_shared_queue_size"
 
 	TIMESTAMPS_SHARED_QUEUE = "slate_timestamps_shared_queue"
+	SENT_REQ_SHARED_QUEUE   = "slate_sent_req_shared_queue"
 
 	// this is the reporting period in millis
 	TICK_PERIOD = 500
@@ -43,13 +44,13 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY            = "leastrequest" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY = "leastrequest" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 )
 
 var (
 	ALL_KEYS = []string{KEY_INFLIGHT_REQ_COUNT, KEY_REQUEST_COUNT, KEY_LAST_RESET, KEY_RPS_THRESHOLDS, KEY_HASH_MOD, AGGREGATE_REQUEST_LATENCY,
 		KEY_TRACED_REQUESTS, KEY_MATCH_DISTRIBUTION, KEY_INFLIGHT_ENDPOINT_LIST, KEY_ENDPOINT_RPS_LIST, KEY_RPS_SHARED_QUEUE, KEY_RPS_SHARED_QUEUE_SIZE,
-		TIMESTAMPS_SHARED_QUEUE}
+		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE}
 	cur_idx      int
 	latency_list []int64
 	ts_list      []int64
@@ -279,17 +280,19 @@ func (p *pluginContext) OnTick() {
 		return
 	}
 
-	data, cas, err = proxywasm.GetSharedData(TIMESTAMPS_SHARED_QUEUE)
+	tsListBytes, err := getAndSetSharedData(TIMESTAMPS_SHARED_QUEUE, make([]byte, 8))
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get shared data: %v", err)
+		proxywasm.LogCriticalf("Couldn't get shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
 		return
 	}
-	tsListStr := string(data)
+	tsListStr := string(tsListBytes)
 
-	//reset TIMESTAMP_SHARED_QUEUE
-	if err := proxywasm.SetSharedData(TIMESTAMPS_SHARED_QUEUE, make([]byte, 8), 0); err != nil {
-		proxywasm.LogCriticalf("Couldn't reset timestamps shared queue: %v", err)
+	tsSentReqListBytes, err := getAndSetSharedData(SENT_REQ_SHARED_QUEUE, make([]byte, 8))
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get shared data for TIMESTAMPS_SHARED_QUEUE: %v", err)
+		return
 	}
+	tsSentReqListStr := string(tsSentReqListBytes)
 
 	authority := fmt.Sprintf("hostagent-node%d.mplb-system.svc.cluster.local", p.nodeID)
 
@@ -304,7 +307,13 @@ func (p *pluginContext) OnTick() {
 
 	reqDest := fmt.Sprintf("outbound|9989||%s", authority)
 	// reqBody := fmt.Sprintf("reqCount\n%d\n\ninflightStats\n%s\nrequestStats\n%s\ntimestampstats\n%s\n", reqCount, inflightStats, requestStatsStr, tsListStr)
-	reqBody := fmt.Sprintf("%s %s\nreqCount\n%d\ntimestampstats\n%s\n", p.serviceName, p.podName, reqCount, tsListStr)
+	reqBody := fmt.Sprintf(
+		"%s %s\nreqCount\n%d\ntimestampstats\n%s\nsentreqstats\n%s\n",
+		p.serviceName,
+		p.podName,
+		reqCount,
+		tsListStr,
+		tsSentReqListStr)
 	proxywasm.LogCriticalf("<OnTick>\nreqDest:%s\nreqBody:\n%s", reqDest, reqBody)
 
 	proxywasm.DispatchHttpCall(reqDest, controllerHeaders,
@@ -442,6 +451,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				weights, err := parseLBWeights(weightsStr)
 				if err != nil {
 					proxywasm.LogCriticalf("Couldn't parse weights: %v", err)
+					appendSentReqStats(currentTimeStr, dst, "")
 					return types.ActionContinue
 				}
 
@@ -449,6 +459,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				endpointNum, err := getNextDstEndpoint(dst, weights)
 				if err != nil {
 					proxywasm.LogCriticalf("Couldn't get next endpoint: %v", err)
+					appendSentReqStats(currentTimeStr, dst, "")
 					return types.ActionContinue
 				}
 
@@ -462,9 +473,11 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 						"Error adding header: %v", headerErr)
 				}
 
+				appendSentReqStats(currentTimeStr, dst, header)
 				return types.ActionContinue
 			}
 		}
+		appendSentReqStats(currentTimeStr, dst, "")
 		return types.ActionContinue
 	}
 
@@ -1303,6 +1316,61 @@ func getNodeID(nodeName string) (int, error) {
 	}
 
 	return nodeID, nil
+}
+
+// handles race conditions for the shared data while getting a value
+// and resetting data
+func getAndSetSharedData(dataKey string, setValue []byte) ([]byte, error) {
+
+	data, cas, err := proxywasm.GetSharedData(dataKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// set the shared data to setValue
+	if err := proxywasm.SetSharedData(dataKey, setValue, cas); err != nil {
+		if err == types.ErrorStatusCasMismatch {
+			// try again
+			return getAndSetSharedData(dataKey, setValue)
+		} else {
+			return nil, err
+		}
+	}
+
+	return data, nil
+}
+
+func appendSentReqStats(currentTime, dstSvc, dstPod string) {
+
+	isTsListChangeSuccessful := false
+
+	for !isTsListChangeSuccessful {
+
+		// get the current array of timestamps
+		tsList, cas, err := proxywasm.GetSharedData(SENT_REQ_SHARED_QUEUE)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't get shared data for SENT_REQ_SHARED_QUEUE: %v", err)
+			// this should never happen
+			return
+		}
+
+		timeStampStr := fmt.Sprintf("\n%s %s %s", dstSvc, dstPod, currentTime)
+
+		// append the new timestamp to the list
+		tsList = append(tsList, []byte(timeStampStr)...)
+
+		// set the new list
+		if err := proxywasm.SetSharedData(SENT_REQ_SHARED_QUEUE, tsList, cas); err != nil {
+			proxywasm.LogCriticalf("unable to set shared data for SENT_REQ_SHARED_QUEUE: %v", err)
+			if errors.Is(err, types.ErrorStatusCasMismatch) {
+				proxywasm.LogCriticalf("CAS Mismatch on SENT_REQ_SHARED_QUEUE, failing: %v", err)
+			}
+		} else {
+			proxywasm.LogCriticalf("added timestamp to shared data")
+			isTsListChangeSuccessful = true
+		}
+	}
+
 }
 
 func maxIntArray(arr []int) int {
