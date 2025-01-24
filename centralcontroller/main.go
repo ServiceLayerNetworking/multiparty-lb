@@ -35,6 +35,7 @@ const (
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 
 	USE_RPS_INSTEAD_OF_CPU = false
+	PER_REQ_CPU_UTIL       = 4.3
 	RPS_WINDOW_MS          = 500
 	NODE_RPS_CAP           = 35
 
@@ -153,6 +154,7 @@ type NodeStats struct {
 	Node            int
 	CPUUtilizations string
 	ReqStats        string
+	ReqSentStats    string
 }
 
 func getFlags() (string, string, int) {
@@ -304,10 +306,7 @@ func main() {
 
 		if enforcement == "LB" {
 
-			// Set default LB weights
-			setDefaultLBWeights(nodes, appNames)
-
-			go ccWithLBEnforcement(cpuLogFile, nodes, podNamesToLog)
+			go ccWithLBEnforcement(cpuLogFile, nodes, appNames, podNamesToLog)
 
 		} else {
 
@@ -338,7 +337,7 @@ func ccWithNoEnforcement(
 	for {
 
 		// Get CPU Utilizations and Request Stats from host agents
-		nodeCPUUtilizations, reqStats := getCPUUtilAndReqStatsFromCluster(nodes)
+		nodeCPUUtilizations, reqStats, _ := getCPUUtilAndReqStatsFromCluster(nodes)
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(getLogFileFormatNoEnforcement(nodeCPUUtilizations))
@@ -359,12 +358,13 @@ func getKeysSortedByValue(m map[string]float64, keys []string) []string {
 	return keys
 }
 
-func parseCPUUtilsAndReqStats(resp string) (string, string, error) {
+func parseCPUUtilsAndReqStats(resp string) (string, string, string, error) {
 	parts := strings.Split(resp, "\n<SEP>\n")
-	if len(parts) != 2 {
-		return "", "", errors.New("invalid response from host agent: " + resp)
+	if len(parts) != 3 {
+		return "", "", "", errors.New(
+			"invalid response from host agent: " + resp)
 	}
-	return parts[0], parts[1], nil
+	return parts[0], parts[1], parts[2], nil
 }
 
 func parseReqStats(reqStatsStr string) []ReqStat {
@@ -373,7 +373,7 @@ func parseReqStats(reqStatsStr string) []ReqStat {
 
 	reqStats := make([]ReqStat, 0)
 	reqStatsStr = strings.TrimSpace(reqStatsStr)
-	if reqStatsStr == "reqStats:" {
+	if reqStatsStr == "reqStats:" || reqStatsStr == "sentReqStats:" {
 		return reqStats
 	}
 	reqStatsStrs := strings.Split(reqStatsStr, "\n")[1:]
@@ -398,7 +398,7 @@ func stringToInt64(str string) int64 {
 	return i
 }
 
-func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat) {
+func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat, []ReqStat) {
 
 	// - Get CPU Utilizations from host agents
 	cpuUtilizationCh := make(chan NodeStats)
@@ -406,43 +406,48 @@ func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat) {
 		msg := "getCPUUtilsAndReqStats"
 		go func(i int, node Node) {
 			resp := node.SendMessageAndGetResponse(msg)
-			cpuUtils, reqStats, err := parseCPUUtilsAndReqStats(resp)
+			cpuUtils, reqStats, reqSentStats, err := parseCPUUtilsAndReqStats(resp)
 			if err != nil {
 				slog.Error(fmt.Sprintf("Failed to parse CPU Utilizations and ReqStats from Node %d: %s", i, err.Error()))
 				panic(err)
 			}
-			cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats}
+			cpuUtilizationCh <- NodeStats{i, cpuUtils, reqStats, reqSentStats}
 		}(i, nodes[i])
 	}
 	reqStats := make([]ReqStat, 0)
+	reqSentStats := make([]ReqStat, 0)
 	nodeCPUUtilizations := make([]string, len(nodes))
 	for range nodes {
 		nodeStats := <-cpuUtilizationCh
 		nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
 		reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
+		reqSentStats = append(reqSentStats, parseReqStats(nodeStats.ReqSentStats)...)
 		slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
 			nodeStats.Node, nodeStats.CPUUtilizations))
 	}
 
-	return nodeCPUUtilizations, reqStats
+	return nodeCPUUtilizations, reqStats, reqSentStats
 }
 
 func ccWithLBEnforcement(
-	cpuLogFile *LogFile, nodes []Node, podsToLog []string) {
+	cpuLogFile *LogFile, nodes []Node, appNames []string, podsToLog []string) {
 
 	// Initialize cluster state
 	cs := ClusterStateManager{}
-	cs.Initialize(nodes)
+	cs.Initialize(nodes, appNames)
+
+	// set initial LB weights
+	setInitialLBWeights(nodes, appNames)
 
 	// Repeat the following:
 	// - Get CPU Utilizations from host agents
 	for {
 
 		// Get CPU Utilizations and Request Stats from host agents
-		nodeCPUUtilizations, reqStats := getCPUUtilAndReqStatsFromCluster(nodes)
+		nodeCPUUtilizations, reqStats, reqSentStats := getCPUUtilAndReqStatsFromCluster(nodes)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
-		lbWeights := cs.GetOptimalLBWeights(nodeCPUUtilizations, reqStats)
+		lbWeights := cs.GetOptimalLBWeights(nodeCPUUtilizations, reqStats, reqSentStats)
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(
@@ -505,7 +510,7 @@ func ccWithCPUShares(cpuLogFile *LogFile, nodes []Node, podsToLog []string) {
 	for {
 
 		// Get CPU Utilizations and Request Stats from host agents
-		nodeCPUUtilizations, reqStats := getCPUUtilAndReqStatsFromCluster(nodes)
+		nodeCPUUtilizations, reqStats, _ := getCPUUtilAndReqStatsFromCluster(nodes)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		nodeCPUShares, newRoundsAppCPUUtils := getOptimalCPUShares(
@@ -553,7 +558,7 @@ func ccWithCPUQuotas(cpuLogFile *LogFile, nodes []Node) {
 			msg := "getCPUUtilizations"
 			go func(i int, node Node) {
 				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, ""}
+				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, "", ""}
 			}(i, nodes[i])
 		}
 		nodeCPUUtilizations := make([]string, len(nodes))
@@ -606,7 +611,7 @@ func ccWithBoth(cpuLogFile *LogFile, nodes []Node) {
 			msg := "getCPUUtilizations"
 			go func(i int, node Node) {
 				cpuUtilizations := node.SendMessageAndGetResponse(msg)
-				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, ""}
+				cpuUtilizationCh <- NodeStats{i, cpuUtilizations, "", ""}
 			}(i, nodes[i])
 		}
 		nodeCPUUtilizations := make([]string, len(nodes))
@@ -1200,7 +1205,7 @@ func setNilLBWeights(nodes []Node, appNames []string) {
 	}
 }
 
-func setDefaultLBWeights(nodes []Node, appNames []string) {
+func setInitialLBWeights(nodes []Node, appNames []string) {
 
 	lbWeights := getEqualWeightsForEachPod(nodes, appNames)
 

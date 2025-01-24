@@ -14,7 +14,9 @@ type ClusterStateManager struct {
 	RoundsAppCPUUtils []map[string]float64
 }
 
-func (c *ClusterStateManager) Initialize(nodes []Node) {
+func (c *ClusterStateManager) Initialize(nodes []Node, appNames []string) {
+
+	setInitialGurobiWeights(nodes, appNames)
 
 	c.RoundsAppCPUUtils = make([]map[string]float64, 0)
 
@@ -28,11 +30,12 @@ func (c *ClusterStateManager) Initialize(nodes []Node) {
 }
 
 func (c *ClusterStateManager) GetOptimalLBWeights(
-	nodeCPUUtilizations []string, reqStats []ReqStat) string {
+	nodeCPUUtilizations []string, reqStats []ReqStat, reqSentStats []ReqStat) string {
 
 	if USE_RPS_INSTEAD_OF_CPU {
 
-		currentAppUtils := getPerAppRPS(reqStats)
+		// currentAppUtils := getPerAppRPS(reqStats)
+		currentAppUtils := getPerAppRpsBasedUtil(reqSentStats)
 
 		// get weights from gurobi
 		gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, currentAppUtils)
@@ -73,6 +76,41 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 
 		return lbWeights
 	}
+}
+
+func getPerAppRpsBasedUtil(reqSentStats []ReqStat) map[string]float64 {
+
+	// THIS CODE IS BUGGY. WE DON'T HAVE THE EXACT TIME FOR WHEN WE RECEIVED THE
+	// REQUEST LOG REQUEST SO WE DON'T KNOW WHERE TO START THE RPS_WINDOW_MS
+	// FROM. WE ESTIMATE THE TIME BY TAKING THE START TIME OF MOST RECENTLY SENT
+	// REQUEST
+
+	// get the most recently sent request's time
+	var maxStartTimeMs int64 = 0
+	for _, reqStat := range reqSentStats {
+		if reqStat.StartTimeMs > maxStartTimeMs {
+			maxStartTimeMs = reqStat.StartTimeMs
+		}
+	}
+
+	// get the number of requests sent in the last RPS_WINDOW_MS
+	svcComletedReqs := make(map[string]int)
+	for _, reqStat := range reqSentStats {
+		if maxStartTimeMs-reqStat.StartTimeMs <= RPS_WINDOW_MS {
+			// remove .mplb.com from the dstSvc
+			dstSvc := strings.ReplaceAll(reqStat.DstSvc, ".mplb.com", "")
+			svcComletedReqs[dstSvc]++
+		}
+	}
+
+	// get the RPS for each service
+	svcRPSBasedUtil := make(map[string]float64)
+	for svc, completedReqs := range svcComletedReqs {
+		svcRPS := float64(completedReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
+		svcRPSBasedUtil[svc] = svcRPS * PER_REQ_CPU_UTIL
+	}
+
+	return svcRPSBasedUtil
 }
 
 func getPerAppRPS(reqStats []ReqStat) map[string]float64 {
@@ -231,7 +269,66 @@ func getGenericWeightsFromGurobi(
 	return string(resBody)
 }
 
+func getEqualPodWeightsForGurobi(nodes []Node, appNames []string) string {
+	// return the weights in the format:
+	/*
+		"{
+			"app1-0": 33.33,
+			"app1-1": 33.33,
+			"app1-2": 33.33,
+			"app2-0": 50.00,
+			"app2-1": 50.00,
+			"app3-0": 100.00
+		}"
+	*/
+
+	// get the number of pods for each app
+	appNumOfPods := make(map[string]int)
+	for _, appName := range appNames {
+		appNumOfPods[appName] = 0
+	}
+	for _, node := range nodes {
+		for _, pod := range node.Pods {
+			appNumOfPods[pod.AppName]++
+		}
+	}
+
+	// generate the weights
+	gurobiWeights := map[string]float64{}
+	for _, node := range nodes {
+		for _, pod := range node.Pods {
+			gurobiWeights[pod.Name] = 100.0 / float64(appNumOfPods[pod.AppName])
+		}
+	}
+
+	gurobiWeightsBytes, err := json.Marshal(gurobiWeights)
+	check(err)
+
+	return string(gurobiWeightsBytes)
+}
+
+func setInitialGurobiWeights(nodes []Node, appNames []string) {
+
+	gurobiWeights := getEqualPodWeightsForGurobi(nodes, appNames)
+
+	baseURL := "http://localhost:5000/set"
+	payload := gurobiWeights
+
+	slog.Info(fmt.Sprintf(
+		"Payload sending to Gurobi to set initial weights: %s\n", payload))
+
+	resBody, err := sendPostRequest(baseURL, payload)
+	check(err)
+
+	slog.Info(fmt.Sprintf(
+		"Response from Gurobi for setting initial weights: %s\n",
+		string(resBody)))
+}
+
 func parseGurobiResponse(gurobiResponse string) string {
+	// example gurobi response:
+	// {"status": 2, "result": {"app1": {"app1-node1": 89.33617463143995, "app1-node2": 178.6723492628799}, "app2": {"app2-node2": 10.66382536856006, "app2-node3": 189.33617463143995}, "app3": {"app3-node1": 100.0}, "app4": {"app4-node4": 3200.0}}}
+
 	var response GurobiGenericResponse
 	err := json.Unmarshal([]byte(gurobiResponse), &response)
 	check(err)

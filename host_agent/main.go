@@ -67,15 +67,20 @@ func main() {
 		weights: DEFAULT_LB_WEIGHTS}
 	reqStats := &SafeReqStats{
 		ReqStats: make([]ReqStat, 0)}
+	sentReqStats := &SafeReqStats{
+		ReqStats: make([]ReqStat, 0)}
 
 	// start the server that will communicate with the central controller
-	go startServerForCC(lbWeights, reqStats)
+	go startServerForCC(lbWeights, reqStats, sentReqStats)
 
 	// listen for requests from the load balancer for updating its weights
-	listenForReqsFromLB(lbWeights, reqStats)
+	listenForReqsFromLB(lbWeights, reqStats, sentReqStats)
 }
 
-func startServerForCC(lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
+func startServerForCC(
+	lbWeights *SafeLBWeights,
+	reqStats *SafeReqStats,
+	sentReqStats *SafeReqStats) {
 
 	fmt.Println("Server Running...")
 
@@ -99,12 +104,15 @@ func startServerForCC(lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
 			os.Exit(1)
 		}
 		fmt.Println("client connected")
-		go processClient(connection, lbWeights, reqStats)
+		go processClient(connection, lbWeights, reqStats, sentReqStats)
 	}
 
 }
 
-func listenForReqsFromLB(lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
+func listenForReqsFromLB(
+	lbWeights *SafeLBWeights,
+	reqStats *SafeReqStats,
+	sentReqStats *SafeReqStats) {
 	// listen for http requests at a specific port
 	// and update the LB weights
 
@@ -126,7 +134,7 @@ func listenForReqsFromLB(lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
 		fmt.Println("Received request: " + string(body))
 
 		// update the request stats
-		updateRequestStats(reqStats, string(body))
+		updateRequestStats(reqStats, sentReqStats, string(body))
 
 		fmt.Fprint(w, currLBWeights)
 	})
@@ -141,7 +149,10 @@ func listenForReqsFromLB(lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
 
 }
 
-func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
+func updateRequestStats(
+	reqStats *SafeReqStats,
+	sentReqStats *SafeReqStats,
+	reqStatsStr string) error {
 
 	/* Example reqStatsStr
 	profile profile-0
@@ -164,7 +175,7 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 
 	// parse the request stats and update the state
 
-	newStats := make([]ReqStat, 0)
+	newReqCompletedStats := make([]ReqStat, 0)
 
 	// trim the string
 	reqStatsStr = strings.TrimSpace(reqStatsStr)
@@ -178,8 +189,15 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 	src := strings.Split(lines[0], " ")
 	srcSvc := src[0]
 	srcPod := src[1]
+
 	// get the reqStats
-	for _, line := range lines[5:] {
+	sentReqLineNum := -1
+
+	for lineNum, line := range lines[5:] {
+		if line == "sentreqstats" {
+			sentReqLineNum = lineNum
+			break
+		}
 		lineStats := strings.Split(line, " ")
 		dstSvc := lineStats[0]
 		dstPod := lineStats[1]
@@ -195,7 +213,7 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 			fmt.Println("Error parsing endTime: ", err.Error())
 			return err
 		}
-		newStats = append(newStats, ReqStat{
+		newReqCompletedStats = append(newReqCompletedStats, ReqStat{
 			SrcSvc:      srcSvc,
 			SrcPod:      srcPod,
 			DstSvc:      dstSvc,
@@ -205,20 +223,56 @@ func updateRequestStats(reqStats *SafeReqStats, reqStatsStr string) error {
 		})
 	}
 
+	newReqSentStats := make([]ReqStat, 0)
+	for _, line := range lines[sentReqLineNum+1:] {
+		// example line: `dstSvc dstPod startTime`
+		lineStats := strings.Split(line, " ")
+		dstSvc := lineStats[0]
+		dstPod := lineStats[1]
+		startTimeStr := lineStats[2]
+		startTime, err := strconv.ParseInt(startTimeStr, 10, 64)
+		if err != nil {
+			fmt.Println("Error parsing startTime: ", err.Error())
+			return err
+		}
+		newReqSentStats = append(newReqSentStats, ReqStat{
+			SrcSvc:      srcSvc,
+			SrcPod:      srcPod,
+			DstSvc:      dstSvc,
+			DstPod:      dstPod,
+			StartTimeMs: startTime,
+			EndTimeMs:   -1,
+		})
+	}
+
 	reqStats.mu.Lock()
-	reqStats.ReqStats = append(reqStats.ReqStats, newStats...)
+	reqStats.ReqStats = append(reqStats.ReqStats, newReqCompletedStats...)
 	// slog.Info("Updated reqStats: " + fmt.Sprintf("%v", reqStats.ReqStats))
 
 	// only keep the most recent 10000 entries
 	if len(reqStats.ReqStats) > 10000 {
-		reqStats.ReqStats = reqStats.ReqStats[len(reqStats.ReqStats)-100:]
+		reqStats.ReqStats = reqStats.ReqStats[len(reqStats.ReqStats)-1000:]
 	}
 	reqStats.mu.Unlock()
+
+	sentReqStats.mu.Lock()
+	sentReqStats.ReqStats = append(sentReqStats.ReqStats, newReqSentStats...)
+	// slog.Info("Updated sentReqStats: " + fmt.Sprintf("%v", sentReqStats.ReqStats))
+
+	// only keep the most recent 10000 entries
+	if len(sentReqStats.ReqStats) > 10000 {
+		sentReqStats.ReqStats = sentReqStats.ReqStats[len(sentReqStats.ReqStats)-1000:]
+	}
+	sentReqStats.mu.Unlock()
 
 	return nil
 }
 
-func processClient(connection net.Conn, lbWeights *SafeLBWeights, reqStats *SafeReqStats) {
+func processClient(
+	connection net.Conn,
+	lbWeights *SafeLBWeights,
+	reqStats *SafeReqStats,
+	sentReqStats *SafeReqStats) {
 
 	defer connection.Close()
 
@@ -260,8 +314,8 @@ func processClient(connection net.Conn, lbWeights *SafeLBWeights, reqStats *Safe
 
 		} else if msgType == "getCPUUtilsAndReqStats" {
 			cpuUtilizations := getCPUUtilizations(podUIDs)
-			reqStatsStr := getReqStatsStr(reqStats)
-			toSend := cpuUtilizations + "\n<SEP>\n" + reqStatsStr
+			reqStatsStr, sentReqStatsStr := getReqStatsStr(reqStats, sentReqStats)
+			toSend := cpuUtilizations + "\n<SEP>\n" + reqStatsStr + "\n<SEP>\n" + sentReqStatsStr
 			sendMsgToConnection(connection, toSend)
 
 		} else {
@@ -273,12 +327,12 @@ func processClient(connection net.Conn, lbWeights *SafeLBWeights, reqStats *Safe
 	slog.Warn("Client disconnected")
 }
 
-func getReqStatsStr(reqStats *SafeReqStats) string {
+func getAndResetReqStats(statName string, reqStats *SafeReqStats) string {
 
 	reqStats.mu.Lock()
 	defer reqStats.mu.Unlock()
 
-	reqStatsStr := "reqStats:"
+	reqStatsStr := statName + ":"
 	for _, reqStat := range reqStats.ReqStats {
 		reqStatsStr += fmt.Sprintf(
 			"\n%s %s %s %s %d %d",
@@ -290,6 +344,14 @@ func getReqStatsStr(reqStats *SafeReqStats) string {
 	reqStats.ReqStats = make([]ReqStat, 0)
 
 	return reqStatsStr
+}
+
+func getReqStatsStr(reqStats, sentReqStats *SafeReqStats) (string, string) {
+
+	reqStatsStr := getAndResetReqStats("reqStats", reqStats)
+	sentReqStatsStr := getAndResetReqStats("sentReqStats", sentReqStats)
+
+	return reqStatsStr, sentReqStatsStr
 }
 
 func getNewPods(msg string) (map[string]string, bool) {

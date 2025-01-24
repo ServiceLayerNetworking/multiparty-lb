@@ -730,6 +730,19 @@ def reset_weights():
     
     return "Weights reset!"
 
+@app.route('/set', methods=['POST'])
+def set_weights():
+    
+    global previous_w
+    
+    start_time = time()
+    print("reached here")
+    request_data = request.get_json(force=False)
+    print("Received:", request_data)
+    previous_w = request_data
+    
+    return "Weights set: " + str(previous_w)
+
 import sys
 
 import logging
