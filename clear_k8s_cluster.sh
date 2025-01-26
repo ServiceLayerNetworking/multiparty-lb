@@ -17,4 +17,3 @@ kubectl delete -f https://raw.githubusercontent.com/istio/istio/release-1.22/sam
 istioctl uninstall -y --purge
 
 kubectl delete -f https://raw.githubusercontent.com/pythianarora/total-practice/master/sample-kubernetes-code/metrics-server.yaml
-

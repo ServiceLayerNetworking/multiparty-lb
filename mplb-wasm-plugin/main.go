@@ -44,7 +44,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY = "leastrequest" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY            = "weighted_random" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 )
 
 var (
@@ -748,6 +748,7 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 
 	if status >= 400 {
 		proxywasm.LogCriticalf("received ERROR http call response, status %v body size: %d", hdrs, bodySize)
+		return
 	}
 	if bodySize == 0 {
 		return

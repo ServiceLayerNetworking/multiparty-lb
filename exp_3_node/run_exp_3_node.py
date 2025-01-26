@@ -8,13 +8,14 @@ import yaml
 import json
 from kubernetes import client, config
 
-DURATION = 60 # 5s
+DURATION = 30 # 5s
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 15 # 5 seconds
 SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_EACH_RUN = 1 * 15 # 1 minute
 SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
-LOG_FOLDER = "logs28"
+LOG_FOLDER = "logs30"
+MANUAL_BUILD = True
 
 def get_gateway_ip():
     """
@@ -357,8 +358,13 @@ def build_wasm():
     os.chdir("../")
     os.system("bash restart_wasm.sh")
     os.chdir("./exp_3_node")
-    print(f"Sleeping for {SLEEP_TIME_AFTER_WASM_BUILD}s after building wasm...")
-    time.sleep(SLEEP_TIME_AFTER_WASM_BUILD)
+    
+    if MANUAL_BUILD:
+        print("WASM built and restarted. Press enter to continue...")
+        input()
+    else:
+        print(f"Sleeping for {SLEEP_TIME_AFTER_WASM_BUILD}s after building wasm...")
+        time.sleep(SLEEP_TIME_AFTER_WASM_BUILD)
     
 LB_NAME = {
     "leastrequest": "lr",
@@ -390,35 +396,41 @@ def run():
                 if run_id in [3]:
                     
                     # restart_k8s()
-                        
-                    # time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
+                    
+                    # if MANUAL_BUILD:
+                    #     print("K8S restarted. Press enter to continue...")
+                    #     input()
+                    # else:
+                    #     time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
                     
                     # # Set topology for app1, app2, app3
                     # set_topology("app1", nodes_app1)
                     # set_topology("app2", nodes_app2)
                     # set_topology("app3", nodes_app3)
                     
-                    # # print("Topology set. Press enter to continue...")
-                    # # input()
-                    # time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
+                    # if MANUAL_BUILD:
+                    #     print("Topology set. Press enter to continue...")
+                    #     input()
+                    # else:
+                    #     time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                         
                     # rpses = [60*2]
                         
-                    for lb in ["weighted_random"]: #"locality_aware_weighted_random"]:
+                    for lb in ["weighted_random"]: # [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
                         
-                        # update_load_balance_strategy(lb)
-                        # build_wasm()
+                        update_load_balance_strategy(lb)
+                        build_wasm()
                                 
                         # Define the RPS for 1 cpu
                         for rps in [35]:
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [2, 3]:
+                            for iteration in [1, 2, 3]:
                             
-                                for distr in ["none", "exponential"]:
+                                for distr in ["none"]:
                                     
-                                    for proc_distr in ["none", "exponential"]:
+                                    for proc_distr in ["none"]:
                                 
                                         # if distr != proc_distr:
                                         #     continue

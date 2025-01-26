@@ -20,12 +20,12 @@ func (c *ClusterStateManager) Initialize(nodes []Node, appNames []string) {
 
 	c.RoundsAppCPUUtils = make([]map[string]float64, 0)
 
-	if USE_RPS_INSTEAD_OF_CPU {
-		// change the cap of every node
-		for i := range nodes {
-			nodes[i].MilliCores = NODE_RPS_CAP * 10
-		}
-	}
+	// if USE_RPS_INSTEAD_OF_CPU {
+	// change the cap of every node
+	// for i := range nodes {
+	// 	nodes[i].MilliCores = NODE_RPS_CAP * 10
+	// }
+	// }
 	c.Nodes = nodes
 }
 

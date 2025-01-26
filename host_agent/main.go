@@ -193,12 +193,22 @@ func updateRequestStats(
 	// get the reqStats
 	sentReqLineNum := -1
 
-	for lineNum, line := range lines[5:] {
+	lineNum := 5
+
+	for _, line := range lines[5:] {
+
+		// breakpoint for sentreqstats
 		if line == "sentreqstats" {
 			sentReqLineNum = lineNum
 			break
 		}
+		lineNum++
+
 		lineStats := strings.Split(line, " ")
+		if len(lineStats) < 4 {
+			fmt.Println("Error parsing reqstats line: ", line)
+			continue
+		}
 		dstSvc := lineStats[0]
 		dstPod := lineStats[1]
 		startTimeStr := lineStats[2]
@@ -227,6 +237,10 @@ func updateRequestStats(
 	for _, line := range lines[sentReqLineNum+1:] {
 		// example line: `dstSvc dstPod startTime`
 		lineStats := strings.Split(line, " ")
+		if len(lineStats) < 3 {
+			fmt.Println("Error parsing sentReqStats line: ", line)
+			continue
+		}
 		dstSvc := lineStats[0]
 		dstPod := lineStats[1]
 		startTimeStr := lineStats[2]

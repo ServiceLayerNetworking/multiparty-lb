@@ -3,7 +3,7 @@
 # set -x
 # set -e
 
-NODES=5
+NODES=4
 
 # echo "[SCRIPT] Deleting any previous minikube cluster..."
 # minikube delete --all
