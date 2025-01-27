@@ -38,13 +38,16 @@ const (
 	// this is the reporting period in millis
 	TICK_PERIOD = 500
 
+	// MAX_RPS_GIVEN_THE_CPU_ALLOCATED is the maximum number of requests per second that the upstream svc can handle given the CPU allocated to it.
+	MAX_RPS_GIVEN_THE_CPU_ALLOCATED = 46
+
 	// Hash mod for frequency of request tracing.
 	DEFAULT_HASH_MOD = 10
 
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY            = "weighted_random" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY = "leastrequest" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 )
 
 var (
@@ -411,8 +414,27 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 	if !strings.HasPrefix(ctx.pluginContext.serviceName, dst) {
 		// policy enforcement for outbound requests
 
-		// before routing, log the start time and add it to request header
+		// before routing, log the start time
 		currentTime := time.Now().UnixMilli()
+
+		// determine if this request is over capacity and should be dropped
+		shouldDrop, err := shouldDropRequest(currentTime, dst)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't determine if request should be dropped: %v", err)
+		} else {
+			if shouldDrop {
+				proxywasm.LogCriticalf("Dropping request: %s %s %s", reqMethod, reqPath, reqAuthority)
+				if err := proxywasm.SendHttpResponse(
+					503, nil,
+					[]byte("Request dropping as capacity reached"), -1); err != nil {
+					proxywasm.LogCriticalf("failed to send http response: %v", err)
+					panic(err)
+				}
+				return types.ActionPause
+			}
+		}
+
+		// add current time to request header for latency logging when req finishes
 		currentTimeStr := fmt.Sprintf("%d", currentTime)
 		proxywasm.LogCriticalf("Setting x-slate-start-time: " + currentTimeStr)
 		headerErr := proxywasm.ReplaceHttpRequestHeader(

@@ -416,7 +416,7 @@ def run():
                         
                     # rpses = [60*2]
                         
-                    for lb in ["weighted_random"]: # [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+                    for lb in ["leastrequest"]: # [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
                         
                         update_load_balance_strategy(lb)
                         build_wasm()
@@ -426,7 +426,7 @@ def run():
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [1, 2, 3]:
+                            for iteration in [4]:
                             
                                 for distr in ["none"]:
                                     
