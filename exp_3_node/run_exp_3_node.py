@@ -384,7 +384,6 @@ def run():
     
     run_id = 0
     
-    
     # Sweep through all combinations
     for nodes_app1 in itertools.combinations(nodes, 2):
         for nodes_app2 in itertools.combinations(nodes, 2):
@@ -426,7 +425,7 @@ def run():
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [4]:
+                            for iteration in [1, 2, 3]:
                             
                                 for distr in ["none"]:
                                     

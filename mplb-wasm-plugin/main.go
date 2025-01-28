@@ -47,7 +47,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY = "leastrequest" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY = "weighted_random" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 )
 
 var (
@@ -416,6 +416,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 
 		// before routing, log the start time
 		currentTime := time.Now().UnixMilli()
+		currentTimeStr := fmt.Sprintf("%d", currentTime)
 
 		// determine if this request is over capacity and should be dropped
 		shouldDrop, err := shouldDropRequest(currentTime, dst)
@@ -423,6 +424,10 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 			proxywasm.LogCriticalf("Couldn't determine if request should be dropped: %v", err)
 		} else {
 			if shouldDrop {
+
+				// first log the sent request
+				appendSentReqStats(currentTimeStr, dst, "")
+
 				proxywasm.LogCriticalf("Dropping request: %s %s %s", reqMethod, reqPath, reqAuthority)
 				if err := proxywasm.SendHttpResponse(
 					503, nil,
@@ -435,7 +440,6 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		}
 
 		// add current time to request header for latency logging when req finishes
-		currentTimeStr := fmt.Sprintf("%d", currentTime)
 		proxywasm.LogCriticalf("Setting x-slate-start-time: " + currentTimeStr)
 		headerErr := proxywasm.ReplaceHttpRequestHeader(
 			"x-slate-start-time", currentTimeStr)
