@@ -12,6 +12,8 @@ import (
 // called in OnHttpRequestHeaders
 func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 
+	// if LOAD_BALANCING_STRATEGY is leastrequest, return false
+
 	// get recently sent request timestamp list
 
 	// start from beginning of the list
@@ -27,6 +29,10 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	// set the list back
 	// if list can't be set back, return error
 	// if the error is CASMismatch, call shouldDropRequest again with updated currTime
+
+	if LOAD_BALANCING_STRATEGY == "leastrequest" {
+		return false, nil
+	}
 
 	recentlySentReqTimestamps, cas := getRecentlySentRequestTimeStamps(dstSvc)
 

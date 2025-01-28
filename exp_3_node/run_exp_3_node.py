@@ -14,8 +14,8 @@ SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_EACH_RUN = 1 * 15 # 1 minute
 SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
-LOG_FOLDER = "logs30"
-MANUAL_BUILD = True
+LOG_FOLDER = "logs31"
+MANUAL_BUILD = False
 
 def get_gateway_ip():
     """
@@ -395,28 +395,28 @@ def run():
                 
                 if run_id in [3]:
                     
-                    # restart_k8s()
+                    restart_k8s()
                     
-                    # if MANUAL_BUILD:
-                    #     print("K8S restarted. Press enter to continue...")
-                    #     input()
-                    # else:
-                    #     time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
+                    if MANUAL_BUILD:
+                        print("K8S restarted. Press enter to continue...")
+                        input()
+                    else:
+                        time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
                     
-                    # # Set topology for app1, app2, app3
-                    # set_topology("app1", nodes_app1)
-                    # set_topology("app2", nodes_app2)
-                    # set_topology("app3", nodes_app3)
+                    # Set topology for app1, app2, app3
+                    set_topology("app1", nodes_app1)
+                    set_topology("app2", nodes_app2)
+                    set_topology("app3", nodes_app3)
                     
-                    # if MANUAL_BUILD:
-                    #     print("Topology set. Press enter to continue...")
-                    #     input()
-                    # else:
-                    #     time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
+                    if MANUAL_BUILD:
+                        print("Topology set. Press enter to continue...")
+                        input()
+                    else:
+                        time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                         
                     # rpses = [60*2]
-                        
-                    for lb in ["leastrequest"]: # [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+                    
+                    for lb in ["leastrequest", "weighted_random"]: # [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
                         
                         update_load_balance_strategy(lb)
                         build_wasm()
@@ -435,7 +435,7 @@ def run():
                                         # if distr != proc_distr:
                                         #     continue
                                     
-                                        # print(f"Starting iteration {iteration} for run_id {run_id}...")
+                                        print(f"Starting iteration {iteration} for run_id {run_id}...")
                                         
                                         intended_topology = {
                                             "app1": nodes_app1,
