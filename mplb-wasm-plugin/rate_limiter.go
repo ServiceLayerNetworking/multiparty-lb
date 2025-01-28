@@ -31,12 +31,14 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	recentlySentReqTimestamps, cas := getRecentlySentRequestTimeStamps(dstSvc)
 
 	// remove timestamps that are older than 1 second
+	truncatingIndex := len(recentlySentReqTimestamps)
 	for i, ts := range recentlySentReqTimestamps {
 		if ts >= currentTimeMs-1000 {
-			recentlySentReqTimestamps = recentlySentReqTimestamps[i:]
+			truncatingIndex = i
 			break
 		}
 	}
+	recentlySentReqTimestamps = recentlySentReqTimestamps[truncatingIndex:]
 
 	numReqInPastSec := len(recentlySentReqTimestamps)
 
