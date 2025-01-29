@@ -30,21 +30,22 @@ func (c *ClusterStateManager) Initialize(nodes []Node, appNames []string) {
 }
 
 func (c *ClusterStateManager) GetOptimalLBWeights(
-	nodeCPUUtilizations []string, reqStats []ReqStat, reqSentStats []ReqStat) string {
+	nodeCPUUtilizations []string,
+	reqStats []ReqStat,
+	reqSentStats []ReqStat,
+	svcCPUConsumptionPerReq map[string]float64) string {
+
+	var gurobiInput map[string]float64
 
 	if USE_RPS_INSTEAD_OF_CPU {
 
 		// currentAppUtils := getPerAppRPS(reqStats)
-		currentAppUtils := getPerAppRpsBasedUtil(reqSentStats)
+		currentAppUtils := getPerAppRpsBasedUtil(
+			reqSentStats,
+			svcCPUConsumptionPerReq)
 
 		// get weights from gurobi
-		gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, currentAppUtils)
-
-		// print Gurobi weights:
-		fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
-
-		lbWeights := parseGurobiResponse(gurobiResponse)
-		return lbWeights
+		gurobiInput = currentAppUtils
 
 	} else {
 		currentAppUtils := getPerAppUtilizations(nodeCPUUtilizations)
@@ -63,22 +64,26 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 			appUtilsForGurobi[appNum] = float64(int(util))
 		}
 
-		// get weights from gurobi
-		gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, appUtilsForGurobi)
-
-		// print Gurobi weights:
-		fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
-
-		lbWeights := parseGurobiResponse(gurobiResponse)
-
-		// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
-		// 	newRoundsAppCPUUtils
-
-		return lbWeights
+		gurobiInput = appUtilsForGurobi
 	}
+
+	// get weights from gurobi
+	gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, gurobiInput)
+
+	// print Gurobi weights:
+	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
+
+	lbWeights := parseGurobiResponse(gurobiResponse, svcCPUConsumptionPerReq)
+	return lbWeights
+
+	// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
+	// 	newRoundsAppCPUUtils
+
 }
 
-func getPerAppRpsBasedUtil(reqSentStats []ReqStat) map[string]float64 {
+func getPerAppRpsBasedUtil(
+	reqSentStats []ReqStat,
+	svcCPUConsumptionPerReq map[string]float64) map[string]float64 {
 
 	// THIS CODE IS BUGGY. WE DON'T HAVE THE EXACT TIME FOR WHEN WE RECEIVED THE
 	// REQUEST LOG REQUEST SO WE DON'T KNOW WHERE TO START THE RPS_WINDOW_MS
@@ -107,7 +112,7 @@ func getPerAppRpsBasedUtil(reqSentStats []ReqStat) map[string]float64 {
 	svcRPSBasedUtil := make(map[string]float64)
 	for svc, completedReqs := range svcComletedReqs {
 		svcRPS := float64(completedReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
-		svcRPSBasedUtil[svc] = svcRPS * PER_REQ_CPU_UTIL
+		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc]
 	}
 
 	return svcRPSBasedUtil
@@ -325,7 +330,9 @@ func setInitialGurobiWeights(nodes []Node, appNames []string) {
 		string(resBody)))
 }
 
-func parseGurobiResponse(gurobiResponse string) string {
+func parseGurobiResponse(
+	gurobiResponse string,
+	svcCPUConsumptionPerReq map[string]float64) string {
 	// example gurobi response:
 	// {"status": 2, "result": {"app1": {"app1-node1": 89.33617463143995, "app1-node2": 178.6723492628799}, "app2": {"app2-node2": 10.66382536856006, "app2-node3": 189.33617463143995}, "app3": {"app3-node1": 100.0}, "app4": {"app4-node4": 3200.0}}}
 
@@ -335,7 +342,6 @@ func parseGurobiResponse(gurobiResponse string) string {
 
 	lbWeights := ""
 	for appName, podResult := range response.Result {
-		lbWeights += appName + ":"
 		sortedValues := getValuesFromMapSortedByKeys(podResult)
 		var appSum float64
 		for _, value := range sortedValues {
@@ -351,10 +357,15 @@ func parseGurobiResponse(gurobiResponse string) string {
 		}
 
 		strSortedWeights := make([]string, len(sortedWeights))
-		for i, weight := range sortedWeights {
+		for i, weight := range sortedValues {
 			strSortedWeights[i] = fmt.Sprintf("%f", weight)
 		}
-		lbWeights += strings.Join(strSortedWeights, "|") + " "
+
+		lbWeights += fmt.Sprintf("%s:%f:%f:%s ",
+			appName,
+			svcCPUConsumptionPerReq[appName],
+			appSum,
+			strings.Join(strSortedWeights, "|"))
 	}
 	return lbWeights
 }

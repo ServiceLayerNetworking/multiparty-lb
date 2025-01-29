@@ -788,6 +788,7 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 
 	body := string(respBody)
 	// example response body: "svcA:45.5|69.22 svcB:54.7|44.1 "
+	// , or:                  "svcA:4.54:45.5|69.22 svcB:7.8:54.7|44.1 "
 	body = strings.TrimSpace(body)
 	if body == "" {
 		return
@@ -795,15 +796,33 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 	svcInfos := strings.Split(body, " ")[1:]
 	for _, svcInfo := range svcInfos {
 		svcInfoSplit := strings.Split(svcInfo, ":")
-		if len(svcInfoSplit) != 2 {
+		if len(svcInfoSplit) == 2 {
+			svcName := svcInfoSplit[0]
+			svcWeights := svcInfoSplit[1]
+			proxywasm.LogCriticalf("setting outbound request weights %v: %v", svcName, svcWeights)
+			if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
+				proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
+			}
+		} else if len(svcInfoSplit) == 4 {
+			svcName := svcInfoSplit[0]
+			svcCPUConsumptionPerReq := svcInfoSplit[1]
+			svcCPUAllocated := svcInfoSplit[2]
+			svcWeights := svcInfoSplit[3]
+			proxywasm.LogCriticalf(
+				"setting outbound request weights %v: %v, and svcCPUConsumptionPerReq:%s",
+				svcName, svcWeights, svcCPUConsumptionPerReq)
+			if err := proxywasm.SetSharedData(svcCPUConsumptionPerReqKey(svcName), []byte(svcCPUConsumptionPerReq), 0); err != nil {
+				proxywasm.LogCriticalf("unable to set svcCPUConsumptionPerReq for endpoint distribution %v: %v", svcName, err)
+			}
+			if err := proxywasm.SetSharedData(svcCPUAllocatedKey(svcName), []byte(svcCPUAllocated), 0); err != nil {
+				proxywasm.LogCriticalf("unable to set svcCPUAllocated for endpoint distribution %v: %v", svcName, err)
+			}
+			if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
+				proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
+			}
+		} else {
 			proxywasm.LogCriticalf("received invalid http call response, svcInfo: %s", svcInfo)
 			continue
-		}
-		svcName := svcInfoSplit[0]
-		svcWeights := svcInfoSplit[1]
-		proxywasm.LogCriticalf("setting outbound request weights %v: %v", svcName, svcWeights)
-		if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
-			proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
 		}
 	}
 }
@@ -1457,6 +1476,14 @@ func emptyBytes(b []byte) bool {
 		}
 	}
 	return true
+}
+
+func svcCPUConsumptionPerReqKey(svc string) string {
+	return svc + "-cpucons-pr"
+}
+
+func svcCPUAllocatedKey(svc string) string {
+	return svc + "-cpu-alloc"
 }
 
 func endpointOutstandingReqKey(dstSvc string, endpointNum int) string {

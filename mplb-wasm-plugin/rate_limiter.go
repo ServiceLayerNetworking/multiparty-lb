@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/tetratelabs/proxy-wasm-go-sdk/proxywasm"
@@ -49,7 +51,7 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	numReqInPastSec := len(recentlySentReqTimestamps)
 
 	var toReturn bool
-	if numReqInPastSec >= MAX_RPS_GIVEN_THE_CPU_ALLOCATED {
+	if numReqInPastSec >= getMaxRPSGivenTheCPUAllocated(dstSvc) {
 		proxywasm.LogCriticalf(
 			"Rate limiting request to %s: %d requests in the last second", dstSvc, numReqInPastSec)
 
@@ -70,6 +72,38 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	}
 
 	return toReturn, nil
+}
+
+func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
+
+	// get the CPU allocated to the service (CPU weight of the service)
+	// get the CPU consumed per request for the service
+	// then return max requests in a second allowed = CPUAllocated for the past sec / CPUConsumedPerRequest
+	// if any of these are not set, return infinity
+
+	buf, _, err := proxywasm.GetSharedData(svcCPUConsumptionPerReqKey(dstSvc))
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get CPU consumption per request for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+	cpuConsumption, err := strconv.ParseFloat(string(buf), 64)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't parse CPU consumption per request for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+
+	buf, _, err = proxywasm.GetSharedData(svcCPUAllocatedKey(dstSvc))
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get CPU allocated for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+	cpuAllocated, err := strconv.ParseFloat(string(buf), 64)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't parse CPU allocated for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+
+	return int(cpuAllocated / cpuConsumption)
 }
 
 func getRecentlySentRequestTimeStamps(dstSvc string) ([]int64, uint32) {

@@ -436,6 +436,10 @@ func ccWithLBEnforcement(
 	cs := ClusterStateManager{}
 	cs.Initialize(nodes, appNames)
 
+	// Initialize the Demand Estimator
+	de := DemandEstimator{}
+	de.Initialize()
+
 	// set initial LB weights
 	setInitialLBWeights(nodes, appNames)
 
@@ -446,8 +450,16 @@ func ccWithLBEnforcement(
 		// Get CPU Utilizations and Request Stats from host agents
 		nodeCPUUtilizations, reqStats, reqSentStats := getCPUUtilAndReqStatsFromCluster(nodes)
 
+		// update the state in the demand estimator and get demand estimates
+		de.UpdateState(getPerAppUtilizations(nodeCPUUtilizations), reqStats)
+		svcCPUConsumptionPerReq := de.GetDemandEstimates()
+
 		// - Solve the optimization problem by connection to Gurobi Optimizer
-		lbWeights := cs.GetOptimalLBWeights(nodeCPUUtilizations, reqStats, reqSentStats)
+		lbWeights := cs.GetOptimalLBWeights(
+			nodeCPUUtilizations,
+			reqStats,
+			reqSentStats,
+			svcCPUConsumptionPerReq)
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(
@@ -709,40 +721,6 @@ func getOptimalCPUQuotas(
 	nodeCPUShares := getNodeCPUQuotas(gurobiResponse)
 
 	return nodeCPUShares, newRoundsAppCPUUtils
-}
-
-func getOptimalLBWeights(
-	nodes []Node,
-	nodeCPUUtilizations []string,
-	roundsAppCPUUtils []map[string]float64) (string, []map[string]float64) {
-
-	// parse current cpu utilizations
-	currentAppUtils := getPerAppUtilizations(nodeCPUUtilizations)
-	// effectiveAppUtils := makeNoiseZero(currentAppUtils, NOISE)
-	// effectiveAppUtils = addOverhead(effectiveAppUtils, OVERHEAD)
-
-	// get rolling average
-	avgAppUtils, newRoundsAppCPUUtils := getRollingAverage(
-		currentAppUtils, roundsAppCPUUtils)
-
-	// round all app utils to whole numbers
-	appUtilsForGurobi := make(map[string]float64)
-	for appNum, util := range avgAppUtils {
-		appUtilsForGurobi[appNum] = float64(int(util))
-	}
-
-	// get weights from gurobi
-	gurobiResponse := getGenericWeightsFromGurobi(nodes, appUtilsForGurobi)
-
-	// print Gurobi weights:
-	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
-
-	lbWeights := parseGurobiResponse(gurobiResponse)
-
-	// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
-	// 	newRoundsAppCPUUtils
-
-	return lbWeights, newRoundsAppCPUUtils
 }
 
 func getValuesFromMapSortedByKeys(m map[string]float64) []float64 {
