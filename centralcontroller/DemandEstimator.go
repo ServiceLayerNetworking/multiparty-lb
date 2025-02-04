@@ -48,7 +48,7 @@ func (de *DemandEstimator) UpdateState(
 		de.CPUUtilizationTimestamps[svcName] = append(
 			de.CPUUtilizationTimestamps[svcName], CPUUtilState{
 				EndTime: currUnixTimeMs,
-				CpuUtil: util,
+				CpuUtil: util + SVC_CPU_UTIL_HEADROOM,
 			})
 	}
 
@@ -101,7 +101,7 @@ func (de *DemandEstimator) GetDemandEstimates() map[string]float64 {
 	// Get the demand estimates for each service
 	cpuConsumptionsPerReq := make(map[string]float64)
 
-	for svcName, _ := range de.CPUUtilizationTimestamps {
+	for svcName := range de.CPUUtilizationTimestamps {
 
 		// sum up the cpu utilizations and multiply by the time
 		// time is the difference between the first and (last-700ms) cpu utilization timestamp
@@ -127,6 +127,12 @@ func (de *DemandEstimator) GetDemandEstimates() map[string]float64 {
 		numReqs := len(de.ProcessedReqTimestamps[svcName])
 
 		cpuConsumptionPerReq := cpuConsumption / float64(numReqs)
+		if numReqs == 0 {
+			cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+		}
+		if USE_OFFLINE_DEMAND_ESTIMATE {
+			cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+		}
 
 		cpuConsumptionsPerReq[svcName] = cpuConsumptionPerReq
 	}

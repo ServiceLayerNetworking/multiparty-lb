@@ -8,14 +8,14 @@ import yaml
 import json
 from kubernetes import client, config
 
-DURATION = 30 # 5s
-ADDITIONAL_TIME_FOR_CC_TO_RUN = 15 # 5 seconds
+DURATION = 120 # 4 minutes -> 240 seconds
+ADDITIONAL_TIME_FOR_CC_TO_RUN = 30 # 5 seconds
 SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
-SLEEP_TIME_AFTER_EACH_RUN = 1 * 15 # 1 minute
+SLEEP_TIME_AFTER_EACH_RUN = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
 LOG_FOLDER = "logs31"
-MANUAL_BUILD = False
+MANUAL_BUILD = True
 
 def get_gateway_ip():
     """
@@ -81,7 +81,7 @@ def run_hit(q, variation, proc_distr, app_nums, rpses, distr):
                     "headers": "{\"Host\":\"app" + str(app_num) + ".mplb.com\"}"
                 }
             ],
-            "reqIntervalMs": 1000.0 / float(rps),
+            "reqIntervalMs": 1000.0 / float(rps) if rps > 0 else (DURATION+10) * 1000,
             "durationMs": DURATION * 1000,
             "logFileName": f"{curr_dir}/{LOG_FOLDER}/{variation}_app{app_num}_{rps}rps_hit.log",
             "stallTimeMs": 0
@@ -394,38 +394,38 @@ def run():
                 
                 if run_id in [3]:
                     
-                    restart_k8s()
+                    # restart_k8s()
                     
-                    if MANUAL_BUILD:
-                        print("K8S restarted. Press enter to continue...")
-                        input()
-                    else:
-                        time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
+                    # if MANUAL_BUILD:
+                    #     print("K8S restarted. Press enter to continue...")
+                    #     input()
+                    # else:
+                    #     time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
                     
-                    # Set topology for app1, app2, app3
-                    set_topology("app1", nodes_app1)
-                    set_topology("app2", nodes_app2)
-                    set_topology("app3", nodes_app3)
+                    # # Set topology for app1, app2, app3
+                    # set_topology("app1", nodes_app1)
+                    # set_topology("app2", nodes_app2)
+                    # set_topology("app3", nodes_app3)
                     
-                    if MANUAL_BUILD:
-                        print("Topology set. Press enter to continue...")
-                        input()
-                    else:
-                        time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
+                    # if MANUAL_BUILD:
+                    #     print("Topology set. Press enter to continue...")
+                    #     input()
+                    # else:
+                    #     time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                         
                     # rpses = [60*2]
                     
-                    for lb in ["leastrequest", "weighted_random"]: # [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+                    for lb in ["leastrequest"]: # [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
                         
-                        update_load_balance_strategy(lb)
-                        build_wasm()
+                        # update_load_balance_strategy(lb)
+                        # build_wasm()
                                 
                         # Define the RPS for 1 cpu
                         for rps in [35]:
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [1, 2, 3]:
+                            for iteration in [4, 5]:
                             
                                 for distr in ["none"]:
                                     

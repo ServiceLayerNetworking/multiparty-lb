@@ -38,8 +38,8 @@ const (
 	// this is the reporting period in millis
 	TICK_PERIOD = 500
 
-	// MAX_RPS_GIVEN_THE_CPU_ALLOCATED is the maximum number of requests per second that the upstream svc can handle given the CPU allocated to it.
-	MAX_RPS_GIVEN_THE_CPU_ALLOCATED = 46
+	// this is the number of requests that are allowed to be sent to the endpoints over the max allowed RPS calculated from the CPU allocated to the service.
+	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 5
 
 	// Hash mod for frequency of request tracing.
 	DEFAULT_HASH_MOD = 10
@@ -47,7 +47,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY = "weighted_random" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY = "leastrequest" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 )
 
 var (

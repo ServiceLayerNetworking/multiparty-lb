@@ -31,13 +31,13 @@ const (
 	SERVER_TYPE = "tcp"
 
 	M_CPUS_IN_NODE                      = 2000
-	CPU_UTILIZATION_INTERVAL_MS         = 500
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 
-	USE_RPS_INSTEAD_OF_CPU = true
-	PER_REQ_CPU_UTIL       = 4.3
-	RPS_WINDOW_MS          = 500
-	NODE_RPS_CAP           = 35
+	USE_RPS_INSTEAD_OF_CPU      = true
+	USE_OFFLINE_DEMAND_ESTIMATE = true
+	CPU_CONSUMPTION_PER_REQ     = 4.3
+	SVC_CPU_UTIL_HEADROOM       = 20  // 20% headroom
+	RPS_WINDOW_MS               = 500 // 500ms window to look for how many requests are sent and base our CPU off of that
 
 	OVERHEAD           = 10 // 10% overhead
 	POD_QUOTA_OVERHEAD = 10 // 5% overhead
@@ -495,9 +495,9 @@ func printCPUStatsToConsole(
 	toPrint += fmt.Sprintf("%-30s %s\n", "PODNAME", "CPU (%)")
 	// fmt.Printf("Pods to log: %v\n", podsToLog)
 	// fmt.Printf("CPU Map: %v\n", cpuUtilMap)
-	sortedPodsToLog := getKeysSortedByValue(cpuUtilMap, podsToLog)
-	// sort.Strings(podsToLog)
-	for _, podName := range sortedPodsToLog {
+	// sortedPodsToLog := getKeysSortedByValue(cpuUtilMap, podsToLog)
+	sort.Strings(podsToLog)
+	for _, podName := range podsToLog {
 		toPrint += fmt.Sprintf("%-30s %.2f\n",
 			podName, cpuUtilMap[podName])
 	}
@@ -781,18 +781,24 @@ func addOverhead(
 	return appUtils
 }
 
+type LBStat struct {
+	CPUConsumptionPerReq float64            `json:"CPUConsumptionPerReq"`
+	CPUAllocated         float64            `json:"CPUAllocated"`
+	Weights              map[string]float64 `json:"Weights"`
+}
+
 type LogFileFormat struct {
-	Time            int64                         `json:"time"`
-	CPUUtilizations map[string]string             `json:"CPUUtilizations"`
-	CPUShares       map[string]string             `json:"CPUShares"`
-	CPUQuotas       map[string]string             `json:"CPUQuotas"`
-	LBWeights       map[string]map[string]float64 `json:"LBWeights"`
+	Time            int64             `json:"time"`
+	CPUUtilizations map[string]string `json:"CPUUtilizations"`
+	CPUShares       map[string]string `json:"CPUShares"`
+	CPUQuotas       map[string]string `json:"CPUQuotas"`
+	LBStats         map[string]LBStat `json:"LBStats"`
 }
 
 func getCPUUtilMap(nodeCPUUtilizations []string) map[string]float64 {
 	cpuUtilMap := make(map[string]float64)
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
-		podCPUtils := strings.Split(nodeCPUUtil, " ")[1:]
+		podCPUtils := strings.Split(nodeCPUUtil[6:], " ")
 		for _, podCPUUtil := range podCPUtils {
 			podUtilMap := strings.Split(podCPUUtil, ":")
 			podName := podUtilMap[0]
@@ -814,7 +820,7 @@ func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 		make(map[string]string),
 		make(map[string]string),
 		make(map[string]string),
-		make(map[string]map[string]float64),
+		make(map[string]LBStat),
 	}
 
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
@@ -843,12 +849,14 @@ func getLogFileFormatLBEnforcement(
 		make(map[string]string),
 		make(map[string]string),
 		make(map[string]string),
-		make(map[string]map[string]float64),
+		make(map[string]LBStat),
 	}
+
+	fmt.Println("Node CPU Utilizations: ", nodeCPUUtilizations[0])
 
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
 
-		podCPUtils := strings.Split(nodeCPUUtil, " ")
+		podCPUtils := strings.Split(nodeCPUUtil[6:], " ")
 
 		for _, podCPUUtil := range podCPUtils {
 			podUtilMap := strings.Split(podCPUUtil, ":")
@@ -857,29 +865,41 @@ func getLogFileFormatLBEnforcement(
 		}
 	}
 
-	logFileFormat.LBWeights = parseLBWeightStr(lbWeightsStr)
+	logFileFormat.LBStats = parseLBWeightStr(lbWeightsStr)
 
 	logFileFormatStr, err := json.Marshal(logFileFormat)
+	if err != nil {
+		fmt.Printf("Couldn't marshal logFileFormat: %v\n", logFileFormat)
+	}
 	check(err)
 
 	return string(logFileFormatStr)
 }
 
-func parseLBWeightStr(lbWeightsStr string) map[string]map[string]float64 {
+func parseLBWeightStr(lbWeightsStr string) map[string]LBStat {
 
-	lbWeights := make(map[string]map[string]float64)
+	lbWeights := make(map[string]LBStat)
 
 	// example lbWeightsStr:
-	// 		"profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0"
+	// 		"profile:45.0:450.3:0.0|100.0 frontend:45.0:450.3:0.0|100.0 recommendation:45.0:450.3:100.0"
 	lbWeightsStr = strings.TrimSpace(lbWeightsStr)
 	appWeights := strings.Split(lbWeightsStr, " ")
 	for _, appWeight := range appWeights {
 		appWeightMap := strings.Split(appWeight, ":")
+		if len(appWeightMap) != 4 {
+			panic("Invalid lbWeightsStr: " + lbWeightsStr)
+		}
 		appName := appWeightMap[0]
-		weights := strings.Split(appWeightMap[1], "|")
-		lbWeights[appName] = make(map[string]float64)
+		cpuConsumptionPerReq := stringToFloat(appWeightMap[1])
+		cpuAllocated := stringToFloat(appWeightMap[2])
+		weights := strings.Split(appWeightMap[3], "|")
+		lbWeights[appName] = LBStat{
+			cpuConsumptionPerReq,
+			cpuAllocated,
+			make(map[string]float64),
+		}
 		for replicaNum, weight := range weights {
-			lbWeights[appName][fmt.Sprintf("%s-%d", appName, replicaNum)] = stringToFloat(weight)
+			lbWeights[appName].Weights[fmt.Sprintf("%s-%d", appName, replicaNum)] = stringToFloat(weight)
 		}
 	}
 
@@ -900,7 +920,7 @@ func getLogFileFormat(
 		make(map[string]string),
 		make(map[string]string),
 		make(map[string]string),
-		make(map[string]map[string]float64),
+		make(map[string]LBStat),
 	}
 
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
@@ -946,7 +966,7 @@ func getLogFileFormatForCPUQuotas(
 		make(map[string]string),
 		make(map[string]string),
 		make(map[string]string),
-		make(map[string]map[string]float64),
+		make(map[string]LBStat),
 	}
 
 	for _, nodeCPUUtil := range nodeCPUUtilizations {

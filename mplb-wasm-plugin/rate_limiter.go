@@ -103,7 +103,12 @@ func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 		return math.MaxInt
 	}
 
-	return int(cpuAllocated / cpuConsumption)
+	if cpuConsumption == -1.0 {
+		proxywasm.LogCriticalf("CPU consumption per request not set for %s", dstSvc)
+		return math.MaxInt
+	}
+
+	return int(cpuAllocated/cpuConsumption) + RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED
 }
 
 func getRecentlySentRequestTimeStamps(dstSvc string) ([]int64, uint32) {

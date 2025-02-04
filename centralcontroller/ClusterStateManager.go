@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type ClusterStateManager struct {
@@ -90,28 +91,32 @@ func getPerAppRpsBasedUtil(
 	// FROM. WE ESTIMATE THE TIME BY TAKING THE START TIME OF MOST RECENTLY SENT
 	// REQUEST
 
+	// UPDATE: WE IMPROVED THE CODE BY USING CURRENT TIME AS THE START TIME OF THE WINDOW
+
 	// get the most recently sent request's time
-	var maxStartTimeMs int64 = 0
-	for _, reqStat := range reqSentStats {
-		if reqStat.StartTimeMs > maxStartTimeMs {
-			maxStartTimeMs = reqStat.StartTimeMs
-		}
-	}
+	// var maxStartTimeMs int64 = 0
+	// for _, reqStat := range reqSentStats {
+	// 	if reqStat.StartTimeMs > maxStartTimeMs {
+	// 		maxStartTimeMs = reqStat.StartTimeMs
+	// 	}
+	// }
+	curentTimeMs := time.Now().UnixMilli()
+	maxStartTimeMs := curentTimeMs
 
 	// get the number of requests sent in the last RPS_WINDOW_MS
-	svcComletedReqs := make(map[string]int)
+	svcSentReqs := make(map[string]int)
 	for _, reqStat := range reqSentStats {
 		if maxStartTimeMs-reqStat.StartTimeMs <= RPS_WINDOW_MS {
 			// remove .mplb.com from the dstSvc
 			dstSvc := strings.ReplaceAll(reqStat.DstSvc, ".mplb.com", "")
-			svcComletedReqs[dstSvc]++
+			svcSentReqs[dstSvc]++
 		}
 	}
 
 	// get the RPS for each service
 	svcRPSBasedUtil := make(map[string]float64)
-	for svc, completedReqs := range svcComletedReqs {
-		svcRPS := float64(completedReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
+	for svc, sentReqs := range svcSentReqs {
+		svcRPS := float64(sentReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
 		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc]
 	}
 
@@ -243,6 +248,9 @@ func getGenericWeightsFromGurobi(
 		})
 	}
 	tenantsJSON, err := json.Marshal(tenants)
+	if err != nil {
+		fmt.Printf("Error in marshalling tenants JSON: %s\n", err)
+	}
 	check(err)
 
 	pods := make([]PodJSON, 0)
@@ -357,7 +365,7 @@ func parseGurobiResponse(
 		}
 
 		strSortedWeights := make([]string, len(sortedWeights))
-		for i, weight := range sortedValues {
+		for i, weight := range sortedWeights {
 			strSortedWeights[i] = fmt.Sprintf("%f", weight)
 		}
 
