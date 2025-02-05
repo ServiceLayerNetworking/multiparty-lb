@@ -55,6 +55,9 @@ func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 	} else if LOAD_BALANCING_STRATEGY == "locality_aware_weighted_random" {
 		return getNextDstEndpointLocalityAwareWeightedRandom(dst, weights)
 
+	} else if LOAD_BALANCING_STRATEGY == "minimize_diff" {
+		return getNextDstEndpointMinimizeDiff(dst, weights)
+
 	} else {
 		return -1, errors.New("Invalid load balancing strategy")
 
@@ -76,7 +79,8 @@ func notifyRequestCompletedToLB(dstPod string) {
 	if LOAD_BALANCING_STRATEGY == "weighted_random" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" ||
-		LOAD_BALANCING_STRATEGY == "leastrequest" {
+		LOAD_BALANCING_STRATEGY == "leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "minimize_diff" {
 
 		// get the outstanding requests for all endpoints of the dst
 		outstandingReqs, cas, err := getOutstandingRequests(dst, -1)
