@@ -1,8 +1,6 @@
 package main
 
 import (
-	"math/rand"
-
 	"github.com/tetratelabs/proxy-wasm-go-sdk/proxywasm"
 )
 
@@ -56,6 +54,10 @@ func doMinimizeDiff(outstandingReqs *[]int, weights []float64) int {
 	for _, reqs := range *outstandingReqs {
 		sumOutstandingReqs += reqs
 	}
+	if sumOutstandingReqs == 0 {
+		selectedEndpoint, _ := getNextDstEndpointWeightedRandom(weights)
+		return selectedEndpoint
+	}
 
 	// calculate the current outstanding req ratios
 	outstandingReqsRatios := make([]float64, len(*outstandingReqs))
@@ -66,27 +68,72 @@ func doMinimizeDiff(outstandingReqs *[]int, weights []float64) int {
 	// calculate the diff
 	diff := make([]float64, len(*outstandingReqs))
 	for i := range *outstandingReqs {
-		diff[i] = weights[i] - outstandingReqsRatios[i]
+		diff[i] = outstandingReqsRatios[i] - weights[i]
 	}
 
-	// get the min diff
-	minDiff := diff[0]
-	endpointsWithMinDiff := []int{0}
-	selectedEndpoint := 0
-	for i := 1; i < len(diff); i++ {
-		if diff[i] < minDiff {
-			minDiff = diff[i]
-			endpointsWithMinDiff = []int{i}
-			selectedEndpoint = i
-		} else if diff[i] == minDiff {
-			endpointsWithMinDiff = append(endpointsWithMinDiff, i)
+	// fmt.Printf("\nOutstanding reqs: %v\n", *outstandingReqs)
+	// fmt.Printf("Outstanding reqs ratios: %v\n", outstandingReqsRatios)
+	// fmt.Printf("Weights: %v\n", weights)
+	// fmt.Printf("Diff: %v\n", diff)
+
+	newWeights := make([]float64, len(weights))
+	for i := range weights {
+		newWeights[i] = weights[i] - diff[i]
+		if newWeights[i] < 0 {
+			newWeights[i] = 0
 		}
 	}
-
-	// if there are multiple endpoints with the same min diff, select one randomly
-	if len(endpointsWithMinDiff) > 1 {
-		selectedEndpoint = endpointsWithMinDiff[rand.Intn(len(endpointsWithMinDiff))]
+	newWeightsSum := 0.0
+	for _, w := range newWeights {
+		newWeightsSum += w
+	}
+	for i := range newWeights {
+		newWeights[i] = (newWeights[i] / newWeightsSum) * 100
 	}
 
+	// fmt.Printf("New weights: %v\n", newWeights)
+
+	selectedEndpoint, _ := getNextDstEndpointWeightedRandom(newWeights)
+
 	return selectedEndpoint
+
+	// // get the min diff
+	// minDiff := diff[0]
+	// endpointsWithMinDiff := []int{0}
+	// selectedEndpoint := 0
+	// for i := 1; i < len(diff); i++ {
+	// 	if diff[i] < minDiff {
+	// 		minDiff = diff[i]
+	// 		endpointsWithMinDiff = []int{i}
+	// 		selectedEndpoint = i
+	// 	} else if diff[i] == minDiff {
+	// 		endpointsWithMinDiff = append(endpointsWithMinDiff, i)
+	// 	}
+	// }
+
+	// // if there are multiple endpoints with the same min diff, select one randomly
+	// if len(endpointsWithMinDiff) > 1 {
+	// 	selectedEndpoint = endpointsWithMinDiff[rand.Intn(len(endpointsWithMinDiff))]
+	// }
+
+	// // // if there are multiple endpoints with the same min diff, select one through their original weights randomly
+	// // if len(endpointsWithMinDiff) > 1 {
+	// // 	newWeights := make([]float64, len(endpointsWithMinDiff))
+	// // 	for i, endpoint := range endpointsWithMinDiff {
+	// // 		newWeights[i] = weights[endpoint]
+	// // 	}
+	// // 	sum := 0.0
+	// // 	for _, w := range newWeights {
+	// // 		sum += w
+	// // 	}
+	// // 	for i := range newWeights {
+	// // 		newWeights[i] = (newWeights[i] / sum) * 100
+	// // 	}
+
+	// // 	randWeightBasedSelection, _ := getNextDstEndpointWeightedRandom(newWeights)
+
+	// // 	selectedEndpoint = endpointsWithMinDiff[randWeightBasedSelection]
+	// // }
+
+	// return selectedEndpoint
 }

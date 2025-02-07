@@ -76,6 +76,10 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 
 func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 
+	if USE_DEFAULT_MAX_RPS_ALLOWED {
+		return DEFAULT_MAX_RPS_ALLOWED
+	}
+
 	// get the CPU allocated to the service (CPU weight of the service)
 	// get the CPU consumed per request for the service
 	// then return max requests in a second allowed = CPUAllocated for the past sec / CPUConsumedPerRequest

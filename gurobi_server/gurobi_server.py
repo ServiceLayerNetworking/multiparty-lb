@@ -337,14 +337,14 @@ def run_generic_linear_single_objective_model_nov15_abs_diff(
         
     # set variables for the workers
     w = {}
-    # log_w = {}
+    log_w = {}
     for worker in _workers:
         w[worker.name] = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS,
                            name=f"w_{worker.name}")
-        # log_w[worker.name] = m.addVar(vtype=GRB.CONTINUOUS,
-        #                               lb=-GRB.INFINITY,
-        #                               ub=GRB.INFINITY,
-        #                               name=f"log_w_{worker.name}")
+        log_w[worker.name] = m.addVar(vtype=GRB.CONTINUOUS,
+                                      lb=-GRB.INFINITY,
+                                      ub=GRB.INFINITY,
+                                      name=f"log_w_{worker.name}")
     
     # state for tenant (to be used for rerunning optimization)
     t_load = {}
@@ -402,37 +402,35 @@ def run_generic_linear_single_objective_model_nov15_abs_diff(
     #                  where
     #                  U(w) = log(w)
     # ∴ obj3 = sum(log(w), ∀w); maximize this
-    # obj3 = gp.quicksum([log_w[worker.name] for worker in _workers])
+    obj3 = gp.quicksum([log_w[worker.name] for worker in _workers])
     # m.setObjectiveN(-obj3, index=2, priority=0)
     
     # =========================== Optimization minimize distanc between weights ============================
             
-    # do this only if you have all the previous weights
-    was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
+    # # do this only if you have all the previous weights
+    # was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
     
-    abs_diff = []
-    for i in range(len(_workers)):
-        print(f"abs_diff_{i}")
-        abs_diff += [m.addVar(vtype=GRB.CONTINUOUS, name=f"abs_diff_{i}")]
+    # abs_diff = []
+    # for i in range(len(_workers)):
+    #     print(f"abs_diff_{i}")
+    #     abs_diff += [m.addVar(vtype=GRB.CONTINUOUS, name=f"abs_diff_{i}")]
     
-    # set the new objective to minimize the distance between the weights
-    if was_previous_the_same_topology:
-        for i, worker in enumerate(_workers):
-            m.addConstr(abs_diff[i] >= w[worker.name] - previous_w[worker.name], name=f"abs_diff_{i}_1")
-            m.addConstr(abs_diff[i] >= previous_w[worker.name] - w[worker.name], name=f"abs_diff_{i}_2")
-    else:
-        for i, worker in enumerate(_workers):
-            m.addConstr(abs_diff[i] >= w[worker.name] - 0.0, name=f"abs_diff_{i}_1")
-            m.addConstr(abs_diff[i] >= 0.0 - w[worker.name], name=f"abs_diff_{i}_2")
+    # # set the new objective to minimize the distance between the weights
+    # if was_previous_the_same_topology:
+    #     for i, worker in enumerate(_workers):
+    #         m.addConstr(abs_diff[i] >= w[worker.name] - previous_w[worker.name], name=f"abs_diff_{i}_1")
+    #         m.addConstr(abs_diff[i] >= previous_w[worker.name] - w[worker.name], name=f"abs_diff_{i}_2")
+    # else:
+    #     for i, worker in enumerate(_workers):
+    #         m.addConstr(abs_diff[i] >= w[worker.name] - 0.0, name=f"abs_diff_{i}_1")
+    #         m.addConstr(abs_diff[i] >= 0.0 - w[worker.name], name=f"abs_diff_{i}_2")
 
-    obj3 = gp.quicksum(abs_diff[i] for i in range(len(_workers)))
-    
-    m.optimize()
+    # obj3 = gp.quicksum(abs_diff[i] for i in range(len(_workers)))
     
     obj1_w = np.sum([host.cap for host in _hosts])
     obj2_w = 0.1
     obj3_w = 0.001
-    obj = obj1_w * obj1 + obj2_w * obj2 - obj3_w * obj3
+    obj = obj1_w * obj1 + obj2_w * obj2 + obj3_w * obj3
     m.setObjective(obj, GRB.MAXIMIZE)
         
     # m.setParam('FuncPieces', 0)  # Increase number of pieces in linearization
@@ -481,8 +479,8 @@ def run_generic_linear_single_objective_model_nov15_abs_diff(
         m.addGenConstrLog(sp[host.name], log_sp[host.name], name=f"log_sp_{host.name}")
         
     # # Constraint 6: for all workers, log_w = log(w)
-    # for worker in _workers:
-    #     m.addGenConstrLog(w[worker.name], log_w[worker.name], name=f"log_w_{worker.name}")
+    for worker in _workers:
+        m.addGenConstrLog(w[worker.name], log_w[worker.name], name=f"log_w_{worker.name}")
     
     # ============================== Optimize! =================================
     
@@ -600,9 +598,9 @@ def rerun_generic_linear_single_objective_model_nov15(
     # confirm if the topology is the same, if not, rerun the optimization from scratch
     was_previous_the_same_topology = all(worker.name in previous_w for worker in _workers) and len(previous_w) == len(_workers)
     if not was_previous_the_same_topology:
-        raise Exception("The topology has changed, please rerun the optimization from scratch")
+        # raise Exception("The topology has changed, please rerun the optimization from scratch")
         
-        return run_generic_linear_model(_hosts, _tenants, _workers)
+        return run_generic_linear_single_objective_model_nov15_abs_diff(_hosts, _tenants, _workers)
     
     #  ============================= Modify Variables =============================
     

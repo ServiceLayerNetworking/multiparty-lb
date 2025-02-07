@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type ClusterStateManager struct {
@@ -94,14 +93,14 @@ func getPerAppRpsBasedUtil(
 	// UPDATE: WE IMPROVED THE CODE BY USING CURRENT TIME AS THE START TIME OF THE WINDOW
 
 	// get the most recently sent request's time
-	// var maxStartTimeMs int64 = 0
-	// for _, reqStat := range reqSentStats {
-	// 	if reqStat.StartTimeMs > maxStartTimeMs {
-	// 		maxStartTimeMs = reqStat.StartTimeMs
-	// 	}
-	// }
-	curentTimeMs := time.Now().UnixMilli()
-	maxStartTimeMs := curentTimeMs
+	var maxStartTimeMs int64 = 0
+	for _, reqStat := range reqSentStats {
+		if reqStat.StartTimeMs > maxStartTimeMs {
+			maxStartTimeMs = reqStat.StartTimeMs
+		}
+	}
+	// curentTimeMs := time.Now().UnixMilli()
+	// maxStartTimeMs := curentTimeMs
 
 	// get the number of requests sent in the last RPS_WINDOW_MS
 	svcSentReqs := make(map[string]int)

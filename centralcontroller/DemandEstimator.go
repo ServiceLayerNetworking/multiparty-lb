@@ -114,6 +114,7 @@ func (de *DemandEstimator) GetDemandEstimates() map[string]float64 {
 			sumCPUUtil += cpuUtilState.CpuUtil
 		}
 
+		// THIS IS FRICKIN BUGGY
 		timeTakenMs := int64(700)
 		if len(cpuUtilStates) > 1 {
 			timeTakenMs += cpuUtilStates[len(cpuUtilStates)-1].EndTime - cpuUtilStates[0].EndTime

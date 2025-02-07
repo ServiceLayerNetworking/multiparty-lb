@@ -34,8 +34,8 @@ const (
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 
 	USE_RPS_INSTEAD_OF_CPU      = true
-	USE_OFFLINE_DEMAND_ESTIMATE = true
-	CPU_CONSUMPTION_PER_REQ     = 4.3
+	USE_OFFLINE_DEMAND_ESTIMATE = false
+	CPU_CONSUMPTION_PER_REQ     = 2.3
 	SVC_CPU_UTIL_HEADROOM       = 20  // 20% headroom
 	RPS_WINDOW_MS               = 500 // 500ms window to look for how many requests are sent and base our CPU off of that
 

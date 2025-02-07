@@ -39,6 +39,8 @@ const (
 	TICK_PERIOD = 500
 
 	// this is the number of requests that are allowed to be sent to the endpoints over the max allowed RPS calculated from the CPU allocated to the service.
+	DEFAULT_MAX_RPS_ALLOWED                            = 105
+	USE_DEFAULT_MAX_RPS_ALLOWED                        = false
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 5
 
 	// Hash mod for frequency of request tracing.
@@ -47,7 +49,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY = "leastrequest" // [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY = "weighted_random" // [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 )
 
 var (
