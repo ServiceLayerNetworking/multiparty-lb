@@ -14,7 +14,7 @@ SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_EACH_RUN = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
-LOG_FOLDER = "logs32"
+LOG_FOLDER = "logs33"
 MANUAL_BUILD = False
 
 def get_gateway_ip():
@@ -348,8 +348,8 @@ def update_load_balance_strategy(new_strategy):
         lines = f.readlines()
         
     for i, line in enumerate(lines):
-        if "[locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]" in line:
-            lines[i] = f"\tLOAD_BALANCING_STRATEGY            = \"{new_strategy}\" // [locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]\n"
+        if "[minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]" in line:
+            lines[i] = f"\tLOAD_BALANCING_STRATEGY            = \"{new_strategy}\" // [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]\n"
             
     with open("../mplb-wasm-plugin/main.go", "w") as f:
         f.writelines(lines)
@@ -393,7 +393,7 @@ def run():
                 
                 run_id += 1 
                 
-                if run_id in [3, 7, 9]:
+                if run_id in [7, 9]:
                     
                     restart_k8s()
                     
@@ -414,7 +414,7 @@ def run():
                     else:
                         time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                     
-                    for lb in ["weighted_random", "minimize_diff", "leastrequest"]: # [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+                    for lb in ["minimize_diff", "leastrequest", "weighted_random"]: # [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
                         
                         update_load_balance_strategy(lb)
                         build_wasm()
@@ -426,12 +426,12 @@ def run():
                         
                             for iteration in [1, 2, 3]:
                             
-                                for distr in ["none"]:
+                                for distr in ["none", "exponential"]:
                                     
-                                    for proc_distr in ["none"]:
+                                    for proc_distr in ["none", "exponential"]:
                                 
-                                        # if distr != proc_distr:
-                                        #     continue
+                                        if distr == "none" and proc_distr == "none":
+                                            continue
                                     
                                         print(f"Starting iteration {iteration} for run_id {run_id}...")
                                         
@@ -541,6 +541,8 @@ if __name__ == '__main__':
     
     # Run the experiment
     run()
+    
+    # update_load_balance_strategy("leastrequest")
     
     # run_once(['node1', 'node2'], ['node2', 'node3'], ['node1'])
     
