@@ -318,7 +318,7 @@ def run_generic_model(
 def run_generic_linear_single_objective_model_nov15_abs_diff(
     _hosts: List[Host],
     _tenants: List[Tenant],
-    _workers: List[Worker]) -> Tuple[str, gp.Model, Tenant_Min, Tenant_Load]:
+    _workers: List[Worker]) -> Tuple[any, gp.Model, Tenant_Min, Tenant_Load]:
     
     global previous_w
     
