@@ -38,7 +38,7 @@ class Worker:
         self.processing_rate: float = 1.0
         
     def __str__(self):
-        return f"{self.name}: tenant={self.tenant}, host={self.host}"
+        return f"{self.name}: load={self.load} processing_rate={self.processing_rate}"
 
 def get_max_min_processing_times(total_time: float, job_times: Dict[str, float]) -> Dict[str, Tuple[float, float]]:
     
@@ -103,45 +103,40 @@ def get_max_min_processing_times(total_time: float, job_times: Dict[str, float])
     
     job_stats = {}
     
-    elapsed_time = 0
+    curr_time = 0
     per_job_curr_time = 0
     current_jobs = list(sorted_jobs)
     
+    # loop through the jobs in ascending order of job times
     for job_name, job_finish_time in sorted_jobs:
         
-        print(job_name, job_finish_time)
+        prev_curr_time = curr_time
         
-        print(elapsed_time, per_job_curr_time, len(current_jobs))
+        # this is the wallclock time at which this job will finish processing
+        curr_time += (job_finish_time - per_job_curr_time) * len(current_jobs)
         
-        prev_elapsed_time = elapsed_time
-        
-        # this is the time at which the job finishes processing
-        elapsed_time += (job_finish_time - per_job_curr_time) * len(current_jobs)
-        
-        print(elapsed_time)
-        
-        # check if we're over the total time
-        if elapsed_time > total_time:
-            
-            print("we came here")
-            
-            time_left = total_time - prev_elapsed_time
-            # this time will be divided among the remaining jobs
-            per_job_curr_time += time_left / len(current_jobs)
-            # add all remaining jobs to the job stats
-            for job_name, job_finish_time in current_jobs:
-                job_stats[job_name] = (per_job_curr_time, total_time)
-            break
-        
-        else:
-        
+        # if we're not over time:
+        if curr_time <= total_time:
             # if we're not over time, this is the amount of the job that was processed
             per_job_curr_time = job_finish_time
+        
+        # if we're over the total time
+        else:
             
-            # add the job to the job stats
-            job_stats[job_name] = (per_job_curr_time, elapsed_time)
-    
-            current_jobs = current_jobs[1:]
+            # what time did we have left after the last job finished processing?
+            time_left = total_time - prev_curr_time
+            
+            # this time will be divided among the remaining jobs
+            per_job_curr_time += time_left / len(current_jobs)
+            
+            # current time is the total time
+            curr_time = total_time
+        
+        # add the job to the job stats
+        job_stats[job_name] = (per_job_curr_time, curr_time)
+
+        # remove the job from the current jobs
+        current_jobs = current_jobs[1:]
         
     return job_stats
 
@@ -149,9 +144,9 @@ print(get_max_min_processing_times(2, {
         "a": 0.0,
         "b": 0.1,
         "c": 0.1,
-        "d": 0.3,
-        "e": 0.76,
-        "f": 0.75,
+        "e": 1.72,
+        "f": 1.25,
+        "g": 1.25,
     }))
 
 # Linear Single Combined Objective
@@ -160,10 +155,12 @@ def get_locally_optimal_load_distribution(
     tenants: List[g.Tenant],
     workers: List[g.Worker]) -> Dict[str, Dict[str, float]]:
     
+    # print([str(worker) for worker in workers])
+    
     """
     Algorithm:
     - Initialize each worker with a processing rate of 1.0
-    - Repeat the following steps until convergence (i.e. no worker's processing rate changes in a step):
+    - Repeat the following steps until convergence (i.e. no worker's processing rate changes in a step) or a maximum number of iterations is reached:
         - For each tenant, split its load among its workers in proportion to their processing rate
         - At each host, calculate max-min fair share of load for each worker
         - Calculate the processing rate of each worker
@@ -173,9 +170,13 @@ def get_locally_optimal_load_distribution(
     # Initialize each worker with a processing rate of 1.0
     for worker in workers:
         worker.processing_rate = 1.0
-        
+            
+    max_iterations = 3
+            
     # Repeat the following steps until convergence (i.e. no worker's processing rate changes in a step):
-    while True:
+    for i in range(max_iterations):
+        
+        print(f"Iteration #{i}")
         
         # For each tenant, split its load among its workers in proportion to their processing rate
         for tenant in tenants:
@@ -184,34 +185,40 @@ def get_locally_optimal_load_distribution(
             for worker in tenant_workers:
                 worker.load = tenant.load * worker.processing_rate / total_load
         
+        is_worker_processing_rate_changed = False
+        
         # At each host, calculate max-min fair share of load for each worker
         for host in hosts:
-            host_workers = [worker for worker in workers if worker.host == host.name]
-            worker_loads = [(worker.name, worker.load) for worker in host_workers]
+            host_workers = {worker.name: worker for worker in workers if worker.host == host.name}
+            worker_loads = {worker_name: worker.load for worker_name, worker in host_workers.items()}
             
-            max_min_fair_shares = get_max_min_fair_shares(host.cap, worker_loads)
+            max_min_fair_shares = get_max_min_processing_times(host.cap, worker_loads)
             
             
-            
+            # convert the max_min_fair_shares to processing rates
+            for worker_name, worker_stat in max_min_fair_shares.items():
+                
+                load_processed, time_to_process_load = worker_stat
+                processing_rate = load_processed / time_to_process_load
+                
+                if host_workers[worker_name].processing_rate != processing_rate:
+                    host_workers[worker_name].processing_rate = processing_rate
+                    is_worker_processing_rate_changed = True
         
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+        # print([str(worker) for worker in workers])
+        
+        if not is_worker_processing_rate_changed:
+            break
+        
+    # Output the result
     results = {}
     for worker in workers:
         if worker.tenant not in results:
             results[worker.tenant] = {}
-            results[worker.tenant][worker.name] = 0.0
+            results[worker.tenant][worker.name] = worker.load
         else:
-            results[worker.tenant][worker.name] = 0.0
+            results[worker.tenant][worker.name] = worker.load
+    
     to_return = {
         "status": GRB.OPTIMAL,
         "result": results
@@ -234,32 +241,30 @@ def run_from_json(hosts, tenants, workers):
 
 if __name__ == '__main__':
     
-    pass
-    
-    # if len(sys.argv) > 1:
-    #     if sys.argv[1] == "-f":
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "-f":
             
-    #         filename = sys.argv[2]
+            filename = sys.argv[2]
             
-    #         with open(filename, "r") as f:
-    #             input_json = f.read()
+            with open(filename, "r") as f:
+                input_json = f.read()
             
-    #         start_time = time()
-    #         input = json.loads(input_json)
-    #         print("Input:", input)
+            start_time = time()
+            input = json.loads(input_json)
+            print("Input:", input)
             
-    #         hosts, tenants, workers = input[0], input[1], input[2]
-    #         output = run_from_json(hosts, tenants, workers)
+            hosts, tenants, workers = input[0], input[1], input[2]
+            output = run_from_json(hosts, tenants, workers)
             
-    #         time_taken = time() - start_time
-    #         print(f"{time_taken*1000:.2f} ms")
+            time_taken = time() - start_time
+            print(f"{time_taken*1000:.2f} ms")
             
-    #         output_json = dumps(output)
+            output_json = dumps(output)
             
-    #         with open(filename + "_output", "w") as f:
-    #             f.write(output_json)
-              
-    #     else:
-    #         print("Invalid argument, use -f to run sample json")
-    # else:
-    #     print("No argument provided, use -f to run sample json")
+            with open(filename + "_local_opt_output", "w") as f:
+                f.write(output_json)
+            
+        else:
+            print("Invalid argument, use -f to run sample json")
+    else:
+        print("No argument provided, use -f to run sample json")
