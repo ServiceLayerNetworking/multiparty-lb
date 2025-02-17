@@ -199,7 +199,10 @@ def get_locally_optimal_load_distribution(
             for worker_name, worker_stat in max_min_fair_shares.items():
                 
                 load_processed, time_to_process_load = worker_stat
-                processing_rate = load_processed / time_to_process_load
+                if time_to_process_load == 0:
+                    processing_rate = 1.0
+                else:
+                    processing_rate = load_processed / time_to_process_load
                 
                 if host_workers[worker_name].processing_rate != processing_rate:
                     host_workers[worker_name].processing_rate = processing_rate

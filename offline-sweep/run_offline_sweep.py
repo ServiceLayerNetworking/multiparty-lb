@@ -1,6 +1,20 @@
-from typing import List, Dict
+from typing import List, Dict, Tuple
 from itertools import product, combinations, chain, combinations_with_replacement
 from math import comb
+import json
+import sys
+import os
+
+# Get the absolute path of the target directory
+parent_dir = os.path.abspath("../gurobi_server")
+
+# Add it to sys.path
+sys.path.append(parent_dir)
+
+import locally_optimal_load_distribution as gs_l
+import gurobi_server as gs_g
+
+LOGFILE = "logs/offline_sweep.log"
 
 def get_valid_svc_to_node_mappings(num_nodes: int, num_services: int) -> List[Dict[int, List[int]]]:
     """
@@ -88,7 +102,86 @@ def generate_cluster_states():
     
     return all_states
 
-if __name__ == "__main__":
+def parse_cluster_state_for_gs(
+    state: Dict[str, any]) -> Tuple[Dict[str, any], Dict[str, any], Dict[str, any]]:
+    """
+    return Hosts, Tenants, Workers as dictionaries parsable by both global and local gurobi servers
+    """
+    
+    hosts = []
+    for i in range(state["NumOfNodes"]):
+        hosts.append({
+            "name": f"node{i}",
+            "cap": state["NodeCaps"][i]
+        })
+        
+    tenants = {}
+    for i in range(state["NumOfSvc"]):
+        name = f"svc{i}"
+        tenants[name] = {
+            "name": name,
+            "load": state["SvcLoads"][i],
+            "fshareload": 0
+        }
+        
+    workers = []
+    for svc_id, nodes in state["SvcToNodes"].items():
+        for node_id in nodes:
+            workers.append({
+                "name": f"svc{svc_id}-node{node_id}",
+                "host": f"node{node_id}",
+                "tenant": f"svc{svc_id}"
+            })
+    
+    # calculate the fshareload for each tenant
+    # fshareload_of_tenant_t = sum(fshareload_of_worker_w when w.tenant == t)
+    # fshareload_of_worker_w = host.cap / number of workers on host
+    for host in hosts:
+        workers_on_host = [worker for worker in workers if worker["host"] == host["name"]]
+        
+        n_workers_on_host = len(workers_on_host)
+        
+        for worker in workers_on_host:
+            tenant_name = worker["tenant"]
+            tenants[tenant_name]["fshareload"] += host["cap"] / n_workers_on_host
+        
+    return hosts, list(tenants.values()), workers
+
+def run_offline_exp(state: Dict[str, any]):
+    
+    # parse the state to get Hosts, Tenants, Workers
+    hosts, tenants, workers = parse_cluster_state_for_gs(state)
+    
+    global_result = gs_g.run_from_json(hosts, tenants, workers)
+    local_result = gs_l.run_from_json(hosts, tenants, workers)
+    
+    output = {
+        "State": state,
+        "Hosts": hosts,
+        "Tenants": tenants,
+        "Workers": workers,
+        "GlobalResult": global_result,
+        "LocalResult": local_result
+    }
+    
+    # append output to log file
+    with open(LOGFILE, "a") as f:
+        f.write(json.dumps(output) + "\n")
+
+def run_offline_sweep():
     states = generate_cluster_states()
-    # print(json.dumps(states, indent=4))
-    print(f"Total number of states: {len(states)}")
+    
+    for i, state in enumerate(states):
+        run_offline_exp(state)
+        print(f"Done with state {i+1}/{len(states)}")
+
+if __name__ == "__main__":
+    # states = generate_cluster_states()
+    # # print(json.dumps(states, indent=4))
+    # print(f"Total number of states: {len(states)}")
+    
+    # print(states[150])
+    
+    # print(parse_cluster_state_for_gs(states[150]))
+    
+    run_offline_sweep()
