@@ -24,16 +24,22 @@ weights: a list of weights for each endpoint of the dst.
 */
 func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
+	// proxywasm.LogCriticalf("MPLB: getNextDstEndpoint called for %s with %v", dst, weights)
+
 	// // for debgging:
 	// if dst == "app1" {
 	// 	weights = []float64{50, 50}
 	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
 	// } else if dst == "app2" {
-	// 	weights = []float64{50, 50}
+	// 	weights = []float64{10, 90}
 	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
 	// } else if dst == "app3" {
 	// 	weights = []float64{100}
 	// 	proxywasm.LogCriticalf("Setting Fixed Weights for %s: %v", dst, weights)
+	// } else {
+	// 	weights = []float64{10, 90}
+	// 	proxywasm.LogCriticalf("Wth is this dst: %s", dst)
+	// 	proxywasm.LogCriticalf("Setting Fixed Weights anyways %s: %v", dst, weights)
 	// }
 
 	if len(weights) == 0 {
