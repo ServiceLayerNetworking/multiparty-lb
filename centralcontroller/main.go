@@ -47,6 +47,8 @@ const (
 
 	DEFAULT_LB_WEIGHTS = ""
 	LOG_FILE_PREFIX    = "/users/twaheed/multiparty-lb"
+
+	GUROBI_PORT = "4876"
 )
 
 /*
@@ -1017,7 +1019,7 @@ type GurobiResponse struct {
 func getWeightsFromGurobi(
 	hostCap float64, appUtils map[string]float64) string {
 
-	baseURL := "http://localhost:5000"
+	baseURL := "http://localhost:" + GUROBI_PORT
 	resource := "/"
 	params := url.Values{}
 	params.Add("host_cap", fmt.Sprintf("%f", hostCap))

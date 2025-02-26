@@ -14,6 +14,8 @@ Tenant_Load = Dict[str, gp.Var]
 
 previous_w: Dict[str,float] = {}
 
+GUROBI_PORT = 4876
+
 N_WORKERS_EXPONENTIAL_DISTR_LAMBDA = 17
 WORKER_LOAD_EXPONENTIAL_DISTR_LAMBDA = 0.7
 HOST_CAPACITY = 1.0
@@ -778,4 +780,4 @@ if __name__ == '__main__':
             
     else:
         print("======================reached here")
-        app.run(host="localhost", port=5000, debug=True)
+        app.run(host="localhost", port=GUROBI_PORT, debug=True)

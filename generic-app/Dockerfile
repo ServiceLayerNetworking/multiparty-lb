@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 golang:1.19.5
+FROM golang:1.19.5
 
 # RUN apk add --no-cache git
 

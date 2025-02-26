@@ -24,6 +24,7 @@ for i in $(seq 1 $NODES);
 do
   kubectl label node node$i.k8s-mplb.mlnetwork.emulab.net node-role.kubernetes.io/worker=node$i --overwrite
 done
+kubectl label node node0.k8s-mplb.mlnetwork.emulab.net node-role.kubernetes.io/control-plane=master --overwrite
 
 echo "[SCRIPT] Installing istio..."
 curl -L https://istio.io/downloadIstio | sh -
@@ -47,6 +48,9 @@ echo "[SCRIPT] Applying taints to three nodes..."
 kubectl taint nodes node1.k8s-mplb.mlnetwork.emulab.net node=node1:NoSchedule --overwrite
 kubectl taint nodes node2.k8s-mplb.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
 kubectl taint nodes node3.k8s-mplb.mlnetwork.emulab.net node=node3:NoSchedule --overwrite
+
+echo "[SCRIPT] Starting the Docker registry..."
+kubectl apply -f docker-registry/registry.yaml
 
 # echo "[SCRIPT] Starting HotelReservation..."
 # kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes
