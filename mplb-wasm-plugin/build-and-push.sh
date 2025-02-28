@@ -1,17 +1,31 @@
+#!/bin/bash
+
 set -e
+# set -x
 
-# for cloudlab
-GOARCH=wasm GOOS=js /usr/local/bin/tinygo build -o wasm-out/slate_plugin.wasm -gc=custom -tags="custommalloc nottinygc_envoy" -scheduler=none -target=wasi .
+# Define the list of load balancing strategies
+LB_VALUES=("minimize_diff" "locality_aware_weighted_random" "leastrequest" "weighted_random" "weighted_roundrobin" "weighted_leastrequest")
 
-# for aditya: tinygo location is different
-#  GOARCH=wasm GOOS=js $HOME/go/bin/tinygo build -o wasm-out/slate_plugin.wasm -gc=custom -tags="custommalloc nottinygc_envoy" -scheduler=none -target=wasi main.go
+# Path to TinyGo binary (adjust if necessary)
+TINYGO_BIN="/usr/local/bin/tinygo"
 
+# Loop through each LB strategy
+for LB in "${LB_VALUES[@]}"; do
+    echo "Building for Load Balancing Strategy: $LB"
 
-docker build -t ghcr.io/talha-waheed/mplb-plugin:latest .
-docker push ghcr.io/talha-waheed/mplb-plugin:latest
+    sed -i 's/\(\s*LOAD_BALANCING_STRATEGY = \).*/\1'"\"$LB\""'/' main.go
 
-# for authenticating docker:
-# sudo usermod -aG docker $USER
-# newgrp docker
-# groups
-# echo "YOUR_PERSONAL_ACCESS_TOKEN" | docker login ghcr.io -u talha-waheed --password-stdin
+    # Compile with TinyGo
+    GOARCH=wasm GOOS=js $TINYGO_BIN build -o wasm-out/slate_plugin.wasm -gc=custom -tags="custommalloc nottinygc_envoy" \
+        -scheduler=none -target=wasi .
+
+    # Docker build
+    docker build -t ghcr.io/talha-waheed/mplb-plugin:$LB .
+
+    # Docker push
+    docker push ghcr.io/talha-waheed/mplb-plugin:$LB
+
+    echo "Completed for $LB"
+done
+
+echo "All builds and pushes completed!"

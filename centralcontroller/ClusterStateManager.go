@@ -269,7 +269,7 @@ func getGenericWeightsFromGurobi(
 	podsJSON, err := json.Marshal(pods)
 	check(err)
 
-	baseURL := "http://localhost:5000/"
+	baseURL := GUROBI_URL
 	payload := fmt.Sprintf(
 		"[%s,%s,%s]", string(hostsJSON), string(tenantsJSON), string(podsJSON))
 
@@ -323,7 +323,7 @@ func setInitialGurobiWeights(nodes []Node, appNames []string) {
 
 	gurobiWeights := getEqualPodWeightsForGurobi(nodes, appNames)
 
-	baseURL := "http://localhost:5000/set"
+	baseURL := GUROBI_URL + "set" // "http://localhost:4876/" + "set"
 	payload := gurobiWeights
 
 	slog.Info(fmt.Sprintf(

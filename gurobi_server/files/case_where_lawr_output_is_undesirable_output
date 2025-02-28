@@ -1,1 +1,16 @@
-{"status": 2, "result": {"appA": {"appA-node1": 200.0, "appA-node2": 159.99999275558216}, "appB": {"appB-node2": 40.00000724441583, "appB-node3": 200.0}, "appC": {"appC-node3": 0.0}}}
+{
+  "status": 2,
+  "result": {
+    "appA": {
+      "appA-node1": 200,
+      "appA-node2": 159.99999275558216
+    },
+    "appB": {
+      "appB-node2": 40.00000724441583,
+      "appB-node3": 200
+    },
+    "appC": {
+      "appC-node3": 0
+    }
+  }
+}

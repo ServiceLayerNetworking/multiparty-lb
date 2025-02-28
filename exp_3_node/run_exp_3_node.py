@@ -14,8 +14,8 @@ SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_EACH_RUN = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
-LOG_FOLDER = "logs34"
-MANUAL_BUILD = True
+LOG_FOLDER = "logs36"
+MANUAL_BUILD = False
 
 def get_gateway_ip():
     """
@@ -354,17 +354,10 @@ def update_load_balance_strategy(new_strategy):
     with open("../mplb-wasm-plugin/main.go", "w") as f:
         f.writelines(lines)
         
-def build_wasm():
+def build_wasm(lb):
     os.chdir("../")
-    os.system("bash restart_wasm.sh")
+    os.system(f"bash restart_wasm.sh {lb}")
     os.chdir("./exp_3_node")
-    
-    if MANUAL_BUILD:
-        print("WASM built and restarted. Press enter to continue...")
-        input()
-    else:
-        print(f"Sleeping for {SLEEP_TIME_AFTER_WASM_BUILD}s after building wasm...")
-        time.sleep(SLEEP_TIME_AFTER_WASM_BUILD)
     
 LB_NAME = {
     "minimize_diff": "md",
@@ -393,42 +386,47 @@ def run():
                 
                 run_id += 1 
                 
-                if run_id in [7]:
+                if run_id in [3, 7, 9]:
                     
-                    # restart_k8s()
+                    restart_k8s()
                     
-                    # if MANUAL_BUILD:
-                    #     print("K8S restarted. Press enter to continue...")
-                    #     input()
-                    # else:
-                    #     time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
+                    if MANUAL_BUILD:
+                        print("K8S restarted. Press enter to continue...")
+                        input()
+                    else:
+                        time.sleep(SLEEP_DURATION_AFTER_RESTARTING_K8S)
                     
-                    # # Set topology for app1, app2, app3
-                    # set_topology("app1", nodes_app1)
-                    # set_topology("app2", nodes_app2)
-                    # set_topology("app3", nodes_app3)
+                    # Set topology for app1, app2, app3
+                    set_topology("app1", nodes_app1)
+                    set_topology("app2", nodes_app2)
+                    set_topology("app3", nodes_app3)
                     
-                    # if MANUAL_BUILD:
-                    #     print("Topology set. Press enter to continue...")
-                    #     input()
-                    # else:
-                    #     time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
+                    if MANUAL_BUILD:
+                        print("Topology set. Press enter to continue...")
+                        input()
+                    else:
+                        time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                     
                     for lb in ["leastrequest", "minimize_diff", "weighted_random"]: # [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
                         
-                        update_load_balance_strategy(lb)
-                        build_wasm()
+                        build_wasm(lb)
+                        if MANUAL_BUILD:
+                            print("WASM built and restarted. Press enter to continue...")
+                            input()
+                        else:
+                            print(f"Sleeping for {SLEEP_TIME_AFTER_WASM_BUILD}s after building wasm...")
+                            time.sleep(SLEEP_TIME_AFTER_WASM_BUILD)
                                 
                         # Define the RPS for 1 cpu
                         for rps in [35]:
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [4, 5]:
+                            for iteration in [1, 2, 3]:
                             
-                                for distr in ["exponential"]:
+                                for distr in ["none", "exponential"]:
                                     
-                                    for proc_distr in ["exponential"]:
+                                    for proc_distr in ["none", "exponential"]:
                                     
                                         print(f"Starting iteration {iteration} for run_id {run_id}...")
                                         
@@ -442,11 +440,8 @@ def run():
                                         to_append = get_topology_str(intended_topology)
                                         print(to_append)
                                         
-                                        # # input()
-                                        # run_exp(f"{distr}_lr_{run_id}_{iteration}", rpses, "NONE", distr, proc_distr, append_to_times=to_append)
-                                        
                                         # input()
-                                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_fw0:1App2_{run_id}_{rps}rps_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
+                                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{run_id}_{rps}rps_{iteration}", rpses, "LB", distr, proc_distr, append_to_times=to_append)
 
 def print_all_combinations(): 
     

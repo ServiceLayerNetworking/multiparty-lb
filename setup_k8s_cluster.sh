@@ -49,8 +49,8 @@ kubectl taint nodes node1.k8s-mplb.mlnetwork.emulab.net node=node1:NoSchedule --
 kubectl taint nodes node2.k8s-mplb.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
 kubectl taint nodes node3.k8s-mplb.mlnetwork.emulab.net node=node3:NoSchedule --overwrite
 
-echo "[SCRIPT] Starting the Docker registry..."
-kubectl apply -f docker-registry/registry.yaml
+# echo "[SCRIPT] Starting the Docker registry..."
+# kubectl apply -f docker-registry/registry.yaml
 
 # echo "[SCRIPT] Starting HotelReservation..."
 # kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes

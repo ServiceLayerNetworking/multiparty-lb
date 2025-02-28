@@ -49,7 +49,8 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	LOAD_BALANCING_STRATEGY = "weighted_random" // [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	// [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY = "weighted_leastrequest"
 )
 
 var (
@@ -166,6 +167,8 @@ func (p *pluginContext) OnPluginStart(pluginConfigurationSize int) types.OnPlugi
 	// }
 
 	proxywasm.LogCriticalf("Node name is: %s", string(nodeNameEnv))
+
+	proxywasm.LogCriticalf("Load balancing strategy: %s", LOAD_BALANCING_STRATEGY)
 
 	nodeID, err := getNodeID(string(nodeNameEnv))
 	if err != nil {

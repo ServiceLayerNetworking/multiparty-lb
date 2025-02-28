@@ -5,7 +5,7 @@ metadata:
   name: mplb-wasm-plugin
   namespace: default
 spec:
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:latest
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:weighted_random
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -28,7 +28,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:latest
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:weighted_random
   imagePullPolicy: Always
   vmConfig:
     env:
