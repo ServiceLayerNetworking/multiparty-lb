@@ -22,7 +22,7 @@ weights: a list of weights for each endpoint of the dst.
 	Example: [50, 50] means 50% of the requests will go to the first endpoint
 		and 50% to the second.
 */
-func getNextDstEndpoint(dst string, weights []float64) (int, error) {
+func getNextDstEndpoint(dst string, weights []float64, podNodes []int) (int, error) {
 
 	// proxywasm.LogCriticalf("MPLB: getNextDstEndpoint called for %s with %v", dst, weights)
 
@@ -63,6 +63,9 @@ func getNextDstEndpoint(dst string, weights []float64) (int, error) {
 
 	} else if LOAD_BALANCING_STRATEGY == "minimize_diff" {
 		return getNextDstEndpointMinimizeDiff(dst, weights)
+
+	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" {
+		return getNextDstEndpointNodalLeastRequest(dst, podNodes)
 
 	} else {
 		return -1, errors.New("Invalid load balancing strategy")
@@ -109,6 +112,55 @@ func notifyRequestCompletedToLB(dstPod string) {
 
 			// try again, another thread has changed outstanding requests since
 			// 	we last read them
+			notifyRequestCompletedToLB(dstPod)
+		}
+
+	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" {
+
+		// get the outstanding loads for all cluster
+		outstandingLoads, cas, err := getNodalOutstandingLoad()
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't get outstanding load for endpoint %s: %v",
+				dst, err)
+			return
+		}
+
+		// get the podnames for dst
+		weightsBStr, _, err := proxywasm.GetSharedData(dst)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't get podnames for %s: %v", dst, err)
+			return
+		}
+		weightsStr := string(weightsBStr)
+		if weightsStr == "nil" {
+			proxywasm.LogCriticalf("Nil weights available for %s", dst)
+			return
+		}
+		_, podNodes, err := parseLBWeights(weightsStr)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't parse podnames for %s: %v", dst, err)
+			return
+		}
+		nodeNum := podNodes[endpointNum]
+		nodeNumStr := strconv.Itoa(nodeNum)
+
+		// get the cpu consumption per req for the dst
+		cpuConsumptionPerReq := getCPUConsumptionPerReq(dst)
+
+		// Decrement the active request count for the selected server
+		outstandingLoads[nodeNumStr] -= 1 * cpuConsumptionPerReq
+
+		// set the new outstanding requests
+		err = setNodalOutstandingLoad(cas, outstandingLoads)
+		if err != nil {
+			proxywasm.LogCriticalf(
+				"Couldn't set outstanding requests: %v, trying again", err)
+
+			// try again, another thread has changed outstanding requests since
+			// we last read them
 			notifyRequestCompletedToLB(dstPod)
 		}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -73,7 +74,9 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	// print Gurobi weights:
 	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
 
-	lbWeights := parseGurobiResponse(gurobiResponse, svcCPUConsumptionPerReq)
+	lbWeights := parseGurobiResponse(gurobiResponse,
+		svcCPUConsumptionPerReq,
+		c.Nodes)
 	return lbWeights
 
 	// return "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0",
@@ -339,7 +342,8 @@ func setInitialGurobiWeights(nodes []Node, appNames []string) {
 
 func parseGurobiResponse(
 	gurobiResponse string,
-	svcCPUConsumptionPerReq map[string]float64) string {
+	svcCPUConsumptionPerReq map[string]float64,
+	nodes []Node) string {
 	// example gurobi response:
 	// {"status": 2, "result": {"app1": {"app1-node1": 89.33617463143995, "app1-node2": 178.6723492628799}, "app2": {"app2-node2": 10.66382536856006, "app2-node3": 189.33617463143995}, "app3": {"app3-node1": 100.0}, "app4": {"app4-node4": 3200.0}}}
 
@@ -368,11 +372,37 @@ func parseGurobiResponse(
 			strSortedWeights[i] = fmt.Sprintf("%f", weight)
 		}
 
-		lbWeights += fmt.Sprintf("%s:%f:%f:%s ",
+		// get the node numbers for the app pods
+		podnames := make([]string, 0, len(podResult))
+		for podName := range podResult {
+			podnames = append(podnames, podName)
+		}
+		sort.Strings(podnames)
+		strNodeNums := make([]string, len(podResult))
+		for i, podname := range podnames {
+			strNodeNums[i] = fmt.Sprintf("%d", getNodeNumberForPod(podname, nodes))
+		}
+
+		// output in the format: "app1:45.0:100.0:45.0|55.0:1|2"
+		lbWeights += fmt.Sprintf("%s:%f:%f:%s:%s ",
 			appName,
 			svcCPUConsumptionPerReq[appName],
 			appSum,
-			strings.Join(strSortedWeights, "|"))
+			strings.Join(strSortedWeights, "|"),
+			strings.Join(strNodeNums, "|"))
 	}
+
+	fmt.Printf("LB Weights: %s\n", lbWeights)
+
 	return lbWeights
+}
+
+func getNodeNumberForPod(podName string, nodes []Node) int {
+	for _, node := range nodes {
+		_, exists := node.Pods[podName]
+		if exists {
+			return node.Num
+		}
+	}
+	return -1
 }

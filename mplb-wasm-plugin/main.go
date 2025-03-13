@@ -49,7 +49,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	// [minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	// [nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 	LOAD_BALANCING_STRATEGY = "weighted_leastrequest"
 )
 
@@ -346,7 +346,20 @@ func getRandomTraceId() string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(strconv.Itoa(rand.Int()))))
 }
 
-func parseLBWeights(weightsStr string) ([]float64, error) {
+func parseLBWeights(input string) ([]float64, []int, error) {
+
+	podNodesStr := ""
+	weightsStr := ""
+
+	proxywasm.LogCritical("Parsing weights: " + input)
+
+	// check if weight string has '/'
+	if strings.Contains(input, "/") {
+		parts := strings.Split(input, "/")
+		proxywasm.LogCriticalf("Parts: %v", parts)
+		weightsStr = parts[0]
+		podNodesStr = parts[1]
+	}
 
 	weightsStrs := strings.Split(weightsStr, "|")
 
@@ -357,13 +370,25 @@ func parseLBWeights(weightsStr string) ([]float64, error) {
 		weight, err := strconv.ParseFloat(weightStr, 64)
 		if err != nil {
 			proxywasm.LogCriticalf("Couldn't parse weight: %v", err)
-			return nil, err
+			return nil, nil, err
 		}
 
 		weights[i] = weight
 	}
 
-	return weights, nil
+	podNodesStrs := strings.Split(podNodesStr, "|")
+	podNodesInt := make([]int, len(podNodesStrs))
+	for i, podNodeStr := range podNodesStrs {
+		podNodeInt, err := strconv.Atoi(podNodeStr)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't parse pod node: %v", err)
+			return nil, nil, err
+		} else {
+			podNodesInt[i] = podNodeInt
+		}
+	}
+
+	return weights, podNodesInt, nil
 }
 
 func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
@@ -479,7 +504,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 			} else {
 
 				// parse the weights from central controller
-				weights, err := parseLBWeights(weightsStr)
+				weights, podNodes, err := parseLBWeights(weightsStr)
 				if err != nil {
 					proxywasm.LogCriticalf("Couldn't parse weights: %v", err)
 					appendSentReqStats(currentTimeStr, dst, "")
@@ -487,7 +512,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				}
 
 				// get the next endpoint to send the request to
-				endpointNum, err := getNextDstEndpoint(dst, weights)
+				endpointNum, err := getNextDstEndpoint(dst, weights, podNodes)
 				if err != nil {
 					proxywasm.LogCriticalf("Couldn't get next endpoint: %v", err)
 					appendSentReqStats(currentTimeStr, dst, "")
@@ -808,11 +833,11 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
 				proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
 			}
-		} else if len(svcInfoSplit) == 4 {
+		} else if len(svcInfoSplit) == 5 {
 			svcName := svcInfoSplit[0]
 			svcCPUConsumptionPerReq := svcInfoSplit[1]
 			svcCPUAllocated := svcInfoSplit[2]
-			svcWeights := svcInfoSplit[3]
+			svcWeights := svcInfoSplit[3] + "/" + svcInfoSplit[4]
 			proxywasm.LogCriticalf(
 				"setting outbound request weights %v: %v, and svcCPUConsumptionPerReq:%s",
 				svcName, svcWeights, svcCPUConsumptionPerReq)
@@ -1497,6 +1522,10 @@ func endpointOutstandingReqKey(dstSvc string, endpointNum int) string {
 
 func outstandingReqsKey(dstSvc string) string {
 	return dstSvc + "-or"
+}
+
+func outstandingLoadAtNodesKey() string {
+	return "nodal-ol"
 }
 
 func localityAwareStatsKey(dstSvc string) string {

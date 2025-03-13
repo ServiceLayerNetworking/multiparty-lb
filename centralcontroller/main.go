@@ -65,6 +65,7 @@ What does cc do:
 type Pod struct {
 	Name           string
 	AppName        string
+	NodeName       string
 	FShare         float64
 	CGroupFilePath string
 }
@@ -855,7 +856,7 @@ func getLogFileFormatLBEnforcement(
 		make(map[string]LBStat),
 	}
 
-	fmt.Println("Node CPU Utilizations: ", nodeCPUUtilizations[0])
+	fmt.Println("Node CPU Utilizations[0]: ", nodeCPUUtilizations[0])
 
 	for _, nodeCPUUtil := range nodeCPUUtilizations {
 
@@ -889,7 +890,7 @@ func parseLBWeightStr(lbWeightsStr string) map[string]LBStat {
 	appWeights := strings.Split(lbWeightsStr, " ")
 	for _, appWeight := range appWeights {
 		appWeightMap := strings.Split(appWeight, ":")
-		if len(appWeightMap) != 4 {
+		if len(appWeightMap) != 5 {
 			panic("Invalid lbWeightsStr: " + lbWeightsStr)
 		}
 		appName := appWeightMap[0]

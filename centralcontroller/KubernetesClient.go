@@ -82,9 +82,10 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 
 		if nodeToPods[pod.Spec.NodeName] != nil {
 			nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
-				Name:    pod.Name,
-				AppName: getAppName(pod),
-				FShare:  0.0,
+				Name:     pod.Name,
+				AppName:  getAppName(pod),
+				NodeName: pod.Spec.NodeName,
+				FShare:   0.0,
 				CGroupFilePath: parentCgroupFolder +
 					"kubepods-" + qosClass +
 					"-pod" +
@@ -94,9 +95,10 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 		} else {
 			nodeToPods[pod.Spec.NodeName] = make(map[string]Pod)
 			nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
-				Name:    pod.Name,
-				AppName: getAppName(pod),
-				FShare:  0.0,
+				Name:     pod.Name,
+				AppName:  getAppName(pod),
+				NodeName: pod.Spec.NodeName,
+				FShare:   0.0,
 				CGroupFilePath: parentCgroupFolder +
 					"kubepods-" + qosClass +
 					"-pod" +
@@ -111,6 +113,7 @@ func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod 
 		nodeToPods[pod.Spec.NodeName][pod.Name] = Pod{
 			Name:           nodeToPods[pod.Spec.NodeName][pod.Name].Name,
 			AppName:        nodeToPods[pod.Spec.NodeName][pod.Name].AppName,
+			NodeName:       pod.Spec.NodeName,
 			FShare:         getFSharePod(numPods, nodeToPods[pod.Spec.NodeName][pod.Name].Name),
 			CGroupFilePath: nodeToPods[pod.Spec.NodeName][pod.Name].CGroupFilePath,
 		}
