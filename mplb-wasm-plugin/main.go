@@ -49,8 +49,8 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	// [nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOAD_BALANCING_STRATEGY = "weighted_leastrequest"
+	// [tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	LOAD_BALANCING_STRATEGY = "tmp_nodal_leastrequest"
 )
 
 var (

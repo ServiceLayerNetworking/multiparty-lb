@@ -55,7 +55,8 @@ func getNextDstEndpoint(dst string, weights []float64, podNodes []int) (int, err
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" {
 		return getNextDstEndpointWeightedLeastRequest(dst, weights)
 
-	} else if LOAD_BALANCING_STRATEGY == "leastrequest" {
+	} else if LOAD_BALANCING_STRATEGY == "leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" {
 		return getNextDstEndpointLeastRequest(dst, weights)
 
 	} else if LOAD_BALANCING_STRATEGY == "locality_aware_weighted_random" {
@@ -89,7 +90,8 @@ func notifyRequestCompletedToLB(dstPod string) {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" ||
 		LOAD_BALANCING_STRATEGY == "leastrequest" ||
-		LOAD_BALANCING_STRATEGY == "minimize_diff" {
+		LOAD_BALANCING_STRATEGY == "minimize_diff" ||
+		LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" {
 
 		// get the outstanding requests for all endpoints of the dst
 		outstandingReqs, cas, err := getOutstandingRequests(dst, -1)

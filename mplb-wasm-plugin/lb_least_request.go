@@ -24,6 +24,10 @@ func getNextDstEndpointLeastRequest(
 	// perform least request
 	selectedEndpoint := doLR(outstandingReqs)
 
+	if LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" {
+		selectedEndpoint = doNodalLeastRequestWithFixedTopo(dst, outstandingReqs)
+	}
+
 	// Increment the active request count for the selected server
 	(*outstandingReqs)[selectedEndpoint]++
 
@@ -58,6 +62,79 @@ func doLR(outstandingReqs *[]int) int {
 
 	// Randomly select a endpoint from the candidates
 	selectedEndpoint = candidates[rand.Intn(len(candidates))]
+
+	return selectedEndpoint
+}
+
+func doNodalLeastRequestWithFixedTopo(dst string, outstandingReqs *[]int) int {
+
+	// fixed topology:
+	svcNodes := map[string][]int{
+		"app1": {2, 1},
+		"app2": {2, 3},
+		"app3": {3},
+	}
+
+	svcOutstandingReqs := make(map[string]*[]int)
+	for service := range svcNodes {
+		if service == dst {
+			svcOutstandingReqs[service] = outstandingReqs
+			proxywasm.LogCriticalf("[%s:%d] Outstanding requests for svc %s: %v",
+				dst, -1, service, *outstandingReqs)
+		} else {
+			n_endpoints := len(svcNodes[service])
+			currSvcOutstandingReqs, _, err := getOutstandingRequests(service, n_endpoints)
+			proxywasm.LogCriticalf("[%s:%d] Outstanding requests for svc %s: %v",
+				dst, n_endpoints, service, *currSvcOutstandingReqs)
+			if err != nil {
+				proxywasm.LogCriticalf(
+					"Couldn't get outstanding requests for endpoint %s: %v",
+					dst, err)
+				return 0
+			}
+			svcOutstandingReqs[service] = currSvcOutstandingReqs
+		}
+	}
+
+	nodeOutstandingReqs := make(map[int]int)
+	nodeOutstandingReqs[1] = (*svcOutstandingReqs["app1"])[0] + (*svcOutstandingReqs["app3"])[0]
+	nodeOutstandingReqs[2] = (*svcOutstandingReqs["app1"])[1] + (*svcOutstandingReqs["app2"])[0]
+	nodeOutstandingReqs[3] = (*svcOutstandingReqs["app2"])[1]
+
+	proxywasm.LogCriticalf("[%s] Node outstanding requests: %v", dst, nodeOutstandingReqs)
+	defer proxywasm.LogCriticalf("[%s] Node outstanding requests: %v", dst, nodeOutstandingReqs)
+
+	selectedEndpoint := 0
+
+	if dst == "app1" {
+		if nodeOutstandingReqs[1] < nodeOutstandingReqs[2] {
+			// if or(node 1) < or(node 2), select app1-1
+			selectedEndpoint = 0
+		} else if nodeOutstandingReqs[2] < nodeOutstandingReqs[1] {
+			// if or(node 2) < or(node 1), select app1-2
+			selectedEndpoint = 1
+		} else {
+			// if or(node 1) == or(node 2), select app1-0 or app1-1 randomly
+			selectedEndpoint = rand.Intn(2)
+		}
+	} else if dst == "app2" {
+		if nodeOutstandingReqs[2] < nodeOutstandingReqs[3] {
+			// if or(node 2) < or(node 3), select app2-0
+			selectedEndpoint = 0
+		} else if nodeOutstandingReqs[3] < nodeOutstandingReqs[2] {
+			// if or(node 3) < or(node 2), select app2-1
+			selectedEndpoint = 1
+		} else {
+			// if or(node 2) == or(node 3), select app2-0 or app2-1 randomly
+			selectedEndpoint = rand.Intn(2)
+		}
+	} else if dst == "app3" {
+		selectedEndpoint = 0
+	} else {
+		proxywasm.LogCriticalf("Unknown service %s", dst)
+	}
+
+	proxywasm.LogCriticalf("[%s] Selected endpoint: %d", dst, selectedEndpoint)
 
 	return selectedEndpoint
 }
