@@ -30,6 +30,8 @@ const (
 	SERVER_PORT = "9988"
 	SERVER_TYPE = "tcp"
 
+	ECHO_SERVER_PORT = "5656"
+
 	M_CPUS_IN_NODE                      = 2000
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 
@@ -299,6 +301,13 @@ func main() {
 
 	// Set default CPU Shares
 	setDefaultCPUShares(nodes)
+
+	// Setup the Echo Service
+	if err := k8sClient.SetupEchoService(); err != nil {
+		log.Fatalf("Failed to set up Kubernetes Service and Endpoint: %v", err)
+	}
+	// Start the Echo Server
+	go echoServer()
 
 	// get pods to log
 	podNamesToLog := getPodsToLog(podNames)

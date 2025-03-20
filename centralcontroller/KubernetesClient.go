@@ -11,6 +11,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -220,6 +221,92 @@ func (k8sClient *KubernetesClient) getHostAgentNodePort(node v1.Node) int {
 	}
 
 	return nodePort
+}
+
+// Function to create a Service and Endpoint
+func (k8sClient *KubernetesClient) SetupEchoService() error {
+	// Define Service
+	service := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "echo-server",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{
+				{
+					Name:       "echo-server",
+					Port:       5656,
+					TargetPort: intstr.FromInt(5656),
+					Protocol:   v1.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	// Create Service
+	_, err := k8sClient.clientset.CoreV1().Services("default").Create(context.TODO(), service, metav1.CreateOptions{})
+	if err != nil {
+		slog.Error(fmt.Sprintf("Service creation failed (may already exist): %v", err))
+	} else {
+		fmt.Println("Service 'echo-server' created successfully")
+	}
+
+	// get the master node's IP
+	masterNodeIP, err := k8sClient.getMasterNodeIP()
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error getting master node IP: %v", err))
+	}
+
+	// Define Endpoint pointing to master node
+	endpoint := &v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "echo-server",
+		},
+		Subsets: []v1.EndpointSubset{
+			{
+				Addresses: []v1.EndpointAddress{
+					{IP: masterNodeIP},
+				},
+				Ports: []v1.EndpointPort{
+					{
+						Port: 5656,
+						Name: "echo-server",
+					},
+				},
+			},
+		},
+	}
+
+	// Create Endpoint
+	_, err = k8sClient.clientset.CoreV1().Endpoints("default").Create(context.TODO(), endpoint, metav1.CreateOptions{})
+	if err != nil {
+		slog.Error(fmt.Sprintf("Endpoint creation failed (may already exist): %v", err))
+	} else {
+		fmt.Println("Endpoint 'echo-server' created successfully")
+	}
+
+	return nil
+}
+
+// Function to get the master node's IP
+func (k8sClient *KubernetesClient) getMasterNodeIP() (string, error) {
+	nodes, err := k8sClient.clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{
+		LabelSelector: "node-role.kubernetes.io/control-plane",
+	})
+	if err != nil || len(nodes.Items) == 0 {
+		nodes, err = k8sClient.clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{
+			LabelSelector: "node-role.kubernetes.io/master",
+		})
+		if err != nil || len(nodes.Items) == 0 {
+			return "", fmt.Errorf("no master node found")
+		}
+	}
+
+	for _, address := range nodes.Items[0].Status.Addresses {
+		if address.Type == v1.NodeInternalIP {
+			return address.Address, nil
+		}
+	}
+	return "", fmt.Errorf("could not determine master node IP")
 }
 
 func getNodeNum(node v1.Node) int {
