@@ -1,0 +1,2 @@
+{"actual": {"app1-0": "node2.k8s-mplb.mlnetwork.emulab.net", "app1-1": "node1.k8s-mplb.mlnetwork.emulab.net", "app2-0": "node2.k8s-mplb.mlnetwork.emulab.net", "app2-1": "node1.k8s-mplb.mlnetwork.emulab.net", "app3-0": "node3.k8s-mplb.mlnetwork.emulab.net"}, "intended": {"app1": ["node1", "node2"], "app2": ["node1", "node2"], "app3": ["node3"]}}
+cc 1741973274.5049462 1741973350.823599

@@ -13,6 +13,8 @@ fi
 
 cd mplb-wasm-plugin
 
+# bash build-and-push.sh
+
 # replace every instance of mplb-plugin:<whatever> with mplb-plugin:$TAG in wasm.yaml
 sed -i "s/mplb-plugin:.*/mplb-plugin:$TAG/g" wasm.yaml
 

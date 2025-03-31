@@ -287,6 +287,24 @@ func (k8sClient *KubernetesClient) SetupEchoService() error {
 	return nil
 }
 
+func (k8sClient *KubernetesClient) GetIngressGatewayURL() string {
+
+	// Get the Ingress Gateway Service
+	ingressGatewayService, err := k8sClient.clientset.CoreV1().Services("istio-system").Get(
+		context.TODO(), "istio-ingressgateway", metav1.GetOptions{})
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error getting Ingress Gateway Service: %v", err))
+		return ""
+	}
+
+	// Get the Ingress Gateway Service's Cluster IP
+	ingressGatewayClusterIP := ingressGatewayService.Spec.ClusterIP
+
+	url := fmt.Sprintf("http://%s", ingressGatewayClusterIP)
+
+	return url
+}
+
 // Function to get the master node's IP
 func (k8sClient *KubernetesClient) getMasterNodeIP() (string, error) {
 	nodes, err := k8sClient.clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{

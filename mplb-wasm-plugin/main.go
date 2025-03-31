@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -50,7 +51,7 @@ const (
 
 	// load balancing strategy
 	// [tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOAD_BALANCING_STRATEGY = "tmp_nodal_leastrequest"
+	LOAD_BALANCING_STRATEGY = "weighted_leastrequest"
 )
 
 var (
@@ -322,7 +323,7 @@ func (p *pluginContext) OnTick() {
 		reqCount,
 		tsListStr,
 		tsSentReqListStr)
-	proxywasm.LogCriticalf("<OnTick>\nreqDest:%s\nreqBody:\n%s", reqDest, reqBody)
+	proxywasm.LogCriticalf("<OnTick>@%dns\nreqDest:%s\nreqBody:\n%s", getCurrUnixTimeNs(), reqDest, reqBody)
 
 	proxywasm.DispatchHttpCall(reqDest, controllerHeaders,
 		[]byte(reqBody), make([][2]string, 0), 5000, OnTickHttpCallResponse)
@@ -439,6 +440,33 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 
 	proxywasm.LogCriticalf(
 		"--Request: %s %s %s %s", reqMethod, reqPath, reqAuthority, traceId)
+
+	// check if request has "CC-State" header, if so it is a post request
+	// from the controller that contains outstanding requests information
+	// echo-ed back to the LB. Process the data and drop request
+	ccState, err := proxywasm.GetHttpRequestHeader("CC-State")
+	if err == nil {
+		proxywasm.LogCriticalf("CC-State header found: %s", ccState)
+		// process the data and drop the request
+
+		// get the latency from CC-StartTime
+		ccReqStartTimeNsStr, err := proxywasm.GetHttpRequestHeader("CC-StartTime")
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't get request header CC-StartTime: %v", err)
+			ccReqStartTimeNsStr = "0"
+		}
+		ccReqStartTimeNs, err := strconv.ParseUint(ccReqStartTimeNsStr, 10, 64)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't parse CC-StartTime: %v", err)
+			ccReqStartTimeNs = 0
+		}
+		ccReqLatencyNs := getCurrUnixTimeNs() - ccReqStartTimeNs
+		ccReqLatencyUs := ccReqLatencyNs / 1000
+		proxywasm.LogCriticalf("Latency from CC to LB: %dμs", ccReqLatencyUs)
+
+		processEchoBody(ccState)
+		return types.ActionPause
+	}
 
 	// the request is originating from this sidecar to another service, we will perform routing magic
 	if !strings.HasPrefix(ctx.pluginContext.serviceName, dst) {
@@ -611,7 +639,8 @@ func (ctx *httpContext) OnHttpResponseHeaders(numHeaders int, endOfStream bool) 
 // bookkeeping and only record the end time for the last response.
 func (ctx *httpContext) OnHttpStreamDone() {
 
-	// defer proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
+	defer proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
+	proxywasm.LogCriticalf("OnHttpStreamDone: Entered")
 
 	reqAuthority, err := proxywasm.GetHttpRequestHeader(":authority")
 	if err != nil {
@@ -663,6 +692,8 @@ func (ctx *httpContext) OnHttpStreamDone() {
 
 	notifyRequestCompletedToLB(dstPod)
 
+	currTime := getCurrUnixTimeNs()
+
 	isTsListChangeSuccessful := false
 
 	for !isTsListChangeSuccessful {
@@ -692,16 +723,20 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		}
 	}
 
-	// get the response headers
-	respHeaders, err := proxywasm.GetHttpResponseHeaders()
-	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get response headers: %v", err)
-		return
-	}
-	//print all headers
-	for _, header := range respHeaders {
-		proxywasm.LogCriticalf("Header: %s: %s", header[0], header[1])
-	}
+	// // get the response headers
+	// respHeaders, err := proxywasm.GetHttpResponseHeaders()
+	// if err != nil {
+	// 	proxywasm.LogCriticalf("Couldn't get response headers: %v", err)
+	// 	return
+	// }
+	// //print all headers
+	// for _, header := range respHeaders {
+	// 	proxywasm.LogCriticalf("Header: %s: %s", header[0], header[1])
+	// }
+
+	// perform the operation
+	timeTaken := getCurrUnixTimeNs() - currTime
+	proxywasm.LogCriticalf("Time taken to do remaining stuff at onHTTPStreamDone: %dus", timeTaken/1e3)
 
 	// get x-request-id from request headers and lookup entry time
 	traceId, err := proxywasm.GetHttpRequestHeader("x-b3-traceid")
@@ -824,6 +859,7 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 		return
 	}
 	svcInfos := strings.Split(body, " ")[1:]
+	topo := make(map[string][]int)
 	for _, svcInfo := range svcInfos {
 		svcInfoSplit := strings.Split(svcInfo, ":")
 		if len(svcInfoSplit) == 2 {
@@ -838,6 +874,7 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			svcCPUConsumptionPerReq := svcInfoSplit[1]
 			svcCPUAllocated := svcInfoSplit[2]
 			svcWeights := svcInfoSplit[3] + "/" + svcInfoSplit[4]
+			topo[svcName] = getSvcNodes(svcInfoSplit[4])
 			proxywasm.LogCriticalf(
 				"setting outbound request weights %v: %v, and svcCPUConsumptionPerReq:%s",
 				svcName, svcWeights, svcCPUConsumptionPerReq)
@@ -855,6 +892,17 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			continue
 		}
 	}
+	// set the topo
+	// marshal the map svcNodes to json bytes and set shared data with key topoKey()
+	topoBytes, err := json.Marshal(topo)
+	if err != nil {
+		proxywasm.LogCriticalf("unable to marshal svcNodes to json: %v", err)
+	} else {
+		if err := proxywasm.SetSharedData(topoKey(), topoBytes, 0); err != nil {
+			proxywasm.LogCriticalf("unable to set shared data for topo: %v", err)
+		}
+	}
+
 }
 
 // IncrementSharedData increments the value of the shared data at the given key. The data is
@@ -1449,6 +1497,26 @@ func appendSentReqStats(currentTime, dstSvc, dstPod string) {
 
 }
 
+func getSvcNodes(svcNodesStr string) []int {
+
+	// format of svcNodesStr: "1|2|3|4"
+
+	svcNodesStrs := strings.Split(svcNodesStr, "|")
+	svcNodesInt := make([]int, len(svcNodesStrs))
+	for i, svcNodeStr := range svcNodesStrs {
+		svcNodeInt, err := strconv.Atoi(svcNodeStr)
+		if err != nil {
+			proxywasm.LogCriticalf("ERROR: Couldn't parse svc node: %v", err)
+			return nil
+		} else {
+			svcNodesInt[i] = svcNodeInt
+		}
+	}
+
+	return svcNodesInt
+
+}
+
 func maxIntArray(arr []int) int {
 	if len(arr) == 0 {
 		return 0 // Return 0 or some other value if the array is empty
@@ -1514,6 +1582,10 @@ func svcCPUConsumptionPerReqKey(svc string) string {
 
 func svcCPUAllocatedKey(svc string) string {
 	return svc + "-cpu-alloc"
+}
+
+func topoKey() string {
+	return "topo"
 }
 
 func endpointOutstandingReqKey(dstSvc string, endpointNum int) string {

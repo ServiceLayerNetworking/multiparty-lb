@@ -52,6 +52,8 @@ const (
 
 	GUROBI_PORT = "4876"
 	GUROBI_URL  = "http://localhost:" + GUROBI_PORT + "/"
+
+	SUPPRESS_CPU_STATS_PRINTING = false
 )
 
 /*
@@ -307,7 +309,7 @@ func main() {
 		log.Fatalf("Failed to set up Kubernetes Service and Endpoint: %v", err)
 	}
 	// Start the Echo Server
-	go echoServer()
+	go echoServer(k8sClient.GetIngressGatewayURL())
 
 	// get pods to log
 	podNamesToLog := getPodsToLog(podNames)
@@ -514,7 +516,9 @@ func printCPUStatsToConsole(
 		toPrint += fmt.Sprintf("%-30s %.2f\n",
 			podName, cpuUtilMap[podName])
 	}
-	fmt.Printf("%s\n", toPrint)
+	if !SUPPRESS_CPU_STATS_PRINTING {
+		fmt.Printf("%s\n", toPrint)
+	}
 }
 
 func getReqStatsJSON(reqStats []ReqStat) string {

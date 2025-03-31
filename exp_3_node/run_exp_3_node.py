@@ -14,7 +14,7 @@ SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 3 * 60 # 3 minutes
 SLEEP_DURATION_AFTER_RESTARTING_K8S = 1 * 60 # 1 minute
 SLEEP_TIME_AFTER_EACH_RUN = 1 * 20 # 20s
 SLEEP_TIME_AFTER_WASM_BUILD = 100 # 100s
-LOG_FOLDER = "logs36"
+LOG_FOLDER = "logs38"
 MANUAL_BUILD = False
 
 def get_gateway_ip():
@@ -122,13 +122,14 @@ def run_exp(variation, rpses, enforcement, distr, proc_distr, append_to_times=""
         
     n_apps = len(rpses)
         
-    # run the app workloads through a single hit
-    q = Queue()
-    Thread(target=run_hit, args=(q, variation, proc_distr, list(range(1, n_apps+1)), rpses, distr)).start()
-        
     q = Queue()
     Thread(target=run_cc, args=(q, variation, enforcement)).start()
     queues.append(q)
+    time.sleep(5)
+    
+    # run the app workloads through a single hit
+    q = Queue()
+    Thread(target=run_hit, args=(q, variation, proc_distr, list(range(1, n_apps+1)), rpses, distr)).start() 
     
     times = []
     
@@ -365,7 +366,8 @@ LB_NAME = {
     "leastrequest": "lr",
     "weighted_random": "wr",
     "locality_aware_weighted_random": "lawr",
-    "weighted_roundrobin": "wrr"
+    "weighted_roundrobin": "wrr",
+    "tmp_nodal_leastrequest": "tnlr",
 }
     
 def run():
@@ -408,7 +410,7 @@ def run():
                     # else:
                     #     time.sleep(SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE)
                     
-                    for lb in ["leastrequest", "minimize_diff"]: # [nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+                    for lb in ["nodal_leastrequest", "minimize_diff", "leastrequest"]: # [tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
                         
                         build_wasm(lb)
                         if MANUAL_BUILD:
@@ -423,15 +425,12 @@ def run():
                             
                             rpses = [rps*3, rps*2, rps*1]
                         
-                            for iteration in [4, 5, 6]:
+                            for iteration in [1, 2, 3]:
                             
-                                for distr in ["none", "exponential"]:
+                                for distr in ["pareto"]:
                                     
-                                    for proc_distr in ["none", "exponential"]:
-                                    
-                                        if distr != proc_distr:
-                                            continue
-                                    
+                                    for proc_distr in ["exponential"]:
+                                                                        
                                         print(f"Starting iteration {iteration} for run_id {run_id}...")
                                         
                                         intended_topology = {
