@@ -171,7 +171,7 @@ def get_locally_optimal_load_distribution(
     for worker in workers:
         worker.processing_rate = 1.0
             
-    max_iterations = 3
+    max_iterations = 10
             
     # Repeat the following steps until convergence (i.e. no worker's processing rate changes in a step):
     for i in range(max_iterations):

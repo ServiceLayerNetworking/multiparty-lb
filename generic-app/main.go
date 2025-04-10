@@ -5,11 +5,100 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
+	"syscall"
 	"time"
 )
+
+func runCPULoad(millicores int, timeMillis int) {
+	if millicores == 0 {
+		return
+	}
+
+	cpuPct := millicores / 10
+	runFor := time.Duration(1000*cpuPct) * time.Microsecond
+	sleepFor := time.Duration(1000*(100-cpuPct)) * time.Microsecond
+	fmt.Printf("Worker sleepFor %s, runFor %s\n", sleepFor.String(), runFor.String())
+	runtime.LockOSThread()
+	// every milliseconds, run for runMicrosecond microseconds, and sleep for sleepMicrosecond microseconds
+
+	ch := time.After(time.Duration(timeMillis) * time.Millisecond)
+startLoop:
+	for {
+		select {
+		case <-ch:
+			runtime.UnlockOSThread()
+			return
+		default:
+			begin := time.Now()
+			for {
+				select {
+				case <-ch:
+					fmt.Printf("Done\n")
+					runtime.UnlockOSThread()
+					return
+				default:
+					if time.Since(begin) > runFor {
+						for {
+							select {
+							case <-ch:
+								fmt.Printf("Done\n")
+								runtime.UnlockOSThread()
+								return
+							case <-time.After(sleepFor):
+								continue startLoop
+							}
+						}
+					}
+
+				}
+			}
+		}
+	}
+}
+
+func runCPUBudgetFair(threadID int, targetMillis int) {
+	target := time.Duration(targetMillis) * time.Millisecond
+	totalUsed := time.Duration(0)
+
+	fmt.Printf("[Thread %d] Starting. Target: %v\n", threadID, target)
+
+	for totalUsed < target {
+		runtime.LockOSThread()
+
+		start := getThreadCPUTime()
+		// Do a short burst of CPU work (~few ms)
+		workUntil := time.Now().Add(1 * time.Millisecond)
+		for time.Now().Before(workUntil) {
+			for i := 0; i < 10000; i++ {
+				_ = i * i
+			}
+		}
+		end := getThreadCPUTime()
+		runtime.UnlockOSThread()
+
+		// Accumulate CPU time used by this burst
+		burstUsed := end - start
+		totalUsed += burstUsed
+
+		// Yield to scheduler to let others run
+		runtime.Gosched()
+	}
+
+	fmt.Printf("[Thread %d] Done. CPU used: %v\n", threadID, totalUsed)
+}
+
+func getThreadCPUTime() time.Duration {
+	var ru syscall.Rusage
+	_ = syscall.Getrusage(syscall.RUSAGE_THREAD, &ru)
+	utime := time.Duration(ru.Utime.Sec)*time.Second + time.Duration(ru.Utime.Usec)*time.Microsecond
+	stime := time.Duration(ru.Stime.Sec)*time.Second + time.Duration(ru.Stime.Usec)*time.Microsecond
+	return utime + stime
+}
 
 func processRequest(totalLoopCount, base, exp float64) float64 {
 	resultSum := 0.0
@@ -80,18 +169,44 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	numOutstandingReqs := int64(-1)
 	currentTime := time.Now().UnixNano()
 
-	loopCount := r.URL.Query().Get("loopCount")
-	base := r.URL.Query().Get("base")
-	exp := r.URL.Query().Get("exp")
+	// check if there is a cpu parameter
+	strCPUMilliCores := r.URL.Query().Get("cpu_mCores")
 
-	loopCountFloat, baseFloat, expFloat, isErr := convParamsToFloat(loopCount, base, exp)
-	if isErr {
-		respondWithError(w, loopCount, base, exp, numOutstandingReqs, currentTime)
-	} else {
-		reqResult := processRequest(loopCountFloat, baseFloat, expFloat)
+	// if there, run cpu load directly
+	if strCPUMilliCores != "" {
+		// get all params
+		strDurationMs := r.URL.Query().Get("d_ms")
+		cpuMilliCores, err := strconv.Atoi(strCPUMilliCores)
+		if err != nil {
+			respondWithError(w, strCPUMilliCores, strDurationMs, "", numOutstandingReqs, currentTime)
+		}
+		durationMs, err := strconv.Atoi(strDurationMs)
+		if err != nil {
+			respondWithError(w, strCPUMilliCores, strDurationMs, "", numOutstandingReqs, currentTime)
+		}
 
-		respondWithSuccess(w, loopCount, base, exp, reqResult, numOutstandingReqs, currentTime)
+		// runCPULoad(cpuMilliCores, durationMs)
+		randomInt := rand.Intn(100)
+		runCPUBudgetFair(randomInt, int((float64(cpuMilliCores)/1000.0)*float64(durationMs)))
 
+		respondWithSuccess(w, strCPUMilliCores, strDurationMs, "", 0.0, numOutstandingReqs, currentTime)
+	} else
+	// do the math operations
+	{
+
+		loopCount := r.URL.Query().Get("loopCount")
+		base := r.URL.Query().Get("base")
+		exp := r.URL.Query().Get("exp")
+
+		loopCountFloat, baseFloat, expFloat, isErr := convParamsToFloat(loopCount, base, exp)
+		if isErr {
+			respondWithError(w, loopCount, base, exp, numOutstandingReqs, currentTime)
+		} else {
+			reqResult := processRequest(loopCountFloat, baseFloat, expFloat)
+
+			respondWithSuccess(w, loopCount, base, exp, reqResult, numOutstandingReqs, currentTime)
+
+		}
 	}
 }
 

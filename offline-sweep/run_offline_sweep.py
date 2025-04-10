@@ -12,10 +12,39 @@ parent_dir = os.path.abspath("../gurobi_server")
 # Add it to sys.path
 sys.path.append(parent_dir)
 
-# import locally_optimal_load_distribution as gs_l
-# import gurobi_server as gs_g
+import locally_optimal_load_distribution as gs_l
+import gurobi_server as gs_g
 
-LOGFILE = "logs/offline_sweep.log"
+NUM_NODES = 3
+NUM_SERVICES = 3
+NUM_PODS_PER_NODE = 5
+NODE_LOAD_CAP = 100
+LOAD_ATOMIC_UNIT = 30
+cluster_cap = NODE_LOAD_CAP * NUM_NODES
+CLUSTER_LOADS = list(range(int(cluster_cap*0.6), int(cluster_cap*1.2)+1, LOAD_ATOMIC_UNIT))
+LB_SVC_LOAD = 0
+UB_SVC_LOAD = 1.5
+
+# autoscaling threshhold
+# latency from real data
+# app latencies
+# threshhold values and the 
+# plots the threshhold values 
+LOGFILE = "logs/offline_sweep_Apr3_2237.log"
+
+def write_config():
+    with open(LOGFILE, "w") as f:
+        f.write(json.dumps({
+            "NumOfNodes": NUM_NODES,
+            "NumOfSvc": NUM_SERVICES,
+            "NumOfPodsPerNode": NUM_PODS_PER_NODE,
+            "NodeLoadCap": NODE_LOAD_CAP,
+            "LoadAtomicUnit": LOAD_ATOMIC_UNIT,
+            "ClusterLoads": CLUSTER_LOADS,
+            "LB_Svc_Load": LB_SVC_LOAD,
+            "UB_Svc_Load": UB_SVC_LOAD,
+            "LogFile": LOGFILE
+        }))
 
 def get_valid_svc_to_node_mappings(num_nodes: int, num_services: int) -> List[Dict[int, List[int]]]:
     """
@@ -69,7 +98,7 @@ def get_valid_load_distributions(total_load: int, num_services: int) -> List[Lis
         ...
     ]
     """
-    atomic_unit = 30
+    atomic_unit = LOAD_ATOMIC_UNIT
     num_units = total_load // atomic_unit
     
     distributions = list(map(lambda distr: list(map(lambda svc_distr: svc_distr*atomic_unit, distr)), 
@@ -117,12 +146,7 @@ def get_all_topos(num_nodes, num_services, num_pods_per_node):
     topos = np.array(list(product(distributions, repeat=num_nodes)))
     print("Number of topos:", topos.shape[0])
     
-    # prune the topos where there are no pods for a service
-    valid_mask = np.all(np.sum(topos, axis=1) >= 1, axis=1)
-    valid_topos = topos[valid_mask]
-    print("Number of valid topos:", valid_topos.shape[0])
-    
-    return valid_topos
+    return topos
 
 def get_topos_feasible_for_load(
     topos: np.array,
@@ -180,18 +204,23 @@ def remove_mirror_topologies(topologies):
 
 def generate_cluster_states():
     
-    num_nodes = 3
-    num_services = 10
-    num_pods_per_node = 5
-    node_cap = 100
+    num_nodes = NUM_NODES
+    num_services = NUM_SERVICES
+    num_pods_per_node = NUM_PODS_PER_NODE
+    node_cap = NODE_LOAD_CAP
     node_caps = [node_cap] * num_nodes
     pod_cap = node_cap // num_pods_per_node
-    cluster_loads = range(180, 361, 30)
-    lb_svc_load = 0.5
-    ub_svc_load = 1.5
+    cluster_loads = CLUSTER_LOADS
+    lb_svc_load = LB_SVC_LOAD
+    ub_svc_load = UB_SVC_LOAD
     
     # get all possible topos, ensuring that hte 
     topos = get_all_topos(num_nodes, num_services, num_pods_per_node)
+    
+    # prune the topos where there are no pods for a service
+    valid_mask = np.all(np.sum(topos, axis=1) >= 1, axis=1)
+    topos = topos[valid_mask]
+    print("Number of valid topos:", topos.shape[0])
     
     topos = remove_mirror_topologies(topos)
     print(f"Number of unique topos: {topos.shape}")
@@ -204,25 +233,26 @@ def generate_cluster_states():
     for cluster_load in cluster_loads:
         svc_load_distributions = get_valid_load_distributions(cluster_load, num_services)
         print(f"Cluster load: {cluster_load}, # of distributions: {len(svc_load_distributions)}")
+        print(f"n_states: {n_states}")
         for svc_loads in svc_load_distributions:
             
             # ensure that the lb*svc_caps <= svc_loads <= ub*svc_caps
             feasible_topos = get_topos_feasible_for_load(topos, svc_loads, lb_svc_load, ub_svc_load, pod_cap)
             n_states += feasible_topos.shape[0]
             
-            # for topology in feasible_topos:
-            #     cluster_state = {
-            #         "NumOfNodes": num_nodes,
-            #         "NumOfSvc": num_services,
-            #         "SvcToNodes": topology,
-            #         "NodeCaps": node_caps,
-            #         "SvcLoads": svc_loads,
-            #     }
-            #     all_states.append(cluster_state)
+            for topology in feasible_topos:
+                cluster_state = {
+                    "NumOfNodes": num_nodes,
+                    "NumOfSvc": num_services,
+                    "NodesToSvc": topology,
+                    "NodeCaps": node_caps,
+                    "SvcLoads": svc_loads,
+                }
+                all_states.append(cluster_state)
     
     print(f"Total number of states: {n_states}")
     
-    # return all_states
+    return all_states
 
 def _generate_cluster_states():   
     """
@@ -253,6 +283,26 @@ def _generate_cluster_states():
     
     return all_states
 
+def populate_pods_from_topology(topology):
+    """
+    Given a 2D topology configuration where each row corresponds to a node and
+    each column to a service (with the cell value indicating the number of pods),
+    this function returns a list of pod dictionaries.
+    """
+    pods = []
+    num_nodes, num_services = topology.shape
+
+    for node_id in range(num_nodes):
+        for svc_id in range(num_services):
+            num_pods = topology[node_id, svc_id]
+            for pod_id in range(num_pods):
+                pods.append({
+                    "name": f"svc{svc_id}-node{node_id}-{pod_id}",
+                    "host": f"node{node_id}",
+                    "tenant": f"svc{svc_id}"
+                })
+    return pods
+
 def parse_cluster_state_for_gs(
     
     state: Dict[str, any]) -> Tuple[Dict[str, any], Dict[str, any], Dict[str, any]]:
@@ -277,13 +327,16 @@ def parse_cluster_state_for_gs(
         }
         
     workers = []
-    for svc_id, nodes in state["SvcToNodes"].items():
-        for node_id in nodes:
-            workers.append({
-                "name": f"svc{svc_id}-node{node_id}",
-                "host": f"node{node_id}",
-                "tenant": f"svc{svc_id}"
-            })
+    if "SvcToNodes" in state:
+        for svc_id, nodes in state["SvcToNodes"].items():
+            for node_id in nodes:
+                workers.append({
+                    "name": f"svc{svc_id}-node{node_id}",
+                    "host": f"node{node_id}",
+                    "tenant": f"svc{svc_id}"
+                })
+    else:
+        workers = populate_pods_from_topology(state["NodesToSvc"])
     
     # calculate the fshareload for each tenant
     # fshareload_of_tenant_t = sum(fshareload_of_worker_w when w.tenant == t)
@@ -307,6 +360,9 @@ def run_offline_exp(state: Dict[str, any]):
     global_result = gs_g.run_from_json(hosts, tenants, workers)
     local_result = gs_l.run_from_json(hosts, tenants, workers)
     
+    if "NodesToSvc" in state:
+        state["NodesToSvc"] = state["NodesToSvc"].tolist()
+    
     output = {
         "State": state,
         "Hosts": hosts,
@@ -315,7 +371,7 @@ def run_offline_exp(state: Dict[str, any]):
         "GlobalResult": global_result,
         "LocalResult": local_result
     }
-    
+     
     # append output to log file
     with open(LOGFILE, "a") as f:
         f.write(json.dumps(output) + "\n")
@@ -324,71 +380,12 @@ def run_offline_sweep():
     states = generate_cluster_states()
     
     for i, state in enumerate(states):
-        run_offline_exp(state)
-        print(f"Done with state {i+1}/{len(states)}")
+        if i in [143929, 159856, 162078, 163838, 170111, 174690, 175995, 177452]:
+            run_offline_exp(state)
+            print(f"Done with state {i+1}/{len(states)}")
+            input()
 
 if __name__ == "__main__":
     
-    generate_cluster_states()
-    # states = generate_cluster_states()
-    # # print(json.dumps(states, indent=4))
-    # print(f"Total number of states: {len(states)}")
-    
-    # print(states[150])
-    
-    # print(parse_cluster_state_for_gs(states[150]))
-    
-    # run_offline_sweep()
-    
-    # cap_node = 100
-    # num_of_pods_per_node = 10
-    # pod_cap = cap_node // num_of_pods_per_node
-    # num_of_units = num_of_pods_per_node
-    # num_of_services = 3
-    # num_of_nodes = 3
-    # distributions = list(map(lambda distr: list(map(lambda svc_distr: svc_distr*1, distr)), 
-    #                          generate_distributions(num_of_units, num_of_services)))
-    
-    # # topos = list(map(np.array, product(distributions, repeat=num_of_nodes)))
-    # # print(len(topos))
-    # # valid_topos = [topo for topo in topos if np.min(np.sum(topo, axis=0) >= 1)]
-    
-    # topos = np.array(list(product(distributions, repeat=num_of_nodes)))
-    # print(topos.shape)
-    # valid_mask = np.all(np.sum(topos, axis=1) >= 1, axis=1)
-    # valid_topos = topos[valid_mask]
-    
-    # print(valid_topos.shape)
-    
-    # feasible_loads = get_topos_feasible_for_load(valid_topos, [60, 60, 60], 0.5, 1.5, pod_cap)
-    # print(feasible_loads.shape)
-    
-    # number_of_pods_per_svc = [np.sum(topo, axis=0) for topo in valid_topos]
-    
-    # svc_to_nodes = []
-    
-    # for topo in valid_topos:
-        
-    #     svc_to_node = {}
-        
-    #     # Iterate over the columns
-    #     for col_idx in range(topo.shape[1]):
-    #         column = topo[:, col_idx]  # Extract the column
-    #         transformed_list = []  # Store the transformed values
-
-    #         # Transform each value
-    #         for row_idx, count in enumerate(column):
-    #             transformed_list.extend([row_idx] * count)  # Append 'count' copies of row_idx
-
-    #         # Assign to dictionary
-    #         svc_to_node[col_idx] = transformed_list
-        
-    #     svc_to_nodes.append(svc_to_node)
-    
-    
-    # print(topos)
-    # print(valid_topos)
-    # print(number_of_pods_per_svc)
-    # print(svc_to_nodes)
-    # print(len(topos), len(distributions), len(distributions)**num_of_nodes)
-    # print(len(valid_topos))
+    write_config()
+    run_offline_sweep()
