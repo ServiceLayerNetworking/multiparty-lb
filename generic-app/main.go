@@ -170,26 +170,19 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 	currentTime := time.Now().UnixNano()
 
 	// check if there is a cpu parameter
-	strCPUMilliCores := r.URL.Query().Get("cpu_mCores")
+	strCPUConsumption := r.URL.Query().Get("cpu_coreMs")
 
 	// if there, run cpu load directly
-	if strCPUMilliCores != "" {
-		// get all params
-		strDurationMs := r.URL.Query().Get("d_ms")
-		cpuMilliCores, err := strconv.Atoi(strCPUMilliCores)
+	if strCPUConsumption != "" {
+		cpuConsumption, err := strconv.ParseFloat(strCPUConsumption, 64)
 		if err != nil {
-			respondWithError(w, strCPUMilliCores, strDurationMs, "", numOutstandingReqs, currentTime)
-		}
-		durationMs, err := strconv.Atoi(strDurationMs)
-		if err != nil {
-			respondWithError(w, strCPUMilliCores, strDurationMs, "", numOutstandingReqs, currentTime)
+			respondWithError(w, strCPUConsumption, "", "", numOutstandingReqs, currentTime)
 		}
 
-		// runCPULoad(cpuMilliCores, durationMs)
 		randomInt := rand.Intn(100)
-		runCPUBudgetFair(randomInt, int((float64(cpuMilliCores)/1000.0)*float64(durationMs)))
+		runCPUBudgetFair(randomInt, int(cpuConsumption))
 
-		respondWithSuccess(w, strCPUMilliCores, strDurationMs, "", 0.0, numOutstandingReqs, currentTime)
+		respondWithSuccess(w, strCPUConsumption, "", "", 0.0, numOutstandingReqs, currentTime)
 	} else
 	// do the math operations
 	{

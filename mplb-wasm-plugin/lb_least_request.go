@@ -28,17 +28,24 @@ func getNextDstEndpointLeastRequest(
 		selectedEndpoint = doNodalLeastRequestWithFixedTopo(dst, outstandingReqs)
 	}
 
-	// Increment the active request count for the selected server
-	(*outstandingReqs)[selectedEndpoint]++
+	if LOAD_BALANCING_STRATEGY == "leastrequest" {
+		// Increment the active request count for the selected server
+		(*outstandingReqs)[selectedEndpoint]++
 
-	// set the new outstanding requests
-	err = setOutstandingReqs(cas, dst, outstandingReqs)
-	if err != nil {
-		proxywasm.LogCriticalf("Couldn't set outstanding requests: %v", err)
+		// set the new outstanding requests
+		err = setOutstandingReqs(cas, dst, outstandingReqs)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't set outstanding requests: %v", err)
 
-		// try again, another thread has changed outstanding requests since we
-		// 	last read them
-		return getNextDstEndpointLeastRequest(dst, weights)
+			// try again, another thread has changed outstanding requests since we
+			// 	last read them
+			return getNextDstEndpointLeastRequest(dst, weights)
+		}
+	} else {
+		// if the load balancing strategy is leastrequest_plus, we will
+		// instead of incrementing directly, we will issue a request to the CC t
+		// send this to all the LBs
+		sendEchoRequestToCC(dst, selectedEndpoint, "++")
 	}
 
 	return selectedEndpoint, nil

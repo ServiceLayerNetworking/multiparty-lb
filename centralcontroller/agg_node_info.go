@@ -25,9 +25,9 @@ func getLatencyUsFromData(data []byte) int {
 	return int(latency / 1000)
 }
 
-func makeReqToK8sHost(dstURL string, dstHost string, data []byte) {
+func makeReqToK8sHost(dstURL string, data []byte) {
 
-	fmt.Printf("Request to %s|%s\n", dstURL, dstHost)
+	fmt.Printf("Request to %s\n", dstURL)
 
 	fmt.Printf("Latency from LB to CC: %dμs\n", getLatencyUsFromData(data))
 
@@ -36,7 +36,7 @@ func makeReqToK8sHost(dstURL string, dstHost string, data []byte) {
 		fmt.Printf("client: error creating http request to echo: %s\n", err)
 		return
 	}
-	req.Host = dstHost
+	// req.Host = dstHost
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("Connection", "close")
 
@@ -61,11 +61,11 @@ func makeReqToK8sHost(dstURL string, dstHost string, data []byte) {
 		return
 	}
 
-	fmt.Printf("Request to %s|%s | Response: [%s] %s, %dμs\n",
-		dstURL, dstHost, res.Status, string(resBody), latency.Microseconds())
+	fmt.Printf("Request to %s | Response: [%s] %s, %dμs\n",
+		dstURL, res.Status, string(resBody), latency.Microseconds())
 }
 
-func echoServer(ingressGatewayURL string) {
+func echoServer(ingressGatewayURLs []string) {
 
 	// HTTP Server to Echo POST Request Body
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -82,8 +82,12 @@ func echoServer(ingressGatewayURL string) {
 
 		fmt.Printf("Received request to echo: %s\n", body)
 
-		// Make request to K8s Host
-		go makeReqToK8sHost(ingressGatewayURL, "app1.mplb.com", body)
+		for _, ingressGatewayURL := range ingressGatewayURLs {
+			// Make request to K8s Host
+			go makeReqToK8sHost(ingressGatewayURL, body)
+		}
+		// go makeReqToK8sHost(ingressGatewayURL, "app1.mplb.com", body)
+		// go makeReqToK8sHost(ingressGatewayURL, "app1.mplb.com", body)
 		// go makeReqToK8sHost("http://172.24.92.73:3333", "app1.mplb.com", body)
 
 		defer r.Body.Close()

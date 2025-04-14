@@ -56,7 +56,8 @@ func getNextDstEndpoint(dst string, weights []float64, podNodes []int) (int, err
 		return getNextDstEndpointWeightedLeastRequest(dst, weights)
 
 	} else if LOAD_BALANCING_STRATEGY == "leastrequest" ||
-		LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" {
+		LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus" {
 		return getNextDstEndpointLeastRequest(dst, weights)
 
 	} else if LOAD_BALANCING_STRATEGY == "locality_aware_weighted_random" {
@@ -117,7 +118,8 @@ func notifyRequestCompletedToLB(dstPod string) {
 			notifyRequestCompletedToLB(dstPod)
 		}
 
-	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" {
+	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus" {
 
 		informReqCompletedToSvcBasedNodalLR(dst, endpointNum)
 

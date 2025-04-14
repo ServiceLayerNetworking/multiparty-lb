@@ -308,8 +308,11 @@ func main() {
 	if err := k8sClient.SetupEchoService(); err != nil {
 		log.Fatalf("Failed to set up Kubernetes Service and Endpoint: %v", err)
 	}
+	// Get the ingress gateway URLs
+	ingressGatewayURLs := k8sClient.GetIngressGatewayURLs()
+	fmt.Printf("Ingress Gateway URLs: %v\n", ingressGatewayURLs)
 	// Start the Echo Server
-	go echoServer(k8sClient.GetIngressGatewayURL())
+	go echoServer(ingressGatewayURLs)
 
 	// get pods to log
 	podNamesToLog := getPodsToLog(podNames)

@@ -1,0 +1,54 @@
+
+apiVersion: install.istio.io/v1alpha3
+kind: IstioOperator
+metadata:
+  name: istio-multi-gateways
+spec:
+  profile: default
+  components:
+    ingressGateways:
+      - name: istio-ingressgateway-svc0
+        namespace: istio-ingress
+        enabled: true
+        label:
+          istio: ingressgateway-svc0
+        k8s:
+          service:
+            type: LoadBalancer
+          hpaSpec:
+            minReplicas: 3
+            maxReplicas: 3
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1024Mi
+      - name: istio-ingressgateway-svc1
+        namespace: istio-ingress
+        enabled: true
+        label:
+          istio: ingressgateway-svc1
+        k8s:
+          service:
+            type: LoadBalancer
+          hpaSpec:
+            minReplicas: 3
+            maxReplicas: 3
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1024Mi
+      - name: istio-ingressgateway-svc2
+        namespace: istio-ingress
+        enabled: true
+        label:
+          istio: ingressgateway-svc2
+        k8s:
+          service:
+            type: LoadBalancer
+          hpaSpec:
+            minReplicas: 3
+            maxReplicas: 3
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1024Mi

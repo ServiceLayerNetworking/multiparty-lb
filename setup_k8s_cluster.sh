@@ -32,7 +32,7 @@ cd "$(find . -maxdepth 1 -type d -name "istio-*" | head -n 1)"
 echo "export PATH=$PWD/bin:$PATH" >> ~/.bashrc && source ~/.bashrc
 cd ..
 
-istioctl install -y
+istioctl install -y -f ~/multiparty-lb/dst-rules_virtual-svcs/multiGateway.yaml
 kubectl label namespace default istio-injection=enabled --overwrite
 kubectl rollout restart statefulset
 
@@ -42,8 +42,25 @@ kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samp
 # bash restart_wasm.sh
 echo "[SCRIPT] installing WASM plugins.."
 kubectl apply -f dst-rules_virtual-svcs/node-env-var-labels.yaml
+kubectl apply -f dst-rules_virtual-svcs/arbitrarySvc.yaml
 kubectl apply -f mplb-wasm-plugin/wasm.yaml
 
+# Loop through all deployments in the istio-ingress namespace and remove the resource limits
+for d in $(kubectl get deploy -n istio-ingress -o jsonpath='{.items[*].metadata.name}'); do
+    echo "Patching deployment: $d"
+    # Patch the deployment to remove the resource limits
+    kubectl patch deployment "$d" -n istio-ingress \
+        --type='json' \
+        -p='[
+            {
+                "op": "remove",
+                "path": "/spec/template/spec/containers/0/resources/limits"
+            }
+        ]'
+    echo "Limits removed from deployment: $d"
+done
+
+echo "Limits have been removed from all deployments in istio-ingress."
 echo "[SCRIPT] Applying taints to three nodes..."
 kubectl taint nodes node1.k8s-mplb.mlnetwork.emulab.net node=node1:NoSchedule --overwrite
 kubectl taint nodes node2.k8s-mplb.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
@@ -55,13 +72,13 @@ kubectl taint nodes node3.k8s-mplb.mlnetwork.emulab.net node=node3:NoSchedule --
 # echo "[SCRIPT] Starting HotelReservation..."
 # kubectl apply -Rf DeathStarBench/hotelReservation/kubernetes
 
-echo "[SCRIPT] Starting Generic Apps..."
-kubectl apply -Rf generic-app/3-node-scenario
+# echo "[SCRIPT] Starting Generic Apps..."
+# kubectl apply -Rf generic-app/3-node-scenario
 
 echo "[SCRIPT] Creating namespace mplb-system..."
 kubectl create namespace mplb-system
 
-kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
+# kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
 
 echo "[SCRIPT] Spawning host agents on each node..."
 kubectl apply -f host_agent/pod_svc_for_master_node.yaml
@@ -72,11 +89,11 @@ do
   sed -i "s/node$i/node0/g" host_agent/pod_svc.yaml
 done
 
-echo "[SCRIPT] Applying istio configs for hotelReservation..."
-kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
+# echo "[SCRIPT] Applying istio configs for hotelReservation..."
+# kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
 # dst-rules_virtual-svcs/virtualservice-headermatch/vs-headermatch -exclude
 # kubectl rollout restart statefulset
 # kubectl rollout restart deploy istio-ingressgateway -n istio-system
 
-echo "Run these commands to get the frontend and gateway IPs:"
-echo 'GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath="{.spec.clusterIP}")'
+# echo "Run these commands to get the frontend and gateway IPs:"
+# echo 'GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath="{.spec.clusterIP}")'

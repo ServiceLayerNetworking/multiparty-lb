@@ -50,7 +50,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	// [tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	// [leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 	LOAD_BALANCING_STRATEGY = "weighted_leastrequest"
 )
 
@@ -465,6 +465,15 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		proxywasm.LogCriticalf("Latency from CC to LB: %dμs", ccReqLatencyUs)
 
 		processEchoBody(ccState)
+
+		proxywasm.SendHttpResponse(
+			200,
+			[][2]string{
+				{"Content-Type", "text/plain"},
+			},
+			[]byte("Received the state"), // Body of the response
+			0,                            // GRPC status code OK
+		)
 		return types.ActionPause
 	}
 

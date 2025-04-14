@@ -49,7 +49,18 @@ func getAppName(pod v1.Pod) string {
 			return owner.Name
 		}
 	}
-	return pod.Name
+	// If no owner reference is found, remove the suffix -\d+ from the end
+	// assume pod name is "appName-<something>-<number>", output appName-<something> as appname
+
+	// split the pod name by "-"
+	parts := strings.Split(pod.Name, "-")
+	if len(parts) <= 1 {
+		// if there is no "-" in the pod name, return the pod name as is
+		return pod.Name
+	} else {
+		// join the parts except the last one
+		return strings.Join(parts[:len(parts)-1], "-")
+	}
 }
 
 func (k8sClient *KubernetesClient) GetNodesToPodMap() map[string]map[string]Pod {
@@ -303,6 +314,28 @@ func (k8sClient *KubernetesClient) GetIngressGatewayURL() string {
 	url := fmt.Sprintf("http://%s", ingressGatewayClusterIP)
 
 	return url
+}
+
+func (k8sClient *KubernetesClient) GetIngressGatewayURLs() []string {
+
+	// List pods in "istio-ingress" namespace
+	pods, err := k8sClient.clientset.CoreV1().Pods("istio-ingress").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		slog.Error(fmt.Sprintf("Error getting Ingress Gateway Service pods: %v", err))
+	}
+
+	urls := make([]string, 0)
+	for _, pod := range pods.Items {
+		// Get the pod's IP address
+		podIP := pod.Status.PodIP
+
+		// Construct the URL
+		url := fmt.Sprintf("http://%s:8080", podIP)
+
+		urls = append(urls, url)
+	}
+
+	return urls
 }
 
 // Function to get the master node's IP

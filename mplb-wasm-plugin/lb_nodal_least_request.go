@@ -43,10 +43,9 @@ func getNextDstEndpointNodalLeastRequest(
 	// 	return getNextDstEndpointLeastRequest(dst, weights)
 	// }
 
-	// instead of incrementing directly, we will issue a request to the echo server
-	// at CC to simulate the delay caused by inter-node latencies
+	// instead of incrementing directly, we will issue a request to the CC t
+	// send this to all the LBs
 	sendEchoRequestToCC(dst, selectedEndpoint, "++")
-	// informReqCompletedToSvcBasedNodalLR(dst, selectedEndpoint)
 
 	return selectedEndpoint, nil
 }
@@ -226,7 +225,7 @@ func getTopology() (map[string][]int, error) {
 	valBytes, _, err := proxywasm.GetSharedData(topoKey())
 
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get shared data for topo %s: %v", err)
+		proxywasm.LogCriticalf("Couldn't get shared data for topo %s: %v", topoKey(), err)
 		return nil, err
 	}
 

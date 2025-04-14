@@ -40,3 +40,69 @@ spec:
       valueFrom: HOST
     - name: ISTIO_META_POD_NAME
       valueFrom: HOST
+---
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: mplb-wasm-plugin-svc0
+  namespace: istio-ingress
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway-svc0
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest
+  imagePullPolicy: Always
+  vmConfig:
+    env:
+    - name: HOSTNAME
+      valueFrom: HOST
+    - name: ISTIO_META_WORKLOAD_NAME
+      valueFrom: HOST
+    - name: ISTIO_META_NODE_NAME
+      valueFrom: HOST
+    - name: ISTIO_META_POD_NAME
+      valueFrom: HOST
+---
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: mplb-wasm-plugin-svc1
+  namespace: istio-ingress
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway-svc1
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest
+  imagePullPolicy: Always
+  vmConfig:
+    env:
+    - name: HOSTNAME
+      valueFrom: HOST
+    - name: ISTIO_META_WORKLOAD_NAME
+      valueFrom: HOST
+    - name: ISTIO_META_NODE_NAME
+      valueFrom: HOST
+    - name: ISTIO_META_POD_NAME
+      valueFrom: HOST
+---
+apiVersion: extensions.istio.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: mplb-wasm-plugin-svc2
+  namespace: istio-ingress
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway-svc2
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest
+  imagePullPolicy: Always
+  vmConfig:
+    env:
+    - name: HOSTNAME
+      valueFrom: HOST
+    - name: ISTIO_META_WORKLOAD_NAME
+      valueFrom: HOST
+    - name: ISTIO_META_NODE_NAME
+      valueFrom: HOST
+    - name: ISTIO_META_POD_NAME
+      valueFrom: HOST

@@ -8,3 +8,5 @@ istio-*
 
 cri-dockerd-*
 tinygo_*
+
+__pycache__

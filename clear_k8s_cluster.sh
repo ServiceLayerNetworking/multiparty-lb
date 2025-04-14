@@ -3,6 +3,7 @@
 set -x
 
 kubectl delete -Rf generic-app/3-node-scenario
+kubectl delete pod --all -n default
 
 bash hostagents_delete.sh
 

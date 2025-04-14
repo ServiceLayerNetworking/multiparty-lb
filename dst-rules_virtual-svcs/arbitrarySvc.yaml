@@ -1,0 +1,182 @@
+
+#########################################################################
+###
+# Gateway/VirtualService for HotelReservation frontend
+###
+#########################################################################
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ingress-gateway-svc0
+spec:
+  selector:
+    istio: ingressgateway-svc0 # use the custom configured gateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - svc0.mplb.com
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ingress-gateway-svc1
+spec:
+  selector:
+    istio: ingressgateway-svc1 # use the custom configured gateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - svc1.mplb.com
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: ingress-gateway-svc2
+spec:
+  selector:
+    istio: ingressgateway-svc2 # use the custom configured gateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - svc2.mplb.com
+---
+#########################################################################
+###
+# and does header-based route matching to the correct subset
+# based on the x-lb-endpt header
+###
+#########################################################################
+
+# DestinationRule for frontend, subsetting by label.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: svc0-destination
+  namespace: default
+spec:
+  host: svc0 # the k8s service name for your application
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+  subsets:
+  - name: svc0-0
+    labels:
+      statefulset.kubernetes.io/pod-name: svc0-0
+  - name: svc0-1
+    labels:
+      statefulset.kubernetes.io/pod-name: svc0-1
+  - name: svc0-2
+    labels:
+      statefulset.kubernetes.io/pod-name: svc0-2
+---
+# DestinationRule for frontend, subsetting by label.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: svc1-destination
+  namespace: default
+spec:
+  host: svc1
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+  subsets:
+  - name: svc1-0
+    labels:
+      statefulset.kubernetes.io/pod-name: svc1-0
+  - name: svc1-1
+    labels:
+      statefulset.kubernetes.io/pod-name: svc1-1
+---
+# Subset routing: if x-lb-endpt is svc0-0, route to svc0-0, if svc0-1, route to svc0-1, if not set, random.
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: svc0-virtualservice
+spec:
+  hosts:
+  - svc0.mplb.com
+  gateways:
+  - ingress-gateway-svc0
+  http: 
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: svc0-0
+    route:
+    - destination:
+        host: svc0
+        subset: svc0-0
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: svc0-1
+    route:
+    - destination:
+        host: svc0
+        subset: svc0-1
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: svc0-2
+    route:
+    - destination:
+        host: svc0
+        subset: svc0-2
+        port:
+          number: 3333
+  - route:
+    - destination:
+        host: svc0
+        port:
+          number: 3333
+---
+# Subset routing: if x-lb-endpt is svc1-0, route to svc1-0, if svc1-1, route to svc1-1, if not set, random.
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: svc1-virtualservice
+spec:
+  hosts:
+  - svc1.mplb.com
+  gateways:
+  - ingress-gateway-svc1
+  http: 
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: svc1-0
+    route:
+    - destination:
+        host: svc1
+        subset: svc1-0
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: svc1-1
+    route:
+    - destination:
+        host: svc1
+        subset: svc1-1
+        port:
+          number: 3333
+  - route:
+    - destination:
+        host: svc1
+        port:
+          number: 3333
