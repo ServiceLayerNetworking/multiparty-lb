@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -60,12 +61,15 @@ func (de *DemandEstimator) UpdateState(
 
 	// appending all the processed requests to the state
 	for _, reqStat := range reqStats {
+		// if ".mplb.com" is in the service name, we need to remove it
+		reqStat.DstSvc = strings.ReplaceAll(reqStat.DstSvc, ".mplb.com", "")
 		if _, ok := de.ProcessedReqTimestamps[reqStat.DstSvc]; !ok {
 			de.ProcessedReqTimestamps[reqStat.DstSvc] = make([]int64, 0)
 		}
 		de.ProcessedReqTimestamps[reqStat.DstSvc] = append(
 			de.ProcessedReqTimestamps[reqStat.DstSvc], reqStat.EndTimeMs)
 	}
+	// fmt.Printf("ProcessedReqTimestamps: %v\n", de.ProcessedReqTimestamps)
 
 	// Remove the telemetry older than 5 minutes
 
@@ -86,6 +90,10 @@ func (de *DemandEstimator) UpdateState(
 			continue
 		}
 		truncateIndex := len(reqTimestamps)
+		// sort the timestamps in ascending order
+		sort.Slice(reqTimestamps, func(i, j int) bool {
+			return reqTimestamps[i] < reqTimestamps[j]
+		})
 		for i, reqTimestamp := range reqTimestamps {
 			if reqTimestamp >= earlistCPUTimeStampMs-700 {
 				truncateIndex = i
@@ -94,6 +102,7 @@ func (de *DemandEstimator) UpdateState(
 		}
 		de.ProcessedReqTimestamps[svcName] = de.ProcessedReqTimestamps[svcName][truncateIndex:]
 	}
+	fmt.Printf("ProcessedReqTimestamps: %v\n", de.ProcessedReqTimestamps)
 
 }
 
@@ -115,21 +124,25 @@ func (de *DemandEstimator) GetDemandEstimates() map[string]float64 {
 			sumCPUUtil += cpuUtilState.CpuUtil
 		}
 
-		// THIS IS FRICKIN BUGGY
+		// THIS IS BUGGY
 		timeTakenMs := int64(700)
 		if len(cpuUtilStates) > 1 {
 			timeTakenMs += cpuUtilStates[len(cpuUtilStates)-1].EndTime - cpuUtilStates[0].EndTime
 		}
 
-		timeTakenSec := float64(timeTakenMs) / 1000.0
+		timeTakenSec := (float64(timeTakenMs) / 1000.0) / float64(len(cpuUtilStates))
 
 		cpuConsumption := sumCPUUtil * timeTakenSec
+		// cpu consumption is in percentag of core seconds
 
 		// now get the number of requests processed in the last timeTakenMs
 		numReqs := len(de.ProcessedReqTimestamps[svcName])
 
 		cpuConsumptionPerReq := cpuConsumption / float64(numReqs)
-		fmt.Println("CPU Consumption per req for service", svcName, "is", cpuConsumptionPerReq, "with", numReqs, "requests")
+		cpuConsumptionCoreSecPerReq := cpuConsumptionPerReq / 100.0
+		cpuConsumptionCoreMsPerReq := cpuConsumptionCoreSecPerReq * 1000.0
+
+		fmt.Println("CPU Consumption per req for service", svcName, "is", cpuConsumptionCoreMsPerReq, "coreMs with", numReqs, "requests")
 		if numReqs == 0 {
 			cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
 		}

@@ -38,7 +38,7 @@ const (
 	USE_RPS_INSTEAD_OF_CPU      = true
 	USE_OFFLINE_DEMAND_ESTIMATE = false
 	CPU_CONSUMPTION_PER_REQ     = 2.3
-	SVC_CPU_UTIL_HEADROOM       = 20  // 20% headroom
+	SVC_CPU_UTIL_HEADROOM       = 0   // 20% headroom
 	RPS_WINDOW_MS               = 500 // 500ms window to look for how many requests are sent and base our CPU off of that
 
 	OVERHEAD           = 10 // 10% overhead

@@ -111,6 +111,10 @@ func getPerAppRpsBasedUtil(
 		if maxStartTimeMs-reqStat.StartTimeMs <= RPS_WINDOW_MS {
 			// remove .mplb.com from the dstSvc
 			dstSvc := strings.ReplaceAll(reqStat.DstSvc, ".mplb.com", "")
+			_, ok := svcSentReqs[dstSvc]
+			if !ok {
+				svcSentReqs[dstSvc] = 0
+			}
 			svcSentReqs[dstSvc]++
 		}
 	}
