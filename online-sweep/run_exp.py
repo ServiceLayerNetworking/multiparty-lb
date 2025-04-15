@@ -12,7 +12,7 @@ from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
 # Everything in seconds:
 DURATION = 60 
 DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5 
-ADDITIONAL_TIME_FOR_CC_TO_RUN = 30
+ADDITIONAL_TIME_FOR_CC_TO_RUN = 15
 SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 5 
 SLEEP_TIME_AFTER_EACH_RUN = 10
 
@@ -265,7 +265,7 @@ def run_exp_for_cluster_state(
     
     print(f"Running experiment w/ state {state_id} i.e. loads={svc_loads} & podnames={pod_names}")
     
-    for lb in ["leastrequest", "leastrequest_plus", "nodal_leastrequest", "minimize_diff"]: # [leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+    for lb in ["leastrequest", "minimize_diff"]: # [leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
@@ -279,11 +279,11 @@ def run_exp_for_cluster_state(
             print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
             continue
     
-        for iteration in [1]:
+        for iteration in [1, 2, 3]:
         
-            for distr in ["none"]:
+            for distr in ["exponential"]:
                 
-                for proc_distr in ["none"]:
+                for proc_distr in ["exponential"]:
                                                     
                     print(f"Starting iteration {iteration} for run_id {state_id}...")
                     
@@ -315,12 +315,37 @@ def prep_for_exps():
     
     build_central_controller()
 
+def read_json_line(filename, line_number):
+    """
+    Reads a specific line from a file and parses it as JSON.
+
+    Args:
+        filename (str): Path to the file.
+        line_number (int): The 1-based line number to read.
+
+    Returns:
+        dict: The parsed JSON object from the specified line.
+
+    Raises:
+        ValueError: If the line does not contain valid JSON.
+        IndexError: If the line number is out of range.
+    """
+    with open(filename, 'r') as file:
+        for i, line in enumerate(file, start=0):
+            if i == line_number:
+                try:
+                    return json.loads(line)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"Line {line_number} is not valid JSON: {e}")
+        raise IndexError(f"Line {line_number} not found in file.")
+
 if __name__ == "__main__":
     
     prep_for_exps()
     
     state_id = 0
-    svc_loads = [300, 200, 100]
+    svc_loads = [300*0.7, 200*0.7, 100*0.7]
+    svc_loads = [int(x) for x in svc_loads]
     svc_to_nodes = {
         "svc0": ["node0", "node1"],
         "svc1": ["node1", "node2"],
@@ -334,5 +359,40 @@ if __name__ == "__main__":
         "svc2-node0-0",
     ]
     
-    run_exp_for_cluster_state(state_id, svc_loads, svc_to_nodes, pod_names)
+    # # config 71296
+    # state_id = 71296
+    # svc_loads = [180, 180, 120]
+    # # svc_loads = [300*0.7, 200*0.7, 100*0.7]
+    # svc_loads = [int(x*0.8) for x in svc_loads]
+    # svc_to_nodes = {
+    #     "svc0": ["node0", "node0", "node0"],
+    #     "svc1": ["node0", "node0", "node1", "node1", "node1"],
+    #     "svc2": ["node1", "node1", "node2", "node2", "node2", "node2", "node2"],
+    # }
+    # pod_names = [
+    #     'svc0-node0-0',
+    #     'svc0-node0-1',
+    #     'svc0-node0-2',
+    #     'svc1-node0-0',
+    #     'svc1-node0-1',
+    #     'svc1-node1-0',
+    #     'svc1-node1-1',
+    #     'svc1-node1-2',
+    #     'svc2-node1-0',
+    #     'svc2-node1-1',
+    #     'svc2-node2-0',
+    #     'svc2-node2-1',
+    #     'svc2-node2-2',
+    #     'svc2-node2-3',
+    #     'svc2-node2-4'
+    # ]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names)
+    
+    # state_id = 71296
+    # print(read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1))
     

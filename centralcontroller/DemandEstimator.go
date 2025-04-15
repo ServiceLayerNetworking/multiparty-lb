@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sort"
 	"time"
 )
@@ -128,6 +129,7 @@ func (de *DemandEstimator) GetDemandEstimates() map[string]float64 {
 		numReqs := len(de.ProcessedReqTimestamps[svcName])
 
 		cpuConsumptionPerReq := cpuConsumption / float64(numReqs)
+		fmt.Println("CPU Consumption per req for service", svcName, "is", cpuConsumptionPerReq, "with", numReqs, "requests")
 		if numReqs == 0 {
 			cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
 		}

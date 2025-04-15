@@ -151,7 +151,7 @@ def set_istio_routing_rules(apps_to_pods: Dict[str, List[str]]):
                 },
                 "subsets": [{
                     "name": pod_name,
-                    "labels": {"statefulset.kubernetes.io/pod-name": pod_name}
+                    "labels": {"pod-name": pod_name}
                 } for pod_name in pod_names]
             }
         }
@@ -278,7 +278,7 @@ def start_new_pods(pod_names: List[str]):
 
             # Create the Pod
             pod = client.V1Pod(
-                metadata=client.V1ObjectMeta(name=new_pod_name, labels={"app": svc_name}),
+                metadata=client.V1ObjectMeta(name=new_pod_name, labels={"app": svc_name, "pod-name": new_pod_name}),
                 spec=client.V1PodSpec(
                     containers=[
                         client.V1Container(
