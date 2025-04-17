@@ -102,7 +102,6 @@ func (de *DemandEstimator) UpdateState(
 		}
 		de.ProcessedReqTimestamps[svcName] = de.ProcessedReqTimestamps[svcName][truncateIndex:]
 	}
-	fmt.Printf("ProcessedReqTimestamps: %v\n", de.ProcessedReqTimestamps)
 
 }
 

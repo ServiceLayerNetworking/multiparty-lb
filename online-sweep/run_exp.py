@@ -10,13 +10,12 @@ import json
 from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
 
 # Everything in seconds:
-DURATION = 60 
-DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5 
-ADDITIONAL_TIME_FOR_CC_TO_RUN = 15
-SLEEP_DURATION_AFTER_TOPOLOGY_CHANGE = 5 
-SLEEP_TIME_AFTER_EACH_RUN = 10
+DURATION = 30
+DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
+ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
+SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/logs0"
+LOG_FOLDER = "logs/sweep"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -165,14 +164,17 @@ def parse_svc_load(svc_load: float) -> Tuple[int, float]:
     # max cpu cores per unit time that a request can consume
     max_cpu_per_time = 1
     
-    if load <= 1.0:
-        # consumption = (load/1) * default_duration
-        consumption = (load / max_cpu_per_time) * default_duration_ms
-        req_interval_ms = default_duration_ms
-    else:
-        # need more requests in parallel
-        consumption = max_cpu_per_time * default_duration_ms
-        req_interval_ms = default_duration_ms / (load / max_cpu_per_time)
+    if load == 0:
+        return 0, default_duration_ms * DURATION
+    
+    # if load <= 1.0:
+    #     # consumption = (load/1) * default_duration
+    #     consumption = (load / max_cpu_per_time) * default_duration_ms
+    #     req_interval_ms = default_duration_ms
+    # else:
+    # need more requests in parallel
+    consumption = max_cpu_per_time * default_duration_ms
+    req_interval_ms = default_duration_ms / (load / max_cpu_per_time)
     
     return int(consumption), float(req_interval_ms)
 
@@ -240,6 +242,7 @@ def run_exp(variation, svc_loads, enforcement, arr_distr, proc_distr, append_to_
     # run the app workloads through a single hit
     q = Queue()
     Thread(target=run_hit, args=(q, variation, svc_loads, arr_distr, proc_distr)).start()
+    queues.append(q)
     
     times = []
     
@@ -258,14 +261,22 @@ def run_exp(variation, svc_loads, enforcement, arr_distr, proc_distr, append_to_
     print(f"Completed experiment with {variation} at {svc_loads} RPS")
     print(f"|||||||||||||||||||||||||||||||||||||||||||||||||||||")
     
-        
+    print(f"Sleeping for {SLEEP_TIME_AFTER_EACH_RUN} seconds after the run...")
+    time.sleep(SLEEP_TIME_AFTER_EACH_RUN)
+    
+def set_correct_objective(lb):
+    if lb == "minimize_diff":
+        os.system("curl http://localhost:4876/complicate_objective")
+    else:
+        os.system("curl http://localhost:4876/simplify_objective")
     
 def run_exp_for_cluster_state(
     state_id: int, svc_loads: List[int], svc_to_nodes: Dict[str, List[str]], pod_names: List[str]):
     
-    print(f"Running experiment w/ state {state_id} i.e. loads={svc_loads} & podnames={pod_names}")
+    time_started = time.time()
+    print(f"Running experiment w/ state {state_id} i.e. loads={svc_loads} & podnames={pod_names} at {time.ctime(time_started)}")
     
-    for lb in ["leastrequest", "minimize_diff"]: # [leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+    for lb in ["nodal_leastrequest", "leastrequest_plus"]: #, "nodal_leastrequest"]: # [leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
@@ -278,16 +289,23 @@ def run_exp_for_cluster_state(
         if not done:
             print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
             continue
+        
+        print("Seting the correct objective in the optimizer...")
+        set_correct_objective(lb)
     
         for iteration in [1, 2, 3]:
         
             for distr in ["exponential"]:
                 
-                for proc_distr in ["exponential"]:
+                proc_distr = distr
+                
+                for load_scale_factor in [0.8]:
+                    
+                    scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
                     print(f"Starting iteration {iteration} for run_id {state_id}...")
                     
-                    print(f"Running experiment [iteration {iteration}] w/ state {state_id} && lb {LB_NAME[lb]} && distr {(distr, proc_distr)} i.e. loads={svc_loads} & podnames={pod_names}")
+                    print(f"Running experiment [iteration {iteration}] w/ state {state_id} && lb {LB_NAME[lb]} && distr {(distr, proc_distr)} i.e. loads={scaled_svc_loads} & podnames={pod_names}")
                     
                     intended_topology = svc_to_nodes
                     print(intended_topology)
@@ -295,17 +313,69 @@ def run_exp_for_cluster_state(
                     to_append = get_topology_str(intended_topology)
                     print(to_append)
                     
-                    run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{state_id}_{iteration}", svc_loads, "LB", distr, proc_distr, append_to_times=to_append)
+                    run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{state_id}_{iteration}_{load_scale_factor}", scaled_svc_loads, "LB", distr, proc_distr, append_to_times=to_append)
 
+    time_taken = time.time() - time_started
+    print(f"Time taken for experiment: {time_taken} seconds")
+
+def run_exp_for_cluster_state_id(state_id: int):
+    data = read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1)
+    
+    svc_loads = data["State"]["SvcLoads"]
+    svc_loads = [int(svc_load*2) for svc_load in svc_loads]
+
+    svc_to_nodes = {}
+    for node_id, n_svcs in enumerate(data["State"]["NodesToSvc"]):
+        for svc_id, n_svc in enumerate(n_svcs):
+            for i in range(n_svc):
+                svc_name = f"svc{svc_id}"
+                node_name = f"node{node_id}"
+                if svc_name not in svc_to_nodes:
+                    svc_to_nodes[svc_name] = []
+                svc_to_nodes[svc_name].append(node_name)
+
+    pod_names = [worker["name"] for worker in data["Workers"]]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names)
+    
 def test():
-    print(parse_svc_load(0))
-    print(parse_svc_load(3.34))
-    print(parse_svc_load(50))
-    print(parse_svc_load(100))
-    print(parse_svc_load(300))
-    print(parse_svc_load(600))
-    print(parse_svc_load(10000))
-    print(parse_svc_load(10002))
+    # print(parse_svc_load(0))
+    # print(parse_svc_load(3.34))
+    # print(parse_svc_load(50))
+    # print(parse_svc_load(100))
+    # print(parse_svc_load(300))
+    # print(parse_svc_load(600))
+    # print(parse_svc_load(10000))
+    # print(parse_svc_load(10002))
+    # print(parse_svc_load(300*0.9))
+    # print(parse_svc_load(200*0.9))
+    # print(parse_svc_load(100*0.9))
+    
+    state_id = 71296
+    data = read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1)
+    
+    svc_loads = data["State"]["SvcLoads"]
+    svc_loads = [int(svc_load*2) for svc_load in svc_loads]
+
+    svc_to_nodes = {}
+    for node_id, n_svcs in enumerate(data["State"]["NodesToSvc"]):
+        for svc_id, n_svc in enumerate(n_svcs):
+            for i in range(n_svc):
+                svc_name = f"svc{svc_id}"
+                node_name = f"node{node_id}"
+                if svc_name not in svc_to_nodes:
+                    svc_to_nodes[svc_name] = []
+                svc_to_nodes[svc_name].append(node_name)
+
+    pod_names = [worker["name"] for worker in data["Workers"]]
+    
+    print(f"svc_loads: {svc_loads}")
+    print(f"svc_to_nodes: {svc_to_nodes}")
+    print(f"pod_names: {pod_names}")
 
 def prep_for_exps():
     
@@ -339,13 +409,12 @@ def read_json_line(filename, line_number):
                     raise ValueError(f"Line {line_number} is not valid JSON: {e}")
         raise IndexError(f"Line {line_number} not found in file.")
 
-if __name__ == "__main__":
+def main():
     
     prep_for_exps()
     
     state_id = 0
-    svc_loads = [300*0.7, 200*0.7, 100*0.7]
-    svc_loads = [int(x) for x in svc_loads]
+    svc_loads = [300, 200, 100]
     svc_to_nodes = {
         "svc0": ["node0", "node1"],
         "svc1": ["node1", "node2"],
@@ -362,30 +431,28 @@ if __name__ == "__main__":
     # # config 71296
     # state_id = 71296
     # svc_loads = [180, 180, 120]
-    # # svc_loads = [300*0.7, 200*0.7, 100*0.7]
-    # svc_loads = [int(x*0.8) for x in svc_loads]
     # svc_to_nodes = {
     #     "svc0": ["node0", "node0", "node0"],
     #     "svc1": ["node0", "node0", "node1", "node1", "node1"],
     #     "svc2": ["node1", "node1", "node2", "node2", "node2", "node2", "node2"],
     # }
-    # pod_names = [
-    #     'svc0-node0-0',
-    #     'svc0-node0-1',
-    #     'svc0-node0-2',
-    #     'svc1-node0-0',
-    #     'svc1-node0-1',
-    #     'svc1-node1-0',
-    #     'svc1-node1-1',
-    #     'svc1-node1-2',
-    #     'svc2-node1-0',
-    #     'svc2-node1-1',
-    #     'svc2-node2-0',
-    #     'svc2-node2-1',
-    #     'svc2-node2-2',
-    #     'svc2-node2-3',
-    #     'svc2-node2-4'
-    # ]
+    pod_names = [
+        'svc0-node0-0',
+        'svc0-node0-1',
+        'svc0-node0-2',
+        'svc1-node0-0',
+        'svc1-node0-1',
+        'svc1-node1-0',
+        'svc1-node1-1',
+        'svc1-node1-2',
+        'svc2-node1-0',
+        'svc2-node1-1',
+        'svc2-node2-0',
+        'svc2-node2-1',
+        'svc2-node2-2',
+        'svc2-node2-3',
+        'svc2-node2-4'
+    ]
     
     run_exp_for_cluster_state(
         state_id,
@@ -396,3 +463,64 @@ if __name__ == "__main__":
     # state_id = 71296
     # print(read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1))
     
+    
+    
+
+if __name__ == "__main__":
+    
+    # get 50 random numbers between 0 and 178339
+    random_states = [
+        66752,
+        73572,
+        41100,
+        30527,
+        23740,
+        3278,
+        72380,
+        55628,
+        173166,
+        46194,
+        76518,
+        84192,
+        177161,
+        79906,
+        15354,
+        21677,
+        112326,
+        74759,
+        90158,
+        80022,
+        90122,
+        138139,
+        4610,
+        17080,
+        9296,
+        93335,
+        44944,
+        70096,
+        8619,
+        122890,
+        6872,
+        66915,
+        64422,
+        172969,
+        69903,
+        130484,
+        31901,
+        129050,
+        80250,
+        164440,
+        18239,
+        108637,
+        70217,
+        167605,
+        140196,
+        150379,
+        134551,
+        99668,
+        48415,
+        116683
+    ]
+    
+    for random_state in random_states:
+        run_exp_for_cluster_state_id(random_state)
