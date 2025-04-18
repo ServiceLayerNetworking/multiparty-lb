@@ -56,8 +56,10 @@ func getNextDstEndpoint(dst string, weights []float64, podNodes []int) (int, err
 		return getNextDstEndpointWeightedLeastRequest(dst, weights)
 
 	} else if LOAD_BALANCING_STRATEGY == "leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_rl" ||
 		LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" ||
-		LOAD_BALANCING_STRATEGY == "leastrequest_plus" {
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" {
 		return getNextDstEndpointLeastRequest(dst, weights)
 
 	} else if LOAD_BALANCING_STRATEGY == "locality_aware_weighted_random" {
@@ -66,7 +68,8 @@ func getNextDstEndpoint(dst string, weights []float64, podNodes []int) (int, err
 	} else if LOAD_BALANCING_STRATEGY == "minimize_diff" {
 		return getNextDstEndpointMinimizeDiff(dst, weights)
 
-	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" {
+	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "only_nodal_leastrequest" {
 		return getNextDstEndpointNodalLeastRequest(dst, podNodes, weights)
 
 	} else {
@@ -91,6 +94,7 @@ func notifyRequestCompletedToLB(dstPod string) {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_roundrobin" {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" ||
 		LOAD_BALANCING_STRATEGY == "leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_rl" ||
 		LOAD_BALANCING_STRATEGY == "minimize_diff" ||
 		LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" {
 
@@ -119,7 +123,9 @@ func notifyRequestCompletedToLB(dstPod string) {
 		}
 
 	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
-		LOAD_BALANCING_STRATEGY == "leastrequest_plus" {
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" ||
+		LOAD_BALANCING_STRATEGY == "only_nodal_leastrequest" {
 
 		informReqCompletedToSvcBasedNodalLR(dst, endpointNum)
 

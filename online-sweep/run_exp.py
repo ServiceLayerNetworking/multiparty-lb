@@ -93,6 +93,9 @@ LB_NAME = {
     "weighted_roundrobin": "wrr",
     "tmp_nodal_leastrequest": "tnlr",
     "leastrequest_plus": "lr++",
+    "only_nodal_leastrequest": "onlr",
+    "leastrequest_plus_rl": "lr++_rl",
+    "leastrequest_rl": "lr_rl",
 }
     
 def get_svc_to_nodes(nodes_to_svc: List[List[int]]) -> Dict[str, List[str]]:
@@ -271,12 +274,23 @@ def set_correct_objective(lb):
         os.system("curl http://localhost:4876/simplify_objective")
     
 def run_exp_for_cluster_state(
-    state_id: int, svc_loads: List[int], svc_to_nodes: Dict[str, List[str]], pod_names: List[str]):
+    state_id: int,
+    svc_loads: List[int],
+    svc_to_nodes: Dict[str, List[str]],
+    pod_names: List[str],
+    lbs: List[str] = [
+        "leastrequest",
+        "leastrequest_plus",
+        "only_nodal_leastrequest",
+        "leastrequest_rl",
+        "leastrequest_plus_rl",
+        "nodal_leastrequest",
+        "minimize_diff"]):
     
     time_started = time.time()
     print(f"Running experiment w/ state {state_id} i.e. loads={svc_loads} & podnames={pod_names} at {time.ctime(time_started)}")
     
-    for lb in ["nodal_leastrequest", "leastrequest_plus"]: #, "nodal_leastrequest"]: # [leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+    for lb in lbs: # [leastrequest|leastrequest_plus|nodal_leastrequest|only_nodal_leastrequest|minimize_diff]
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
@@ -318,7 +332,7 @@ def run_exp_for_cluster_state(
     time_taken = time.time() - time_started
     print(f"Time taken for experiment: {time_taken} seconds")
 
-def run_exp_for_cluster_state_id(state_id: int):
+def run_exp_for_cluster_state_id(state_id: int, lbs: List[str] = ["leastrequest", "leastrequest_plus", "leastrequest_plus_rl", "nodal_leastrequest", "only_nodal_leastrequest", "minimize_diff"]):
     data = read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1)
     
     svc_loads = data["State"]["SvcLoads"]
@@ -340,7 +354,8 @@ def run_exp_for_cluster_state_id(state_id: int):
         state_id,
         svc_loads,
         svc_to_nodes,
-        pod_names)
+        pod_names,
+        lbs=lbs)
     
 def test():
     # print(parse_svc_load(0))
@@ -409,7 +424,7 @@ def read_json_line(filename, line_number):
                     raise ValueError(f"Line {line_number} is not valid JSON: {e}")
         raise IndexError(f"Line {line_number} not found in file.")
 
-def main():
+def _main():
     
     prep_for_exps()
     
@@ -463,10 +478,9 @@ def main():
     # state_id = 71296
     # print(read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1))
     
+def main():
     
-    
-
-if __name__ == "__main__":
+    prep_for_exps()
     
     # get 50 random numbers between 0 and 178339
     random_states = [
@@ -522,5 +536,25 @@ if __name__ == "__main__":
         116683
     ]
     
-    for random_state in random_states:
-        run_exp_for_cluster_state_id(random_state)
+    # for random_state in random_states:
+    #     run_exp_for_cluster_state_id(
+    #         random_state,
+    #         lbs=["leastrequest_plus"])
+
+    # for random_state in random_states:
+    #     run_exp_for_cluster_state_id(
+    #         random_state,
+    #         lbs=["only_nodal_leastrequest", "minimize_diff"])
+
+    # for random_state in random_states:
+    #     run_exp_for_cluster_state_id(
+    #         random_state,
+    #         lbs=["leastrequest", "leastrequest_rl"])
+
+if __name__ == "__main__":
+    start_time = time.time()
+    
+    main()
+    
+    time_taken = time.time() - start_time
+    print(f"Total time taken: {time_taken} seconds")

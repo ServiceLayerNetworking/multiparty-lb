@@ -5,7 +5,7 @@ metadata:
   name: mplb-wasm-plugin
   namespace: default
 spec:
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:nodal_leastrequest
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_rl
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -28,7 +28,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:nodal_leastrequest
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_rl
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -50,7 +50,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc0
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:nodal_leastrequest
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_rl
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -72,7 +72,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc1
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:nodal_leastrequest
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_rl
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -94,7 +94,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc2
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:nodal_leastrequest
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_rl
   imagePullPolicy: Always
   vmConfig:
     env:

@@ -14,7 +14,8 @@ import (
 // called in OnHttpRequestHeaders
 func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 
-	// if LOAD_BALANCING_STRATEGY is leastrequest, return false
+	// if LOAD_BALANCING_STRATEGY is not cluster-based i.e. minimize_diff or nodal_request,
+	// don't do rate limiting and return false
 
 	// get recently sent request timestamp list
 
@@ -32,7 +33,10 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	// if list can't be set back, return error
 	// if the error is CASMismatch, call shouldDropRequest again with updated currTime
 
-	if LOAD_BALANCING_STRATEGY == "leastrequest" {
+	if !(LOAD_BALANCING_STRATEGY == "minimize_diff" ||
+		LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_rl" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl") {
 		return false, nil
 	}
 

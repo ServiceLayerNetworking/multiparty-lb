@@ -28,7 +28,8 @@ func getNextDstEndpointLeastRequest(
 		selectedEndpoint = doNodalLeastRequestWithFixedTopo(dst, outstandingReqs)
 	}
 
-	if LOAD_BALANCING_STRATEGY == "leastrequest" {
+	if LOAD_BALANCING_STRATEGY == "leastrequest" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_rl" {
 		// Increment the active request count for the selected server
 		(*outstandingReqs)[selectedEndpoint]++
 
@@ -42,7 +43,7 @@ func getNextDstEndpointLeastRequest(
 			return getNextDstEndpointLeastRequest(dst, weights)
 		}
 	} else {
-		// if the load balancing strategy is leastrequest_plus, we will
+		// if the load balancing strategy is leastrequest_plus or leastrequest_plus_rl, we will
 		// instead of incrementing directly, we will issue a request to the CC t
 		// send this to all the LBs
 		sendEchoRequestToCC(dst, selectedEndpoint, "++")
