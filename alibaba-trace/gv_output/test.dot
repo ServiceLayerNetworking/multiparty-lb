@@ -1,0 +1,21 @@
+graph test {
+  overlap=false; splines=true
+  edge [style=dotted, weight=10, len=.2]
+  subgraph cluster_left {
+    left [pos="-1,0!", color=red /* , style=invis */]
+    a -- left
+    b -- left
+  }
+  subgraph cluster_right {
+    right [pos="1,0!", color=blue /* , style=invis */]
+    c -- right
+    d -- right
+    e -- right
+  }
+  edge [style="", weight=1, len=1]
+  a -- b
+  b -- d
+  d -- e
+  c -- e
+  b -- e
+}
