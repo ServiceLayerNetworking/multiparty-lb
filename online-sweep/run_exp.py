@@ -6,6 +6,7 @@ from threading import Thread
 import os
 import time
 import json
+import sys
 
 from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
 
@@ -15,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/sweep"
+LOG_FOLDER = "logs/sys-design-0_rl_overhead"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -294,22 +295,24 @@ def run_exp_for_cluster_state(
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
-        # build new wasm
-        print(f"Building wasm plugin for {lb}...")
-        modify_wasm_plugin(lb)
-        
-        print(f"Setting up the topology...")
-        done = setup_clutser_with_new_pods(pod_names)
-        if not done:
-            print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
-            continue
+        if len(sys.argv) <= 1:
+
+            # build new wasm
+            print(f"Building wasm plugin for {lb}...")
+            modify_wasm_plugin(lb)
+            
+            print(f"Setting up the topology...")
+            done = setup_clutser_with_new_pods(pod_names)
+            if not done:
+                print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
+                continue
         
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1, 2, 3]:
+        for iteration in [1]:
         
-            for distr in ["exponential"]:
+            for distr in ["none"]:
                 
                 proc_distr = distr
                 
@@ -332,7 +335,12 @@ def run_exp_for_cluster_state(
     time_taken = time.time() - time_started
     print(f"Time taken for experiment: {time_taken} seconds")
 
-def run_exp_for_cluster_state_id(state_id: int, lbs: List[str] = ["leastrequest", "leastrequest_plus", "leastrequest_plus_rl", "nodal_leastrequest", "only_nodal_leastrequest", "minimize_diff"]):
+def run_exp_for_cluster_state_id(state_id: int,
+                                 lbs: List[str] = ["leastrequest_plus",
+                                                   "leastrequest_plus_rl",
+                                                   "nodal_leastrequest",
+                                                   "only_nodal_leastrequest",
+                                                   "minimize_diff"]):
     data = read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1)
     
     svc_loads = data["State"]["SvcLoads"]
@@ -426,135 +434,165 @@ def read_json_line(filename, line_number):
 
 def _main():
     
+    # print(parse_svc_load(300*0.7))
+    # print(parse_svc_load(200*0.7))
+    # return
+    
     prep_for_exps()
     
-    state_id = 0
-    svc_loads = [300, 200, 100]
+    state_id = 5
+    svc_loads = [300, 200, 0]
     svc_to_nodes = {
         "svc0": ["node0", "node1"],
-        "svc1": ["node1", "node2"],
-        "svc2": ["node0"],
+        "svc1": ["node1"],
+        "svc2": ["node2"],
     }
     pod_names = [
         "svc0-node0-0",
         "svc0-node1-0",
         "svc1-node1-0",
-        "svc1-node2-0",
-        "svc2-node0-0",
-    ]
-    
-    # # config 71296
-    # state_id = 71296
-    # svc_loads = [180, 180, 120]
-    # svc_to_nodes = {
-    #     "svc0": ["node0", "node0", "node0"],
-    #     "svc1": ["node0", "node0", "node1", "node1", "node1"],
-    #     "svc2": ["node1", "node1", "node2", "node2", "node2", "node2", "node2"],
-    # }
-    pod_names = [
-        'svc0-node0-0',
-        'svc0-node0-1',
-        'svc0-node0-2',
-        'svc1-node0-0',
-        'svc1-node0-1',
-        'svc1-node1-0',
-        'svc1-node1-1',
-        'svc1-node1-2',
-        'svc2-node1-0',
-        'svc2-node1-1',
-        'svc2-node2-0',
-        'svc2-node2-1',
-        'svc2-node2-2',
-        'svc2-node2-3',
-        'svc2-node2-4'
+        "svc2-node2-0",
     ]
     
     run_exp_for_cluster_state(
         state_id,
         svc_loads,
         svc_to_nodes,
-        pod_names)
-    
-    # state_id = 71296
-    # print(read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1))
+        pod_names,
+        lbs=[
+            "nodal_leastrequest",
+            # "leastrequest_plus",
+            # "only_nodal_leastrequest"
+        ])
+
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "nodal_leastrequest",
+    #         "leastrequest_plus_rl",
+    #         "minimize_diff"
+    #     ])
     
 def main():
     
     prep_for_exps()
     
     # get 50 random numbers between 0 and 178339
-    random_states = [
-        66752,
-        73572,
-        41100,
-        30527,
-        23740,
-        3278,
-        72380,
-        55628,
-        173166,
-        46194,
-        76518,
-        84192,
-        177161,
-        79906,
-        15354,
-        21677,
-        112326,
-        74759,
-        90158,
-        80022,
-        90122,
-        138139,
-        4610,
-        17080,
-        9296,
-        93335,
-        44944,
-        70096,
-        8619,
-        122890,
-        6872,
-        66915,
-        64422,
-        172969,
-        69903,
-        130484,
-        31901,
-        129050,
-        80250,
-        164440,
-        18239,
-        108637,
-        70217,
-        167605,
-        140196,
-        150379,
-        134551,
-        99668,
-        48415,
-        116683
-    ]
+    # random_states = [
+    #     66752,
+    #     73572,
+    #     41100,
+    #     30527,
+    #     23740,
+    #     3278,
+    #     72380,
+    #     55628,
+    #     173166,
+    #     46194,
+    #     76518,
+    #     84192,
+    #     177161,
+    #     79906,
+    #     15354,
+    #     21677,
+    #     112326,
+    #     74759,
+    #     90158,
+    #     80022,
+    #     90122,
+    #     138139,
+    #     4610,
+    #     17080,
+    #     9296,
+    #     93335,
+    #     44944,
+    #     70096,
+    #     8619,
+    #     122890,
+    #     6872,
+    #     66915,
+    #     64422,
+    #     172969,
+    #     69903,
+    #     130484,
+    #     31901,
+    #     129050,
+    #     80250,
+    #     164440,
+    #     18239,
+    #     108637,
+    #     70217,
+    #     167605,
+    #     140196,
+    #     150379,
+    #     134551,
+    #     99668,
+    #     48415,
+    #     116683
+    # ]
+    # new_random_states = [
+    #     173719,
+    #     130141,
+    #     41695,
+    #     169571,
+    #     88056,
+    #     84408,
+    #     9466,
+    #     161757,
+    #     176691,
+    #     158031,
+    #     86101,
+    #     80711,
+    #     31655,
+    #     72616,
+    #     29334,
+    #     132126,
+    #     114315,
+    #     16210,
+    #     46304,
+    #     134901,
+    #     86750,
+    #     81587,
+    #     170450,
+    #     155222,
+    #     26111,
+    #     6940,
+    #     128644,
+    #     131117,
+    #     17680,
+    #     40995,
+    #     79662,
+    #     120935,
+    #     153032,
+    #     10341,
+    #     88768,
+    #     103542,
+    #     67153,
+    #     159847,
+    #     47983,
+    #     140527,
+    #     104108,
+    #     22320,
+    #     58037,
+    #     127271,
+    #     74228,
+    #     73432,
+    #     75895,
+    #     99389,
+    #     141033,
+    #     121706
+    # ]
     
-    # for random_state in random_states:
-    #     run_exp_for_cluster_state_id(
-    #         random_state,
-    #         lbs=["leastrequest_plus"])
-
-    # for random_state in random_states:
-    #     run_exp_for_cluster_state_id(
-    #         random_state,
-    #         lbs=["only_nodal_leastrequest", "minimize_diff"])
-
-    # for random_state in random_states:
-    #     run_exp_for_cluster_state_id(
-    #         random_state,
-    #         lbs=["leastrequest", "leastrequest_rl"])
+    # for random_state in new_random_states:
+    #     run_exp_for_cluster_state_id(random_state)
 
 if __name__ == "__main__":
     start_time = time.time()
     
-    main()
+    _main()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")

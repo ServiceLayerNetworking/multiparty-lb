@@ -10,3 +10,5 @@ cri-dockerd-*
 tinygo_*
 
 __pycache__
+
+alibaba_cluster_state*

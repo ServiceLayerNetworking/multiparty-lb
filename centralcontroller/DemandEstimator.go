@@ -50,7 +50,7 @@ func (de *DemandEstimator) UpdateState(
 		de.CPUUtilizationTimestamps[svcName] = append(
 			de.CPUUtilizationTimestamps[svcName], CPUUtilState{
 				EndTime: currUnixTimeMs,
-				CpuUtil: util + SVC_CPU_UTIL_HEADROOM,
+				CpuUtil: util * SVC_UTIL_SCALE_FACTOR,
 			})
 	}
 
@@ -105,7 +105,7 @@ func (de *DemandEstimator) UpdateState(
 
 }
 
-func (de *DemandEstimator) GetDemandEstimates() map[string]float64 {
+func (de *DemandEstimator) GetDemandEstimates(svcOutstandingReqs *ServiceOutstandingRequests) map[string]float64 {
 
 	// Get the demand estimates for each service
 	cpuConsumptionsPerReq := make(map[string]float64)
@@ -137,19 +137,30 @@ func (de *DemandEstimator) GetDemandEstimates() map[string]float64 {
 		// now get the number of requests processed in the last timeTakenMs
 		numReqs := len(de.ProcessedReqTimestamps[svcName])
 
+		// // get the number of requests in the service outstanding and add
+		// svcOutstandingReqs.mu.Lock()
+		// outstandingReqs := svcOutstandingReqs.numOutstandingReq[svcName]
+		// svcOutstandingReqs.mu.Unlock()
+
 		cpuConsumptionPerReq := cpuConsumption / float64(numReqs)
 		cpuConsumptionCoreSecPerReq := cpuConsumptionPerReq / 100.0
 		cpuConsumptionCoreMsPerReq := cpuConsumptionCoreSecPerReq * 1000.0
 
-		fmt.Println("CPU Consumption per req for service", svcName, "is", cpuConsumptionCoreMsPerReq, "coreMs with", numReqs, "requests")
-		if numReqs == 0 {
+		fmt.Println("CPU Consumption per req for service", svcName, "is", cpuConsumptionCoreMsPerReq, "coreMs with", numReqs, "requests completed")
+		if (numReqs) == 0 {
 			cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
 		}
 		if USE_OFFLINE_DEMAND_ESTIMATE {
-			cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+			if svcName == "svc0" {
+				cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+			} else if svcName == "svc1" {
+				cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+			} else {
+				cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+			}
 		}
 
-		cpuConsumptionsPerReq[svcName] = cpuConsumptionPerReq
+		cpuConsumptionsPerReq[svcName] = cpuConsumptionPerReq * CPU_PER_REQ_SCALE_FACTOR
 	}
 
 	return cpuConsumptionsPerReq

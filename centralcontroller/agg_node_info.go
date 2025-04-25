@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,9 +28,9 @@ func getLatencyUsFromData(data []byte) int {
 
 func makeReqToK8sHost(dstURL string, data []byte) {
 
-	fmt.Printf("Request to %s\n", dstURL)
+	// fmt.Printf("Request to %s\n", dstURL)
 
-	fmt.Printf("Latency from LB to CC: %dμs\n", getLatencyUsFromData(data))
+	// fmt.Printf("Latency from LB to CC: %dμs\n", getLatencyUsFromData(data))
 
 	req, err := http.NewRequest(http.MethodPost, dstURL, bytes.NewBuffer(data))
 	if err != nil {
@@ -49,23 +50,58 @@ func makeReqToK8sHost(dstURL string, data []byte) {
 		Timeout: 3 * time.Second, // Set a timeout for the entire request
 	}
 	res, err := client.Do(req)
-	latency := time.Since(startReq)
+	_ = time.Since(startReq)
 	if err != nil {
 		fmt.Printf("client: error creating http request to echo: %s\n", err)
 		return
 	}
-	resBody, err := io.ReadAll(res.Body)
+	_, err = io.ReadAll(res.Body)
 	if err != nil {
 		errMsg := fmt.Sprintf("client: could not read response body: %s", err)
 		fmt.Println(errMsg)
 		return
 	}
 
-	fmt.Printf("Request to %s | Response: [%s] %s, %dμs\n",
-		dstURL, res.Status, string(resBody), latency.Microseconds())
+	// fmt.Printf("Request to %s | Response: [%s] %s, %dμs\n",
+	// 	dstURL, res.Status, string(resBody), latency.Microseconds())
 }
 
-func echoServer(ingressGatewayURLs []string) {
+type ServiceOutstandingRequests struct {
+	mu                sync.Mutex
+	numOutstandingReq map[string]int
+}
+
+func updateOutstandingRequests(serviceOutstandingRequests *ServiceOutstandingRequests, reqBody []byte) {
+	// input := "1745477992498147000|svc0|0|--"
+	reqBodyStr := string(reqBody)
+	parts := strings.Split(reqBodyStr, "|")
+	if len(parts) >= 4 {
+		service := parts[1] // svc0
+		operation := parts[3]
+
+		serviceOutstandingRequests.mu.Lock()
+
+		if operation == "--" {
+			serviceOutstandingRequests.numOutstandingReq[service]--
+			if serviceOutstandingRequests.numOutstandingReq[service] < 0 {
+				fmt.Println("This shouldn't have happened!")
+			}
+		} else if operation == "++" {
+			serviceOutstandingRequests.numOutstandingReq[service]++
+		} else {
+			fmt.Println("Invalid input format", reqBodyStr)
+		}
+
+		// fmt.Printf("Updated %v\n", serviceOutstandingRequests.numOutstandingReq)
+
+		serviceOutstandingRequests.mu.Unlock()
+
+	} else {
+		fmt.Println("Invalid input format", reqBodyStr)
+	}
+}
+
+func echoServer(ingressGatewayURLs []string, serviceOutstandingRequests *ServiceOutstandingRequests) {
 
 	// HTTP Server to Echo POST Request Body
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +116,10 @@ func echoServer(ingressGatewayURLs []string) {
 			return
 		}
 
-		fmt.Printf("Received request to echo: %s\n", body)
+		// fmt.Printf("Received request to echo: %s\n", body)
+
+		// 1745477992498147000|svc0|0|--
+		updateOutstandingRequests(serviceOutstandingRequests, body)
 
 		for _, ingressGatewayURL := range ingressGatewayURLs {
 			// Make request to K8s Host

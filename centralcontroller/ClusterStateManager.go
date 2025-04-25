@@ -34,6 +34,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	nodeCPUUtilizations []string,
 	reqStats []ReqStat,
 	reqSentStats []ReqStat,
+	serviceOutstandingReqs *ServiceOutstandingRequests,
 	svcCPUConsumptionPerReq map[string]float64) string {
 
 	var gurobiInput map[string]float64
@@ -43,6 +44,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 		// currentAppUtils := getPerAppRPS(reqStats)
 		currentAppUtils := getPerAppRpsBasedUtil(
 			reqSentStats,
+			serviceOutstandingReqs,
 			svcCPUConsumptionPerReq)
 
 		// get weights from gurobi
@@ -86,6 +88,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 
 func getPerAppRpsBasedUtil(
 	reqSentStats []ReqStat,
+	serviceOutstandingReqs *ServiceOutstandingRequests,
 	svcCPUConsumptionPerReq map[string]float64) map[string]float64 {
 
 	// THIS CODE IS BUGGY. WE DON'T HAVE THE EXACT TIME FOR WHEN WE RECEIVED THE
@@ -119,12 +122,33 @@ func getPerAppRpsBasedUtil(
 		}
 	}
 
+	// get the number of requests outstanding
+	serviceOutstandingReqs.mu.Lock()
+
 	// get the RPS for each service
 	svcRPSBasedUtil := make(map[string]float64)
 	for svc, sentReqs := range svcSentReqs {
+
+		oustandingRequests := serviceOutstandingReqs.numOutstandingReq[svc]
+		// reqsProcessed := max(oustandingRequests, sentReqs)
+
+		// // TEMP
+		// if svc == "svc0" {
+		// 	reqsProcessed = 70
+		// } else {
+		// 	reqsProcessed = 42
+		// }
+
 		svcRPS := float64(sentReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
-		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc]
+		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc] // * SVC_UTIL_SCALE_FACTOR
+
+		fmt.Printf("svcRPSBasedUtil |||||| %s: %d %d %f\n", svc, sentReqs, oustandingRequests, svcRPSBasedUtil[svc])
 	}
+
+	serviceOutstandingReqs.mu.Unlock()
+
+	// svcRPSBasedUtil["svc0"] = 300.0 * 0.8
+	// svcRPSBasedUtil["svc1"] = 200.0 * 0.8
 
 	return svcRPSBasedUtil
 }
@@ -409,4 +433,11 @@ func getNodeNumberForPod(podName string, nodes []Node) int {
 		}
 	}
 	return -1
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

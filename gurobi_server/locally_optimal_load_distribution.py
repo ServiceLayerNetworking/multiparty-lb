@@ -1,3 +1,4 @@
+from collections import defaultdict
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
@@ -36,6 +37,7 @@ class Worker:
         self.host: str = host
         self.load: float = 0.0
         self.processing_rate: float = 1.0
+        self.processed: float = 0.0
         
     def __str__(self):
         return f"{self.name}: load={self.load} processing_rate={self.processing_rate}"
@@ -231,6 +233,68 @@ def get_locally_optimal_load_distribution(
         
     return to_return
     
+def get_locally_optimal_load_distribution_fast(
+    hosts: List[g.Host],
+    tenants: List[g.Tenant],
+    workers: List[g.Worker]) -> Dict[str, Dict[str, float]]:
+    
+    for worker in workers:
+        worker.processing_rate = 1.0
+
+    max_iterations = 10
+
+    # Pre-group workers by tenant and host for faster access
+    tenant_to_workers = defaultdict(list)
+    host_to_workers = defaultdict(dict)
+    for worker in workers:
+        tenant_to_workers[worker.tenant].append(worker)
+        host_to_workers[worker.host][worker.name] = worker
+
+    for _ in range(max_iterations):
+        is_worker_processing_rate_changed = False
+
+        # Step 1: Distribute load among tenant's workers proportionally
+        for tenant in tenants:
+            tenant_workers = tenant_to_workers[tenant.name]
+            total_processing = sum(w.processing_rate for w in tenant_workers)
+            if total_processing > 0:
+                for worker in tenant_workers:
+                    worker.load = tenant.load * worker.processing_rate / total_processing
+            else:
+                equal_load = tenant.load / len(tenant_workers)
+                for worker in tenant_workers:
+                    worker.load = equal_load
+
+        # Step 2: Max-min fair share processing rate update
+        for host in hosts:
+            workers_on_host = host_to_workers[host.name]
+            worker_loads = {name: worker.load for name, worker in workers_on_host.items()}
+            fair_shares = get_max_min_processing_times(host.cap, worker_loads)
+            
+            for name, (processed, time) in fair_shares.items():
+                new_rate = processed / time if time > 0 else 1.0
+                worker = workers_on_host[name]
+                worker.processed = processed
+                if worker.processing_rate != new_rate:
+                    worker.processing_rate = new_rate
+                    is_worker_processing_rate_changed = True
+
+        if not is_worker_processing_rate_changed:
+            break
+
+    # Step 3: Collect results
+    results = defaultdict(dict)
+    for worker in workers:
+        results[worker.tenant][worker.name] = worker.processed
+
+    final_output = {
+        "status": GRB.OPTIMAL,
+        "result": dict(results)
+    }
+
+    print(final_output)
+    return final_output
+
 
 # get result from json input (from cc)
 def run_from_json(hosts, tenants, workers):
@@ -238,9 +302,9 @@ def run_from_json(hosts, tenants, workers):
     tenants = [Tenant(t["name"], t["load"]) for t in tenants]
     workers = [Worker(w["name"], w["tenant"], w["host"]) for w in workers]
     
-    to_return = get_locally_optimal_load_distribution(hosts, tenants, workers)
+    to_return = get_locally_optimal_load_distribution_fast(hosts, tenants, workers)
 
-    return to_return    
+    return to_return
 
 if __name__ == '__main__':
     

@@ -55,13 +55,28 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	numReqInPastSec := len(recentlySentReqTimestamps)
 
 	var toReturn bool
-	if numReqInPastSec >= getMaxRPSGivenTheCPUAllocated(dstSvc) {
+
+	maxRPSAllowed := getMaxRPSGivenTheCPUAllocated(dstSvc)
+
+	// svcOutstandingReqs, _, err := getOutstandingRequests(dstSvc, -1)
+	// numSvcOutstandingReqs := 0
+	// if err == nil {
+	// 	for _, numOutstandingReqs := range *svcOutstandingReqs {
+	// 		numSvcOutstandingReqs += numOutstandingReqs
+	// 	}
+	// }
+
+	// if max(numReqInPastSec, numSvcOutstandingReqs) >= maxRPSAllowed {
+	if numReqInPastSec >= maxRPSAllowed {
 		proxywasm.LogCriticalf(
-			"Rate limiting request to %s: %d requests in the last second", dstSvc, numReqInPastSec)
+			"Rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
+		// "Rate limiting request to %s: %d requests in the last second with %d outstanding [%d allowed]", dstSvc, numReqInPastSec, numSvcOutstandingReqs, maxRPSAllowed)
 
 		toReturn = true
 	} else {
 		recentlySentReqTimestamps = append(recentlySentReqTimestamps, currentTimeMs)
+		proxywasm.LogCriticalf(
+			"Not rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
 		toReturn = false
 	}
 
@@ -81,7 +96,16 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 
 	if USE_DEFAULT_MAX_RPS_ALLOWED {
-		return DEFAULT_MAX_RPS_ALLOWED
+		// TEMP:
+		if dstSvc == "svc0" {
+			proxywasm.LogCriticalf("Using default max RPS allowed for %s", dstSvc)
+			return 200
+		} else if dstSvc == "svc1" {
+			proxywasm.LogCriticalf("Using default max RPS allowed for %s", dstSvc)
+			return 18
+		} else {
+			return DEFAULT_MAX_RPS_ALLOWED
+		}
 	}
 
 	// get the CPU allocated to the service (CPU weight of the service)
@@ -116,7 +140,7 @@ func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 		return math.MaxInt
 	}
 
-	return int(cpuAllocated/cpuConsumption) + RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED
+	return (int(cpuAllocated/cpuConsumption) + RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED) / NUM_OF_LB_REPLICAS
 }
 
 func getRecentlySentRequestTimeStamps(dstSvc string) ([]int64, uint32) {
@@ -169,4 +193,11 @@ func setRecentlySentRequestTimeStamps(cas uint32, dstSvc string, timestamps []in
 
 func recentlySentRequestsKey(dstSvc string) string {
 	return "rs-req-" + dstSvc
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

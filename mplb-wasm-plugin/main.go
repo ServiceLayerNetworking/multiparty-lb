@@ -43,6 +43,7 @@ const (
 	DEFAULT_MAX_RPS_ALLOWED                            = 105
 	USE_DEFAULT_MAX_RPS_ALLOWED                        = false
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 5
+	NUM_OF_LB_REPLICAS                                 = 3
 
 	// Hash mod for frequency of request tracing.
 	DEFAULT_HASH_MOD = 10
@@ -51,7 +52,7 @@ const (
 
 	// load balancing strategy
 	// [leastrequest_plus_rl|leastrequest_rl|only_nodal_leastrequest|leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOAD_BALANCING_STRATEGY = "weighted_leastrequest"
+	LOAD_BALANCING_STRATEGY = "leastrequest"
 )
 
 var (
@@ -650,6 +651,17 @@ func (ctx *httpContext) OnHttpStreamDone() {
 
 	defer proxywasm.LogCriticalf("OnHttpStreamDone: Completed")
 	proxywasm.LogCriticalf("OnHttpStreamDone: Entered")
+
+	// check the status code of response
+	statusCode, err := proxywasm.GetHttpResponseHeader(":status")
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get :status response header: %v", err)
+		return
+	}
+	if statusCode != "200" {
+		proxywasm.LogCriticalf("Response status code is not 200: %s, so not doing anything in OnHttpStreamDone", statusCode)
+		return
+	}
 
 	reqAuthority, err := proxywasm.GetHttpRequestHeader(":authority")
 	if err != nil {

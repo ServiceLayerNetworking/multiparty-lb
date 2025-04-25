@@ -34,15 +34,18 @@ const (
 
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 
-	NODE_CAP_SCALE_FACTOR = 0.8
+	NODE_CAP_SCALE_FACTOR = 1
 	M_CPUS_IN_NODE        = 2000 * NODE_CAP_SCALE_FACTOR
 
 	USE_RPS_INSTEAD_OF_CPU      = true
 	USE_OFFLINE_DEMAND_ESTIMATE = false
-	CPU_CONSUMPTION_PER_REQ     = 2.3
-	SVC_CPU_UTIL_HEADROOM       = 0   // 20% headroom
-	RPS_WINDOW_MS               = 500 // 500ms window to look for how many requests are sent and base our CPU off of that
+	CPU_CONSUMPTION_PER_REQ     = 3.0
+	SVC_CPU_UTIL_HEADROOM       = 0    // deprecated
+	RPS_WINDOW_MS               = 1000 // 500ms window to look for how many requests are sent and base our CPU off of that
+	SVC_UTIL_SCALE_FACTOR       = 1    // by this factor, scale the cpuutil
+	CPU_PER_REQ_SCALE_FACTOR    = 1    // by this factor, scale the cpuconsumptionperreq
 
+	// these are deprecated
 	OVERHEAD           = 10 // 10% overhead
 	POD_QUOTA_OVERHEAD = 10 // 5% overhead
 	NOISE              = 2  // 2% noise
@@ -314,7 +317,10 @@ func main() {
 	ingressGatewayURLs := k8sClient.GetIngressGatewayURLs()
 	fmt.Printf("Ingress Gateway URLs: %v\n", ingressGatewayURLs)
 	// Start the Echo Server
-	go echoServer(ingressGatewayURLs)
+	serviceOutstandingRequests := ServiceOutstandingRequests{
+		numOutstandingReq: make(map[string]int),
+	}
+	go echoServer(ingressGatewayURLs, &serviceOutstandingRequests)
 
 	// get pods to log
 	podNamesToLog := getPodsToLog(podNames)
@@ -326,7 +332,7 @@ func main() {
 
 		if enforcement == "LB" {
 
-			go ccWithLBEnforcement(cpuLogFile, nodes, appNames, podNamesToLog)
+			go ccWithLBEnforcement(cpuLogFile, nodes, appNames, podNamesToLog, &serviceOutstandingRequests)
 
 		} else {
 
@@ -450,7 +456,7 @@ func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat, []ReqS
 }
 
 func ccWithLBEnforcement(
-	cpuLogFile *LogFile, nodes []Node, appNames []string, podsToLog []string) {
+	cpuLogFile *LogFile, nodes []Node, appNames []string, podsToLog []string, serviceOutstandingReqs *ServiceOutstandingRequests) {
 
 	// Initialize cluster state
 	cs := ClusterStateManager{}
@@ -472,13 +478,14 @@ func ccWithLBEnforcement(
 
 		// update the state in the demand estimator and get demand estimates
 		de.UpdateState(getPerAppUtilizations(nodeCPUUtilizations), reqStats)
-		svcCPUConsumptionPerReq := de.GetDemandEstimates()
+		svcCPUConsumptionPerReq := de.GetDemandEstimates(serviceOutstandingReqs)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		lbWeights := cs.GetOptimalLBWeights(
 			nodeCPUUtilizations,
 			reqStats,
 			reqSentStats,
+			serviceOutstandingReqs,
 			svcCPUConsumptionPerReq)
 
 		// log the CPU Utilizations and CPU Shares
