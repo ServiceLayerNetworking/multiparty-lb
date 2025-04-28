@@ -1137,16 +1137,18 @@ def run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(
     
     if m.Status != GRB.OPTIMAL:
         
-        print([str(host) for host in _hosts])
-        print([str(tenant) for tenant in _tenants])
-        print([str(worker) for worker in _workers])
+        # print([str(host) for host in _hosts])
+        # print([str(tenant) for tenant in _tenants])
+        # print([str(worker) for worker in _workers])
+        pass
         
         # raise Exception(f"Optimization failed with {len(_hosts)} hosts, {len(_tenants)} tenants, and {len(_workers)} workers")
     
     if m.Status == GRB.OPTIMAL:
-        vars = {v.varName: v.x for v in m.getVars()}
-        print(vars)
-        print(vars.keys())
+        # vars = {v.varName: v.x for v in m.getVars()}
+        # print(vars)
+        # print(vars.keys())
+        pass
         
     if m.Status == GRB.OPTIMAL:        
         
@@ -1168,7 +1170,7 @@ def run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(
         previous_w = {worker.name: vars[f"w[{worker.name}]"] for worker in _workers}
         print("New previous weights:", previous_w)
         
-        print(to_return)
+        # print(to_return)
         
         return to_return, m, t_min, t_load, optimization_time
 
@@ -1192,7 +1194,7 @@ def run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(
             "result": results
         }
         
-        print(to_return)
+        # print(to_return)
         
         return to_return, m, t_min, t_load, optimization_time
 
