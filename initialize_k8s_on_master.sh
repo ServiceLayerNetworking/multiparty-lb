@@ -70,7 +70,7 @@ sudo tee /etc/docker/daemon.json <<EOF
   "log-opts": {
     "max-size": "100m"
   },
-  "storage-driver": "overlay2"
+  "storage-driver": "overlay2",
   "insecure-registries": ["localhost:32000"]
 }
 EOF
