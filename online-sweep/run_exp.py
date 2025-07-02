@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/sys-design-0_rl_overhead"
+LOG_FOLDER = "logs/sys-design-test"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -307,6 +307,8 @@ def run_exp_for_cluster_state(
                 print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
                 continue
         
+        # return
+        
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
@@ -441,7 +443,7 @@ def _main():
     prep_for_exps()
     
     state_id = 5
-    svc_loads = [300, 200, 0]
+    svc_loads = [200, 200, 0]
     svc_to_nodes = {
         "svc0": ["node0", "node1"],
         "svc1": ["node1"],
@@ -460,8 +462,8 @@ def _main():
         svc_to_nodes,
         pod_names,
         lbs=[
-            "nodal_leastrequest",
-            # "leastrequest_plus",
+            # "nodal_leastrequest",
+            "leastrequest_plus",
             # "only_nodal_leastrequest"
         ])
 

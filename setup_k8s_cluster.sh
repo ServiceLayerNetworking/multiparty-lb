@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# sudo apt update && sudo apt install socat
+# kubectl create namespace istio-ingress
+
 # set -x
 # set -e
 
