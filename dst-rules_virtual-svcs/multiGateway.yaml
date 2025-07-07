@@ -1,4 +1,3 @@
-
 apiVersion: install.istio.io/v1alpha3
 kind: IstioOperator
 metadata:
@@ -22,6 +21,14 @@ spec:
             requests:
               cpu: 500m
               memory: 1024Mi
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+
       - name: istio-ingressgateway-svc1
         namespace: istio-ingress
         enabled: true
@@ -37,6 +44,14 @@ spec:
             requests:
               cpu: 500m
               memory: 1024Mi
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+
       - name: istio-ingressgateway-svc2
         namespace: istio-ingress
         enabled: true
@@ -52,3 +67,10 @@ spec:
             requests:
               cpu: 500m
               memory: 1024Mi
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists

@@ -251,11 +251,11 @@ func main() {
 
 	// Initialize the logger
 	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelError,
+		Level: slog.LevelInfo,
 	}))
 	slog.SetDefault(l) // configures log package to print with LevelError
 	capturePC := log.Flags()&(log.Lshortfile|log.Llongfile) != 0
-	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelError, capturePC}) // configures log package to print with LevelError
+	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelInfo, capturePC}) // configures log package to print with LevelError
 
 	// get flags
 	logFileName, enforcement, durationMs := getFlags()

@@ -1,0 +1,168 @@
+{"time":"2025-07-07T21:30:03.073900292Z","level":"INFO","msg":"App Utils: map[svc0:1.1897229999999999 svc1:0.633342 svc2:0.53706]\n"}
+{"time":"2025-07-07T21:30:03.074062526Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:03.595925737Z","level":"INFO","msg":"App Utils: map[svc0:1.715333 svc1:0.565256 svc2:0.580166]\n"}
+{"time":"2025-07-07T21:30:03.596010804Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:04.118387199Z","level":"INFO","msg":"App Utils: map[svc0:1.2799070000000001 svc1:0.847167 svc2:0.615704]\n"}
+{"time":"2025-07-07T21:30:04.118476241Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:04.638958777Z","level":"INFO","msg":"App Utils: map[svc0:1.697105 svc1:0.583554 svc2:0.546402]\n"}
+{"time":"2025-07-07T21:30:04.63903797Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:05.162470304Z","level":"INFO","msg":"App Utils: map[svc0:1.069903 svc1:0.460815 svc2:0.702589]\n"}
+{"time":"2025-07-07T21:30:05.162551543Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:05.681980852Z","level":"INFO","msg":"App Utils: map[svc0:1.277939 svc1:0.576674 svc2:0.572737]\n"}
+{"time":"2025-07-07T21:30:05.682081836Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:06.201539259Z","level":"INFO","msg":"App Utils: map[svc0:1.0647769999999999 svc1:0.603164 svc2:0.447441]\n"}
+{"time":"2025-07-07T21:30:06.201621951Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:06.721403401Z","level":"INFO","msg":"App Utils: map[svc0:1.2132839999999998 svc1:0.460298 svc2:0.501247]\n"}
+{"time":"2025-07-07T21:30:06.721482157Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:07.241376256Z","level":"INFO","msg":"App Utils: map[svc0:116.03526500000001 svc1:114.116775 svc2:0.41431]\n"}
+{"time":"2025-07-07T21:30:07.241596552Z","level":"INFO","msg":"Current App Utils: map[svc0:102.66874547466668 svc1:73.46633842031747]\n"}
+{"time":"2025-07-07T21:30:07.779647202Z","level":"INFO","msg":"App Utils: map[svc0:191.83937400000002 svc1:185.868809 svc2:0.478019]\n"}
+{"time":"2025-07-07T21:30:07.779907012Z","level":"INFO","msg":"Current App Utils: map[svc0:146.03920881963637 svc1:128.6948364628125]\n"}
+{"time":"2025-07-07T21:30:08.315987935Z","level":"INFO","msg":"App Utils: map[svc0:185.665697 svc1:184.715034 svc2:1.436537]\n"}
+{"time":"2025-07-07T21:30:08.316223018Z","level":"INFO","msg":"Current App Utils: map[svc0:134.12951142541792 svc1:121.00858200210786 svc2:3.6912578105454545]\n"}
+{"time":"2025-07-07T21:30:08.851063956Z","level":"INFO","msg":"App Utils: map[svc0:186.51613600000002 svc1:184.495236 svc2:0.863225]\n"}
+{"time":"2025-07-07T21:30:08.851271453Z","level":"INFO","msg":"Current App Utils: map[svc0:124.26323504872221 svc1:112.60717183836508]\n"}
+{"time":"2025-07-07T21:30:09.393087246Z","level":"INFO","msg":"App Utils: map[svc0:188.273728 svc1:186.375312 svc2:0.418712]\n"}
+{"time":"2025-07-07T21:30:09.393306537Z","level":"INFO","msg":"Current App Utils: map[svc0:98.0521926322314 svc1:147.3003922126829 svc2:2.1908202299999995]\n"}
+{"time":"2025-07-07T21:30:09.925773787Z","level":"INFO","msg":"App Utils: map[svc0:186.45148 svc1:183.75743 svc2:0.820774]\n"}
+{"time":"2025-07-07T21:30:09.926085527Z","level":"INFO","msg":"Current App Utils: map[svc0:110.36279843245411 svc1:93.86586376228571 svc2:1.6065842499047616]\n"}
+{"time":"2025-07-07T21:30:10.472989268Z","level":"INFO","msg":"App Utils: map[svc0:185.63020600000002 svc1:185.994326 svc2:0.453637]\n"}
+{"time":"2025-07-07T21:30:10.473239785Z","level":"INFO","msg":"Current App Utils: map[svc0:82.47343708360464 svc1:110.07218849554285]\n"}
+{"time":"2025-07-07T21:30:11.005752284Z","level":"INFO","msg":"App Utils: map[svc0:185.803549 svc1:184.246554 svc2:0.817097]\n"}
+{"time":"2025-07-07T21:30:11.006016744Z","level":"INFO","msg":"Current App Utils: map[svc0:124.77417150595609 svc1:83.93161842637 svc2:1.376487987875]\n"}
+{"time":"2025-07-07T21:30:11.531619855Z","level":"INFO","msg":"App Utils: map[svc0:187.398277 svc1:186.143082 svc2:1.306794]\n"}
+{"time":"2025-07-07T21:30:11.531888301Z","level":"INFO","msg":"Current App Utils: map[svc0:120.80539264242233 svc1:108.70813481992226 svc2:1.2403650148]\n"}
+{"time":"2025-07-07T21:30:12.066878609Z","level":"INFO","msg":"App Utils: map[svc0:187.538914 svc1:184.220941 svc2:0.622625]\n"}
+{"time":"2025-07-07T21:30:12.067103163Z","level":"INFO","msg":"Current App Utils: map[svc0:82.86773394849035 svc1:87.36740360059092]\n"}
+{"time":"2025-07-07T21:30:12.599420659Z","level":"INFO","msg":"App Utils: map[svc0:184.50732 svc1:185.384148 svc2:0.615244]\n"}
+{"time":"2025-07-07T21:30:12.599615343Z","level":"INFO","msg":"Current App Utils: map[svc0:107.43585852232631 svc1:135.74781824293464]\n"}
+{"time":"2025-07-07T21:30:13.130800956Z","level":"INFO","msg":"App Utils: map[svc0:186.97929200000002 svc1:186.656391 svc2:0.443601]\n"}
+{"time":"2025-07-07T21:30:13.131073946Z","level":"INFO","msg":"Current App Utils: map[svc0:107.41945130744116 svc1:115.63697565685234]\n"}
+{"time":"2025-07-07T21:30:13.665504974Z","level":"INFO","msg":"App Utils: map[svc0:187.602171 svc1:186.789869 svc2:1.211191]\n"}
+{"time":"2025-07-07T21:30:13.665744955Z","level":"INFO","msg":"Current App Utils: map[svc0:88.9385448470432 svc1:81.06101328697412 svc2:1.2909724182857143]\n"}
+{"time":"2025-07-07T21:30:14.201748898Z","level":"INFO","msg":"App Utils: map[svc0:191.34549 svc1:188.28729 svc2:1.119025]\n"}
+{"time":"2025-07-07T21:30:14.202245797Z","level":"INFO","msg":"Current App Utils: map[svc0:104.80790852594862 svc1:136.47692795438812 svc2:1.1923343664675323]\n"}
+{"time":"2025-07-07T21:30:14.735041892Z","level":"INFO","msg":"App Utils: map[svc0:186.98168900000002 svc1:186.445362 svc2:0.602078]\n"}
+{"time":"2025-07-07T21:30:14.735230467Z","level":"INFO","msg":"Current App Utils: map[svc0:128.00720563737949 svc1:103.84472311837618]\n"}
+{"time":"2025-07-07T21:30:15.266876934Z","level":"INFO","msg":"App Utils: map[svc0:187.290299 svc1:184.339698 svc2:0.703383]\n"}
+{"time":"2025-07-07T21:30:15.26723964Z","level":"INFO","msg":"Current App Utils: map[svc0:108.78901695458049 svc1:103.0050224701708]\n"}
+{"time":"2025-07-07T21:30:15.887772206Z","level":"INFO","msg":"App Utils: map[svc0:189.461319 svc1:186.194778 svc2:0.588874]\n"}
+{"time":"2025-07-07T21:30:15.888023081Z","level":"INFO","msg":"Current App Utils: map[svc0:138.7330726210646 svc1:114.16484177988377]\n"}
+{"time":"2025-07-07T21:30:16.423062587Z","level":"INFO","msg":"App Utils: map[svc0:188.22571599999998 svc1:185.039972 svc2:1.089162]\n"}
+{"time":"2025-07-07T21:30:16.423469949Z","level":"INFO","msg":"Current App Utils: map[svc0:86.30668618470808 svc1:99.86921699533194 svc2:1.2501550850961538]\n"}
+{"time":"2025-07-07T21:30:16.953868156Z","level":"INFO","msg":"App Utils: map[svc0:189.055216 svc1:186.533501 svc2:0.923377]\n"}
+{"time":"2025-07-07T21:30:16.954130574Z","level":"INFO","msg":"Current App Utils: map[svc0:104.096183390778 svc1:86.07665781742804]\n"}
+{"time":"2025-07-07T21:30:17.486211131Z","level":"INFO","msg":"App Utils: map[svc0:187.807436 svc1:187.929701 svc2:1.645803]\n"}
+{"time":"2025-07-07T21:30:17.486502289Z","level":"INFO","msg":"Current App Utils: map[svc0:83.30901948866591 svc1:117.50809192374007 svc2:1.2640233729444441]\n"}
+{"time":"2025-07-07T21:30:18.020491493Z","level":"INFO","msg":"App Utils: map[svc0:184.757403 svc1:185.432336 svc2:1.348646]\n"}
+{"time":"2025-07-07T21:30:18.020730202Z","level":"INFO","msg":"Current App Utils: map[svc0:118.16297347211552 svc1:82.30966731171789 svc2:1.2099695607586205]\n"}
+{"time":"2025-07-07T21:30:18.552155834Z","level":"INFO","msg":"App Utils: map[svc0:188.203265 svc1:186.082824 svc2:0.534352]\n"}
+{"time":"2025-07-07T21:30:18.5523907Z","level":"INFO","msg":"Current App Utils: map[svc0:107.25851456627571 svc1:96.90796904212402]\n"}
+{"time":"2025-07-07T21:30:19.084230736Z","level":"INFO","msg":"App Utils: map[svc0:188.36235299999998 svc1:185.937295 svc2:1.085214]\n"}
+{"time":"2025-07-07T21:30:19.084477707Z","level":"INFO","msg":"Current App Utils: map[svc0:96.40225783642357 svc1:120.25459278639808 svc2:1.1783473005454541]\n"}
+{"time":"2025-07-07T21:30:19.61680261Z","level":"INFO","msg":"App Utils: map[svc0:185.843125 svc1:184.469039 svc2:1.086846]\n"}
+{"time":"2025-07-07T21:30:19.617070211Z","level":"INFO","msg":"Current App Utils: map[svc0:96.8046390416347 svc1:102.69925735594737]\n"}
+{"time":"2025-07-07T21:30:20.147785668Z","level":"INFO","msg":"App Utils: map[svc0:184.814881 svc1:186.017631 svc2:0.802672]\n"}
+{"time":"2025-07-07T21:30:20.148093694Z","level":"INFO","msg":"Current App Utils: map[svc0:97.00989544832116 svc1:88.91670258591982 svc2:1.1640418814545452]\n"}
+{"time":"2025-07-07T21:30:20.683534544Z","level":"INFO","msg":"App Utils: map[svc0:188.225671 svc1:187.963548 svc2:1.086665]\n"}
+{"time":"2025-07-07T21:30:20.683836683Z","level":"INFO","msg":"Current App Utils: map[svc0:89.96289479098245 svc1:140.00786542511835 svc2:1.1193627529185517]\n"}
+{"time":"2025-07-07T21:30:21.225291596Z","level":"INFO","msg":"App Utils: map[svc0:187.61402900000002 svc1:188.77095 svc2:0.475574]\n"}
+{"time":"2025-07-07T21:30:21.225521286Z","level":"INFO","msg":"Current App Utils: map[svc0:104.38692347213816 svc1:94.90176192999843]\n"}
+{"time":"2025-07-07T21:30:21.766896246Z","level":"INFO","msg":"App Utils: map[svc0:187.592272 svc1:186.096861 svc2:1.353984]\n"}
+{"time":"2025-07-07T21:30:21.767133723Z","level":"INFO","msg":"Current App Utils: map[svc0:135.07147922597176 svc1:77.98224181334821 svc2:1.110124850061508]\n"}
+{"time":"2025-07-07T21:30:22.301175832Z","level":"INFO","msg":"App Utils: map[svc0:187.992241 svc1:185.738442 svc2:1.039155]\n"}
+{"time":"2025-07-07T21:30:22.301466517Z","level":"INFO","msg":"Current App Utils: map[svc0:123.24856837646479 svc1:109.48857065836906]\n"}
+{"time":"2025-07-07T21:30:22.848823503Z","level":"INFO","msg":"App Utils: map[svc0:186.41549899999998 svc1:185.87614 svc2:0.61483]\n"}
+{"time":"2025-07-07T21:30:22.849171073Z","level":"INFO","msg":"Current App Utils: map[svc0:105.37677783355959 svc1:88.68652882622385 svc2:1.0957628021052632]\n"}
+{"time":"2025-07-07T21:30:23.386237712Z","level":"INFO","msg":"App Utils: map[svc0:188.816598 svc1:187.522848 svc2:1.030637]\n"}
+{"time":"2025-07-07T21:30:23.386535073Z","level":"INFO","msg":"Current App Utils: map[svc0:88.3075868509093 svc1:143.2036275563277 svc2:1.0619441170785258]\n"}
+{"time":"2025-07-07T21:30:23.94091511Z","level":"INFO","msg":"App Utils: map[svc0:185.736368 svc1:184.784801 svc2:0.42167]\n"}
+{"time":"2025-07-07T21:30:23.94113803Z","level":"INFO","msg":"Current App Utils: map[svc0:106.20000400034569 svc1:73.92986941906098]\n"}
+{"time":"2025-07-07T21:30:24.468943077Z","level":"INFO","msg":"App Utils: map[svc0:187.935823 svc1:186.549768 svc2:0.828123]\n"}
+{"time":"2025-07-07T21:30:24.46911762Z","level":"INFO","msg":"Current App Utils: map[svc0:78.31291503735022 svc1:109.26404662760432 svc2:1.0392949731563843]\n"}
+{"time":"2025-07-07T21:30:25.0011036Z","level":"INFO","msg":"App Utils: map[svc0:185.941875 svc1:183.159614 svc2:1.076893]\n"}
+{"time":"2025-07-07T21:30:25.001314421Z","level":"INFO","msg":"Current App Utils: map[svc0:113.3046447042413 svc1:74.23155261370829]\n"}
+{"time":"2025-07-07T21:30:25.530767392Z","level":"INFO","msg":"App Utils: map[svc0:186.446134 svc1:185.388267 svc2:0.499394]\n"}
+{"time":"2025-07-07T21:30:25.53103833Z","level":"INFO","msg":"Current App Utils: map[svc0:99.03661646277595 svc1:105.81232297855475 svc2:1.028047206244186]\n"}
+{"time":"2025-07-07T21:30:26.07093813Z","level":"INFO","msg":"App Utils: map[svc0:183.47755899999999 svc1:187.884365 svc2:0.915072]\n"}
+{"time":"2025-07-07T21:30:26.071209218Z","level":"INFO","msg":"Current App Utils: map[svc0:88.8623083322724 svc1:95.39608006578199 svc2:0.9999380288002392]\n"}
+{"time":"2025-07-07T21:30:26.604454733Z","level":"INFO","msg":"App Utils: map[svc0:189.976123 svc1:187.5041 svc2:0.498019]\n"}
+{"time":"2025-07-07T21:30:26.604683172Z","level":"INFO","msg":"Current App Utils: map[svc0:106.38822690283415 svc1:115.96819877124061]\n"}
+{"time":"2025-07-07T21:30:27.153002841Z","level":"INFO","msg":"App Utils: map[svc0:184.60744400000002 svc1:186.671599 svc2:0.860456]\n"}
+{"time":"2025-07-07T21:30:27.153253696Z","level":"INFO","msg":"Current App Utils: map[svc0:109.67719660921061 svc1:112.46021144808785 svc2:0.9867561918260869]\n"}
+{"time":"2025-07-07T21:30:27.682596673Z","level":"INFO","msg":"App Utils: map[svc0:187.198047 svc1:183.80823 svc2:0.909413]\n"}
+{"time":"2025-07-07T21:30:27.682884118Z","level":"INFO","msg":"Current App Utils: map[svc0:95.7930817704967 svc1:77.51025142106201]\n"}
+{"time":"2025-07-07T21:30:28.214474899Z","level":"INFO","msg":"App Utils: map[svc0:186.436361 svc1:185.053613 svc2:0.75923]\n"}
+{"time":"2025-07-07T21:30:28.214695219Z","level":"INFO","msg":"Current App Utils: map[svc0:81.74758294633868 svc1:136.55574065300917 svc2:0.98194925815377]\n"}
+{"time":"2025-07-07T21:30:28.754887317Z","level":"INFO","msg":"App Utils: map[svc0:187.792194 svc1:184.131149 svc2:0.474526]\n"}
+{"time":"2025-07-07T21:30:28.755213386Z","level":"INFO","msg":"Current App Utils: map[svc0:141.01040647839685 svc1:91.14570771589538]\n"}
+{"time":"2025-07-07T21:30:29.28828788Z","level":"INFO","msg":"App Utils: map[svc0:187.126148 svc1:184.735067 svc2:0.500005]\n"}
+{"time":"2025-07-07T21:30:29.288524917Z","level":"INFO","msg":"Current App Utils: map[svc0:95.13285349359717 svc1:87.72706125943134]\n"}
+{"time":"2025-07-07T21:30:29.821353997Z","level":"INFO","msg":"App Utils: map[svc0:187.21314800000002 svc1:188.651492 svc2:1.049625]\n"}
+{"time":"2025-07-07T21:30:29.821785363Z","level":"INFO","msg":"Current App Utils: map[svc0:132.95009205865674 svc1:108.75514409795382 svc2:0.9865578129411765]\n"}
+{"time":"2025-07-07T21:30:30.352717318Z","level":"INFO","msg":"App Utils: map[svc0:187.273232 svc1:185.185951 svc2:1.062777]\n"}
+{"time":"2025-07-07T21:30:30.352958669Z","level":"INFO","msg":"Current App Utils: map[svc0:91.14593245533946 svc1:87.92409431112121]\n"}
+{"time":"2025-07-07T21:30:30.895882088Z","level":"INFO","msg":"App Utils: map[svc0:185.461738 svc1:184.463721 svc2:0.451574]\n"}
+{"time":"2025-07-07T21:30:30.89618521Z","level":"INFO","msg":"Current App Utils: map[svc0:98.13330407792301 svc1:129.0542017453835 svc2:0.979017439419196]\n"}
+{"time":"2025-07-07T21:30:31.430235651Z","level":"INFO","msg":"App Utils: map[svc0:187.42610499999998 svc1:185.555212 svc2:1.18579]\n"}
+{"time":"2025-07-07T21:30:31.430588886Z","level":"INFO","msg":"Current App Utils: map[svc0:77.49655993155487 svc1:83.99888813241101]\n"}
+{"time":"2025-07-07T21:30:31.966161239Z","level":"INFO","msg":"App Utils: map[svc0:188.602059 svc1:186.893257 svc2:0.432622]\n"}
+{"time":"2025-07-07T21:30:31.966422321Z","level":"INFO","msg":"Current App Utils: map[svc0:112.4455727460014 svc1:101.47118819728571 svc2:0.9743400642075758]\n"}
+{"time":"2025-07-07T21:30:32.522990886Z","level":"INFO","msg":"App Utils: map[svc0:185.477349 svc1:189.212951 svc2:1.499438]\n"}
+{"time":"2025-07-07T21:30:32.523246584Z","level":"INFO","msg":"Current App Utils: map[svc0:115.7275416706928 svc1:105.04359555243073 svc2:0.9682460588571428]\n"}
+{"time":"2025-07-07T21:30:33.061689197Z","level":"INFO","msg":"App Utils: map[svc0:186.63235500000002 svc1:189.368154 svc2:0.552693]\n"}
+{"time":"2025-07-07T21:30:33.062055282Z","level":"INFO","msg":"Current App Utils: map[svc0:70.47220062348055 svc1:84.34409254297923]\n"}
+{"time":"2025-07-07T21:30:33.596324814Z","level":"INFO","msg":"App Utils: map[svc0:188.08999 svc1:187.759761 svc2:0.45287]\n"}
+{"time":"2025-07-07T21:30:33.596590286Z","level":"INFO","msg":"Current App Utils: map[svc0:105.67742460310203 svc1:139.45075570812733]\n"}
+{"time":"2025-07-07T21:30:34.127066204Z","level":"INFO","msg":"App Utils: map[svc0:185.71899299999998 svc1:186.09458 svc2:0.446328]\n"}
+{"time":"2025-07-07T21:30:34.127280489Z","level":"INFO","msg":"Current App Utils: map[svc0:98.5674752059711 svc1:73.63693901774069]\n"}
+{"time":"2025-07-07T21:30:34.671579188Z","level":"INFO","msg":"App Utils: map[svc0:188.05569 svc1:188.93182 svc2:0.5517]\n"}
+{"time":"2025-07-07T21:30:34.671953548Z","level":"INFO","msg":"Current App Utils: map[svc0:98.76893291793417 svc1:105.00084022996275]\n"}
+{"time":"2025-07-07T21:30:35.208200546Z","level":"INFO","msg":"App Utils: map[svc0:184.467192 svc1:189.864154 svc2:1.224697]\n"}
+{"time":"2025-07-07T21:30:35.208448859Z","level":"INFO","msg":"Current App Utils: map[svc0:98.77488472138148 svc1:125.4301923024356 svc2:0.997643733820933]\n"}
+{"time":"2025-07-07T21:30:35.748615754Z","level":"INFO","msg":"App Utils: map[svc0:186.94997600000002 svc1:186.632842 svc2:0.538128]\n"}
+{"time":"2025-07-07T21:30:35.74883565Z","level":"INFO","msg":"Current App Utils: map[svc0:88.34203281793567 svc1:87.32576603362965]\n"}
+{"time":"2025-07-07T21:30:36.286710543Z","level":"INFO","msg":"App Utils: map[svc0:187.456491 svc1:186.324895 svc2:0.472927]\n"}
+{"time":"2025-07-07T21:30:36.287534238Z","level":"INFO","msg":"Current App Utils: map[svc0:130.12355821050053 svc1:87.47643077519854]\n"}
+{"time":"2025-07-07T21:30:36.829219725Z","level":"INFO","msg":"App Utils: map[svc0:187.450743 svc1:189.344579 svc2:1.265533]\n"}
+{"time":"2025-07-07T21:30:36.829527738Z","level":"INFO","msg":"Current App Utils: map[svc0:139.70265411840916 svc1:108.49435554189107]\n"}
+{"time":"2025-07-07T21:30:37.361556134Z","level":"INFO","msg":"App Utils: map[svc0:186.884997 svc1:185.990733 svc2:0.506293]\n"}
+{"time":"2025-07-07T21:30:37.361773585Z","level":"INFO","msg":"Current App Utils: map[svc0:80.65025766195035 svc1:98.01394820549324 svc2:1.0161708380512817]\n"}
+{"time":"2025-07-07T21:30:37.893013099Z","level":"INFO","msg":"App Utils: map[svc0:189.97908 svc1:183.841074 svc2:1.178032]\n"}
+{"time":"2025-07-07T21:30:37.893273734Z","level":"INFO","msg":"Current App Utils: map[svc0:108.43225709911447 svc1:115.16590731233838]\n"}
+{"time":"2025-07-07T21:30:38.433204524Z","level":"INFO","msg":"App Utils: map[svc0:185.69482499999998 svc1:186.109947 svc2:0.667822]\n"}
+{"time":"2025-07-07T21:30:38.433462982Z","level":"INFO","msg":"Current App Utils: map[svc0:80.7199731984878 svc1:90.88712224886432 svc2:1.015235834936034]\n"}
+{"time":"2025-07-07T21:30:38.971019747Z","level":"INFO","msg":"App Utils: map[svc0:183.59901699999998 svc1:183.583949 svc2:0.443735]\n"}
+{"time":"2025-07-07T21:30:38.971333541Z","level":"INFO","msg":"Current App Utils: map[svc0:108.67880509366333 svc1:101.32997572510318]\n"}
+{"time":"2025-07-07T21:30:39.505102553Z","level":"INFO","msg":"App Utils: map[svc0:1.427751 svc1:0.635484 svc2:0.567832]\n"}
+{"time":"2025-07-07T21:30:39.505364461Z","level":"INFO","msg":"Current App Utils: map[svc0:27.916255462973496 svc1:41.635119958279454]\n"}
+{"time":"2025-07-07T21:30:40.033290447Z","level":"INFO","msg":"App Utils: map[svc0:1.1708210000000001 svc1:0.444718 svc2:0.600283]\n"}
+{"time":"2025-07-07T21:30:40.033430738Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:40.554120015Z","level":"INFO","msg":"App Utils: map[svc0:1.159204 svc1:0.475239 svc2:0.451409]\n"}
+{"time":"2025-07-07T21:30:40.554264892Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:41.073626214Z","level":"INFO","msg":"App Utils: map[svc0:1.066525 svc1:0.536469 svc2:0.55562]\n"}
+{"time":"2025-07-07T21:30:41.073759028Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:41.593370231Z","level":"INFO","msg":"App Utils: map[svc0:1.300678 svc1:0.502943 svc2:0.46345]\n"}
+{"time":"2025-07-07T21:30:41.59352689Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:42.115823924Z","level":"INFO","msg":"App Utils: map[svc0:1.353736 svc1:0.625451 svc2:0.462483]\n"}
+{"time":"2025-07-07T21:30:42.115972188Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:42.636352869Z","level":"INFO","msg":"App Utils: map[svc0:1.311801 svc1:0.740474 svc2:0.432151]\n"}
+{"time":"2025-07-07T21:30:42.636506244Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:43.157707327Z","level":"INFO","msg":"App Utils: map[svc0:1.204878 svc1:0.783875 svc2:0.461353]\n"}
+{"time":"2025-07-07T21:30:43.157861298Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:43.679271365Z","level":"INFO","msg":"App Utils: map[svc0:1.54923 svc1:0.472492 svc2:0.453179]\n"}
+{"time":"2025-07-07T21:30:43.679473901Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:44.417441645Z","level":"INFO","msg":"App Utils: map[svc0:1.2939910000000001 svc1:0.827225 svc2:0.445653]\n"}
+{"time":"2025-07-07T21:30:44.417580427Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:44.938301941Z","level":"INFO","msg":"App Utils: map[svc0:1.223049 svc1:0.659073 svc2:0.625982]\n"}
+{"time":"2025-07-07T21:30:44.938448312Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:45.458811805Z","level":"INFO","msg":"App Utils: map[svc0:1.034628 svc1:0.529556 svc2:0.450066]\n"}
+{"time":"2025-07-07T21:30:45.458961087Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:45.97764236Z","level":"INFO","msg":"App Utils: map[svc0:1.284058 svc1:0.674756 svc2:0.425467]\n"}
+{"time":"2025-07-07T21:30:45.977786858Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:46.4971833Z","level":"INFO","msg":"App Utils: map[svc0:1.153508 svc1:0.566189 svc2:0.468488]\n"}
+{"time":"2025-07-07T21:30:46.497334062Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:47.018342069Z","level":"INFO","msg":"App Utils: map[svc0:2.05398 svc1:0.449018 svc2:0.455377]\n"}
+{"time":"2025-07-07T21:30:47.01849133Z","level":"INFO","msg":"Current App Utils: map[]\n"}
+{"time":"2025-07-07T21:30:47.539602463Z","level":"INFO","msg":"App Utils: map[svc0:1.797428 svc1:1.325419 svc2:1.054589]\n"}
+{"time":"2025-07-07T21:30:47.539751805Z","level":"INFO","msg":"Current App Utils: map[]\n"}

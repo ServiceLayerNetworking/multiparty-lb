@@ -312,7 +312,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1]:
+        for iteration in [3]:
         
             for distr in ["none"]:
                 
@@ -463,8 +463,8 @@ def _main():
         pod_names,
         lbs=[
             # "nodal_leastrequest",
-            "leastrequest_plus",
-            # "only_nodal_leastrequest"
+            # "leastrequest_plus",
+            "only_nodal_leastrequest"
         ])
 
     # run_exp_for_cluster_state(

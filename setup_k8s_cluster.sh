@@ -3,10 +3,17 @@
 # sudo apt update && sudo apt install socat
 # kubectl create namespace istio-ingress
 
-# set -x
-# set -e
+set -x
+set -e
 
-NODES=4
+# check if istio is installed
+if ! command -v istioctl &> /dev/null; then
+    echo "istioctl could not be found. Please install Istio CLI first."
+    exit 1
+fi
+
+# number of worker nodes
+NODES=3
 
 # echo "[SCRIPT] Deleting any previous minikube cluster..."
 # minikube delete --all
@@ -22,18 +29,24 @@ NODES=4
 # minikube addons enable metrics-server
 kubectl apply -f https://raw.githubusercontent.com/pythianarora/total-practice/master/sample-kubernetes-code/metrics-server.yaml
 
+CLUSTER_NAME="mplb-k8s-d820.mlnetwork.emulab.net"
+export CLUSTER_NAME=$CLUSTER_NAME
+
 echo "[SCRIPT] Setting labels on each node..."
 for i in $(seq 1 $NODES);
 do
-  kubectl label node node$i.k8s-mplb.mlnetwork.emulab.net node-role.kubernetes.io/worker=node$i --overwrite
+  kubectl label node node$i.$CLUSTER_NAME node-role.kubernetes.io/worker=node$i --overwrite
 done
-kubectl label node node0.k8s-mplb.mlnetwork.emulab.net node-role.kubernetes.io/control-plane=master --overwrite
+kubectl label node node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane=master --overwrite
 
-echo "[SCRIPT] Installing istio..."
-curl -L https://istio.io/downloadIstio | sh -
-cd "$(find . -maxdepth 1 -type d -name "istio-*" | head -n 1)"
-echo "export PATH=$PWD/bin:$PATH" >> ~/.bashrc && source ~/.bashrc
-cd ..
+sudo apt update && sudo apt install socat -y
+NAMESPACE="istio-ingress"
+if ! kubectl get namespace "$NAMESPACE" > /dev/null 2>&1; then
+  kubectl create namespace "$NAMESPACE"
+fi
+
+# remove master node taint
+kubectl taint nodes node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane:NoSchedule-
 
 istioctl install -y -f ~/multiparty-lb/dst-rules_virtual-svcs/multiGateway.yaml
 kubectl label namespace default istio-injection=enabled --overwrite
@@ -65,9 +78,9 @@ done
 
 echo "Limits have been removed from all deployments in istio-ingress."
 echo "[SCRIPT] Applying taints to three nodes..."
-kubectl taint nodes node1.k8s-mplb.mlnetwork.emulab.net node=node1:NoSchedule --overwrite
-kubectl taint nodes node2.k8s-mplb.mlnetwork.emulab.net node=node2:NoSchedule --overwrite
-kubectl taint nodes node3.k8s-mplb.mlnetwork.emulab.net node=node3:NoSchedule --overwrite
+kubectl taint nodes node1.$CLUSTER_NAME node=node1:NoSchedule --overwrite
+kubectl taint nodes node2.$CLUSTER_NAME node=node2:NoSchedule --overwrite
+kubectl taint nodes node3.$CLUSTER_NAME node=node3:NoSchedule --overwrite
 
 # echo "[SCRIPT] Starting the Docker registry..."
 # kubectl apply -f docker-registry/registry.yaml

@@ -47,11 +47,14 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 			serviceOutstandingReqs,
 			svcCPUConsumptionPerReq)
 
+		slog.Info(fmt.Sprintf("Current App Utils: %v\n", currentAppUtils))
+
 		// get weights from gurobi
 		gurobiInput = currentAppUtils
 
 	} else {
 		currentAppUtils := getPerAppUtilizations(nodeCPUUtilizations)
+		slog.Info(fmt.Sprintf("Current App Utils: %v\n", currentAppUtils))
 
 		// effectiveAppUtils := makeNoiseZero(currentAppUtils, NOISE)
 		// effectiveAppUtils = addOverhead(effectiveAppUtils, OVERHEAD)
@@ -60,6 +63,8 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 		avgAppUtils, newRoundsAppCPUUtils := getRollingAverage(
 			currentAppUtils, c.RoundsAppCPUUtils)
 		c.RoundsAppCPUUtils = newRoundsAppCPUUtils
+
+		slog.Info(fmt.Sprintf("Rolling App Utils: %v\n", c.RoundsAppCPUUtils))
 
 		// round all app utils to whole numbers
 		appUtilsForGurobi := make(map[string]float64)
@@ -97,6 +102,7 @@ func getPerAppRpsBasedUtil(
 	// REQUEST
 
 	// UPDATE: WE IMPROVED THE CODE BY USING CURRENT TIME AS THE START TIME OF THE WINDOW
+	// UPDATE: CHANGED IT BACK, IT DOESN'T WORK THAT WELL
 
 	// get the most recently sent request's time
 	var maxStartTimeMs int64 = 0
@@ -187,9 +193,13 @@ func getPerAppUtilizations(nodeCPUUtilizations []string) map[string]float64 {
 	appUtils := make(map[string]float64)
 	for _, cpuUtil := range nodeCPUUtilizations {
 
-		// example cpuUtil to parse: "cpuUtilizations app1-node1:45 app2-node1:69"
+		// example cpuUtil to parse: "utils:hostagent-node2-0:1.676123 svc0-1:0.470927 svc1-0:0.453747"
 
-		cpuUtilStrs := strings.Split(cpuUtil, " ")[1:]
+		if cpuUtil[:6] == "utils:" {
+			cpuUtil = cpuUtil[6:] // remove "utils:"
+		}
+
+		cpuUtilStrs := strings.Split(cpuUtil, " ")
 		for _, cpuUtilStr := range cpuUtilStrs {
 
 			util := strings.Split(cpuUtilStr, ":")
@@ -200,7 +210,7 @@ func getPerAppUtilizations(nodeCPUUtilizations []string) map[string]float64 {
 				continue
 			}
 
-			// get "app1-node1" from "app1-node1-0"
+			// get "app1-node1" from "app1-0"
 			pattern := `^(.+)-\d+$`
 			// Compile the regex
 			re := regexp.MustCompile(pattern)
@@ -219,6 +229,10 @@ func getPerAppUtilizations(nodeCPUUtilizations []string) map[string]float64 {
 		}
 
 	}
+
+	slog.Info(fmt.Sprintf("nodeCPUUtilizations: %v\n", nodeCPUUtilizations))
+	slog.Info(fmt.Sprintf("App Utils: %v\n", appUtils))
+
 	return appUtils
 }
 
