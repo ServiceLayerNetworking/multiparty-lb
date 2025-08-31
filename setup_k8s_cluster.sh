@@ -13,7 +13,7 @@ if ! command -v istioctl &> /dev/null; then
 fi
 
 # number of worker nodes
-NODES=3
+NODES=4
 
 # echo "[SCRIPT] Deleting any previous minikube cluster..."
 # minikube delete --all
@@ -29,8 +29,17 @@ NODES=3
 # minikube addons enable metrics-server
 kubectl apply -f https://raw.githubusercontent.com/pythianarora/total-practice/master/sample-kubernetes-code/metrics-server.yaml
 
-CLUSTER_NAME="mplb-k8s-d820.mlnetwork.emulab.net"
-export CLUSTER_NAME=$CLUSTER_NAME
+
+# Extract cluster name from 'kubectl get nodes' output
+NODE0_LINE=$(kubectl get nodes --no-headers | grep node0)
+if [[ -z "$NODE0_LINE" ]]; then
+  echo "Could not find node0 in kubectl get nodes output."
+  exit 1
+fi
+NODE0_NAME=$(echo "$NODE0_LINE" | awk '{print $1}')
+CLUSTER_NAME=${NODE0_NAME#node0.}
+export CLUSTER_NAME
+echo "[SCRIPT] Detected cluster name: $CLUSTER_NAME"
 
 echo "[SCRIPT] Setting labels on each node..."
 for i in $(seq 1 $NODES);
@@ -39,14 +48,23 @@ do
 done
 kubectl label node node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane=master --overwrite
 
+# if nodes <= 3 then label master node as the mplb/lb-node else label last worker node as mplb/lb-node
+if [ "$NODES" -le 3 ]; then
+  kubectl label node node0.$CLUSTER_NAME mplb/lb-node=master --overwrite
+else
+  kubectl label node node$NODES.$CLUSTER_NAME mplb/lb-node=worker --overwrite
+fi
+
 sudo apt update && sudo apt install socat -y
 NAMESPACE="istio-ingress"
 if ! kubectl get namespace "$NAMESPACE" > /dev/null 2>&1; then
   kubectl create namespace "$NAMESPACE"
 fi
 
-# remove master node taint
-kubectl taint nodes node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane:NoSchedule-
+# remove master node taint if NODES <=3
+if [ "$NODES" -le 3 ]; then
+  kubectl taint nodes node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane:NoSchedule-
+fi
 
 istioctl install -y -f ~/multiparty-lb/dst-rules_virtual-svcs/multiGateway.yaml
 kubectl label namespace default istio-injection=enabled --overwrite
@@ -91,8 +109,8 @@ kubectl taint nodes node3.$CLUSTER_NAME node=node3:NoSchedule --overwrite
 # echo "[SCRIPT] Starting Generic Apps..."
 # kubectl apply -Rf generic-app/3-node-scenario
 
-echo "[SCRIPT] Creating namespace mplb-system..."
-kubectl create namespace mplb-system
+echo "[SCRIPT] Creating namespace mplb-system if it doesn't exist..."
+kubectl get namespace mplb-system > /dev/null 2>&1 || kubectl create namespace mplb-system
 
 # kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
 

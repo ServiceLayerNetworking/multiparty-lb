@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/sys-design-test"
+LOG_FOLDER = "logs/test_Aug30"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -312,7 +312,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [3]:
+        for iteration in [1]:
         
             for distr in ["none"]:
                 
@@ -442,7 +442,7 @@ def _main():
     
     prep_for_exps()
     
-    state_id = 5
+    state_id = 1
     svc_loads = [200, 200, 0]
     svc_to_nodes = {
         "svc0": ["node0", "node1"],
@@ -463,8 +463,8 @@ def _main():
         pod_names,
         lbs=[
             # "nodal_leastrequest",
-            # "leastrequest_plus",
-            "only_nodal_leastrequest"
+            "leastrequest_plus",
+            # "only_nodal_leastrequest"
         ])
 
     # run_exp_for_cluster_state(

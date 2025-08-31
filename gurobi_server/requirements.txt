@@ -1,0 +1,5 @@
+# Requirements for gurobi_server
+# Add your dependencies below
+numpy
+gurobipy
+flask

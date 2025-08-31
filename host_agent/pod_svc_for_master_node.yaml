@@ -40,6 +40,10 @@ spec:
         hostPath:
           path: /         # This will mount the root filesystem of the host
           type: Directory
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          value: ""
+          effect: "NoSchedule"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
