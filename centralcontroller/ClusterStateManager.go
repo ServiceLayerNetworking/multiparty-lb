@@ -35,6 +35,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	reqStats []ReqStat,
 	reqSentStats []ReqStat,
 	serviceOutstandingReqs *ServiceOutstandingRequests,
+	serviceArrivingRPS *ServiceArrivingRPS,
 	svcCPUConsumptionPerReq map[string]float64) string {
 
 	var gurobiInput map[string]float64
@@ -45,6 +46,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 		currentAppUtils := getPerAppRpsBasedUtil(
 			reqSentStats,
 			serviceOutstandingReqs,
+			serviceArrivingRPS,
 			svcCPUConsumptionPerReq)
 
 		slog.Info(fmt.Sprintf("Current App Utils: %v\n", currentAppUtils))
@@ -94,6 +96,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 func getPerAppRpsBasedUtil(
 	reqSentStats []ReqStat,
 	serviceOutstandingReqs *ServiceOutstandingRequests,
+	serviceArrivingRPS *ServiceArrivingRPS,
 	svcCPUConsumptionPerReq map[string]float64) map[string]float64 {
 
 	// THIS CODE IS BUGGY. WE DON'T HAVE THE EXACT TIME FOR WHEN WE RECEIVED THE
@@ -145,10 +148,12 @@ func getPerAppRpsBasedUtil(
 		// 	reqsProcessed = 42
 		// }
 
-		svcRPS := float64(sentReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
+		// svcRPS := float64(sentReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
+		svcRPS := serviceArrivingRPS.GetRPS(svc)
 		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc] // * SVC_UTIL_SCALE_FACTOR
 
-		fmt.Printf("svcRPSBasedUtil |||||| %s: %d %d %f\n", svc, sentReqs, oustandingRequests, svcRPSBasedUtil[svc])
+		fmt.Printf("svcRPSBasedUtil |||||| %s: %d rps(depr) %f rps %d ots-req %f%% util\n",
+			svc, sentReqs, svcRPS, oustandingRequests, svcRPSBasedUtil[svc])
 	}
 
 	serviceOutstandingReqs.mu.Unlock()

@@ -11,7 +11,7 @@ import sys
 from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
 
 # Everything in seconds:
-DURATION = 30
+DURATION = 60
 DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
@@ -312,7 +312,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1]:
+        for iteration in [0]:
         
             for distr in ["none"]:
                 
@@ -442,7 +442,7 @@ def _main():
     
     prep_for_exps()
     
-    state_id = 1
+    state_id = 4
     svc_loads = [200, 200, 0]
     svc_to_nodes = {
         "svc0": ["node0", "node1"],
@@ -462,8 +462,8 @@ def _main():
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "nodal_leastrequest",
             "leastrequest_plus",
+            # "nodal_leastrequest",
             # "only_nodal_leastrequest"
         ])
 

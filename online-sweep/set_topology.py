@@ -415,6 +415,12 @@ def clear_cluster():
           "destinationrules, virtualservices, and gateways " + 
           "deleted from the default namespace.")
     
+    os.system("kubectl delete destinationrules.networking.istio.io --all -n istio-ingress")
+    os.system("kubectl delete virtualservices.networking.istio.io --all -n istio-ingress")
+    os.system("kubectl delete gateways.networking.istio.io --all -n istio-ingress")
+
+    print("All destination rules, virtual services, and gateways deleted from the istio-ingress namespace.")
+
 def setup_clutser_with_new_pods(pod_names: List[str]) -> bool:
     
     # assume that istio is set up with the wasm plugins that have the right LB 

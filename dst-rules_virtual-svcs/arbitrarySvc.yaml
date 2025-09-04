@@ -8,7 +8,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: ingress-gateway-svc0
-  namespace: istio-ingress
+  # namespace: istio-ingress
 spec:
   selector:
     istio: ingressgateway-svc0 # use the custom configured gateway
@@ -24,7 +24,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: ingress-gateway-svc1
-  namespace: istio-ingress
+  # namespace: istio-ingress
 spec:
   selector:
     istio: ingressgateway-svc1 # use the custom configured gateway
@@ -40,7 +40,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: Gateway
 metadata:
   name: ingress-gateway-svc2
-  namespace: istio-ingress
+  # namespace: istio-ingress
 spec:
   selector:
     istio: ingressgateway-svc2 # use the custom configured gateway
@@ -64,7 +64,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: svc0-destination
-  namespace: istio-ingress
+  # namespace: istio-ingress
 spec:
   host: svc0 # the k8s service name for your application
   trafficPolicy:
@@ -86,7 +86,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   name: svc1-destination
-  namespace: istio-ingress
+  # namespace: istio-ingress
 spec:
   host: svc1
   trafficPolicy:
@@ -100,12 +100,31 @@ spec:
     labels:
       pod-name: svc1-1
 ---
+# DestinationRule for frontend, subsetting by label.
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: svc2-destination
+  # namespace: istio-ingress
+spec:
+  host: svc2
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_REQUEST
+  subsets:
+  - name: svc2-0
+    labels:
+      pod-name: svc2-0
+  - name: svc2-1
+    labels:
+      pod-name: svc2-1
+---
 # Subset routing: if x-lb-endpt is svc0-0, route to svc0-0, if svc0-1, route to svc0-1, if not set, random.
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
   name: svc0-virtualservice
-  namespace: istio-ingress
+  # namespace: istio-ingress
 spec:
   hosts:
   - svc0.mplb.com
@@ -153,7 +172,7 @@ apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
   name: svc1-virtualservice
-  namespace: istio-ingress
+  # namespace: istio-ingress
 spec:
   hosts:
   - svc1.mplb.com
@@ -183,5 +202,43 @@ spec:
   - route:
     - destination:
         host: svc1
+        port:
+          number: 3333
+---
+# Subset routing: if x-lb-endpt is svc1-0, route to svc1-0, if svc1-1, route to svc1-1, if not set, random.
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: svc2-virtualservice
+  # namespace: istio-ingress
+spec:
+  hosts:
+  - svc2.mplb.com
+  gateways:
+  - ingress-gateway-svc2
+  http: 
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: svc2-0
+    route:
+    - destination:
+        host: svc2
+        subset: svc2-0
+        port:
+          number: 3333
+  - match:
+    - headers:
+        x-lb-endpt:
+          exact: svc2-1
+    route:
+    - destination:
+        host: svc2
+        subset: svc2-1
+        port:
+          number: 3333
+  - route:
+    - destination:
+        host: svc2
         port:
           number: 3333

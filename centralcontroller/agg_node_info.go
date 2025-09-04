@@ -66,12 +66,71 @@ func makeReqToK8sHost(dstURL string, data []byte) {
 	// 	dstURL, res.Status, string(resBody), latency.Microseconds())
 }
 
+type ServiceArrivingRPS struct {
+	mu                sync.Mutex
+	arrivalTimestamps map[string][]int64 // map from service to slice of arrival unix seconds
+}
+
+func NewServiceArrivingRPS() *ServiceArrivingRPS {
+	return &ServiceArrivingRPS{
+		arrivalTimestamps: make(map[string][]int64),
+	}
+}
+
+// Call this on every '++' operation
+func (s *ServiceArrivingRPS) RecordArrival(service string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().Unix()
+	s.arrivalTimestamps[service] = append(s.arrivalTimestamps[service], now)
+}
+
+// Returns the average RPS for the service over the rolling window
+func (s *ServiceArrivingRPS) GetRPS(service string) float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().Unix()
+	cutoff := now - NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS
+	ts, ok := s.arrivalTimestamps[service]
+	if !ok {
+		log.Printf("[ServiceArrivingRPS] ERROR: service '%s' not found in arrivalTimestamps, returning 0", service)
+		return 0.0
+	}
+	// Prune old timestamps
+	i := 0
+	for ; i < len(ts); i++ {
+		if ts[i] >= cutoff {
+			break
+		}
+	}
+	ts = ts[i:]
+	s.arrivalTimestamps[service] = ts
+	numReqsArrived := len(ts)
+	if numReqsArrived == 0 {
+		return 0.0
+	}
+	fmt.Printf("[ServiceArrivingRPS] Service: %s | NumReqsArrived in last %d seconds: %d | RPS: %f\n",
+		service, NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS, numReqsArrived,
+		float64(numReqsArrived)/float64(NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS))
+	return float64(numReqsArrived) / float64(NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS)
+}
+
 type ServiceOutstandingRequests struct {
 	mu                sync.Mutex
 	numOutstandingReq map[string]int
 }
 
-func updateOutstandingRequests(serviceOutstandingRequests *ServiceOutstandingRequests, reqBody []byte) {
+func NewServiceOutstandingRequests() *ServiceOutstandingRequests {
+	return &ServiceOutstandingRequests{
+		numOutstandingReq: make(map[string]int),
+	}
+}
+
+func updateReqStats(
+	serviceOutstandingRequests *ServiceOutstandingRequests,
+	serviceArrivingRPS *ServiceArrivingRPS,
+	reqBody []byte) {
+
 	// input := "1745477992498147000|svc0|0|--"
 	reqBodyStr := string(reqBody)
 	parts := strings.Split(reqBodyStr, "|")
@@ -88,6 +147,9 @@ func updateOutstandingRequests(serviceOutstandingRequests *ServiceOutstandingReq
 			}
 		} else if operation == "++" {
 			serviceOutstandingRequests.numOutstandingReq[service]++
+			if serviceArrivingRPS != nil {
+				serviceArrivingRPS.RecordArrival(service)
+			}
 		} else {
 			fmt.Println("Invalid input format", reqBodyStr)
 		}
@@ -101,7 +163,10 @@ func updateOutstandingRequests(serviceOutstandingRequests *ServiceOutstandingReq
 	}
 }
 
-func echoServer(ingressGatewayURLs []string, serviceOutstandingRequests *ServiceOutstandingRequests) {
+func echoServer(
+	ingressGatewayURLs []string,
+	serviceOutstandingRequests *ServiceOutstandingRequests,
+	serviceArrivingRPS *ServiceArrivingRPS) {
 
 	// HTTP Server to Echo POST Request Body
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -119,7 +184,7 @@ func echoServer(ingressGatewayURLs []string, serviceOutstandingRequests *Service
 		// fmt.Printf("Received request to echo: %s\n", body)
 
 		// 1745477992498147000|svc0|0|--
-		updateOutstandingRequests(serviceOutstandingRequests, body)
+		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, body)
 
 		for _, ingressGatewayURL := range ingressGatewayURLs {
 			// Make request to K8s Host

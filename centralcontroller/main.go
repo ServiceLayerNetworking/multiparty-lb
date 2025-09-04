@@ -33,6 +33,7 @@ const (
 	ECHO_SERVER_PORT = "5656"
 
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
+	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 10 // Number of seconds for rolling average of RPS
 
 	NODE_CAP_SCALE_FACTOR = 1
 	M_CPUS_IN_NODE        = 2000 * NODE_CAP_SCALE_FACTOR
@@ -251,11 +252,11 @@ func main() {
 
 	// Initialize the logger
 	l := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelError,
 	}))
 	slog.SetDefault(l) // configures log package to print with LevelError
 	capturePC := log.Flags()&(log.Lshortfile|log.Llongfile) != 0
-	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelInfo, capturePC}) // configures log package to print with LevelError
+	log.SetOutput(&handlerWriter{l.Handler(), slog.LevelError, capturePC}) // configures log package to print with LevelError
 
 	// get flags
 	logFileName, enforcement, durationMs := getFlags()
@@ -316,11 +317,11 @@ func main() {
 	// Get the ingress gateway URLs
 	ingressGatewayURLs := k8sClient.GetIngressGatewayURLs()
 	fmt.Printf("Ingress Gateway URLs: %v\n", ingressGatewayURLs)
+
 	// Start the Echo Server
-	serviceOutstandingRequests := ServiceOutstandingRequests{
-		numOutstandingReq: make(map[string]int),
-	}
-	go echoServer(ingressGatewayURLs, &serviceOutstandingRequests)
+	serviceOutstandingRequests := NewServiceOutstandingRequests()
+	serviceArrivingRPS := NewServiceArrivingRPS()
+	go echoServer(ingressGatewayURLs, serviceOutstandingRequests, serviceArrivingRPS)
 
 	// get pods to log
 	podNamesToLog := getPodsToLog(podNames)
@@ -332,7 +333,7 @@ func main() {
 
 		if enforcement == "LB" {
 
-			go ccWithLBEnforcement(cpuLogFile, nodes, appNames, podNamesToLog, &serviceOutstandingRequests)
+			go ccWithLBEnforcement(cpuLogFile, nodes, appNames, podNamesToLog, serviceOutstandingRequests, serviceArrivingRPS)
 
 		} else {
 
@@ -456,7 +457,8 @@ func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat, []ReqS
 }
 
 func ccWithLBEnforcement(
-	cpuLogFile *LogFile, nodes []Node, appNames []string, podsToLog []string, serviceOutstandingReqs *ServiceOutstandingRequests) {
+	cpuLogFile *LogFile, nodes []Node, appNames []string, podsToLog []string,
+	serviceOutstandingReqs *ServiceOutstandingRequests, serviceArrivingRPS *ServiceArrivingRPS) {
 
 	// Initialize cluster state
 	cs := ClusterStateManager{}
@@ -486,6 +488,7 @@ func ccWithLBEnforcement(
 			reqStats,
 			reqSentStats,
 			serviceOutstandingReqs,
+			serviceArrivingRPS,
 			svcCPUConsumptionPerReq)
 
 		// log the CPU Utilizations and CPU Shares
