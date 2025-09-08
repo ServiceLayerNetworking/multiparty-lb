@@ -35,6 +35,11 @@ const (
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 10 // Number of seconds for rolling average of RPS
 
+	NUM_OF_SECS_FOR_REQ_STATS = 5    // Number of seconds of past request stats to consider
+	INIT_HEADROOM_PCT         = 10.0 // Initial headroom percentage for each service
+	MINIMUM_HEADROOM_PCT      = 0.0  // Minimum headroom percentage for each service
+	DELTA_HEADROOM_PCT        = 5.0  // Change in headroom percentage for each service
+
 	NODE_CAP_SCALE_FACTOR = 1
 	M_CPUS_IN_NODE        = 2000 * NODE_CAP_SCALE_FACTOR
 
@@ -248,6 +253,20 @@ func (w *handlerWriter) Write(buf []byte) (int, error) {
 	return origLen, w.h.Handle(context.Background(), r)
 }
 
+type ReqStatsServer struct {
+	serviceOutstandingRequests *ServiceOutstandingRequests
+	serviceLatencyStats        *ServiceLatencyStats
+	serviceArrivingRPS         *ServiceArrivingRPS
+}
+
+func NewReqStatsServer() *ReqStatsServer {
+	return &ReqStatsServer{
+		serviceOutstandingRequests: NewServiceOutstandingRequests(),
+		serviceLatencyStats:        NewServiceLatencyStats(),
+		serviceArrivingRPS:         NewServiceArrivingRPS(),
+	}
+}
+
 func main() {
 
 	// Initialize the logger
@@ -319,9 +338,12 @@ func main() {
 	fmt.Printf("Ingress Gateway URLs: %v\n", ingressGatewayURLs)
 
 	// Start the Echo Server
-	serviceOutstandingRequests := NewServiceOutstandingRequests()
-	serviceArrivingRPS := NewServiceArrivingRPS()
-	go echoServer(ingressGatewayURLs, serviceOutstandingRequests, serviceArrivingRPS)
+	reqStatsServer := NewReqStatsServer()
+	go echoServer(
+		ingressGatewayURLs,
+		reqStatsServer.serviceOutstandingRequests,
+		reqStatsServer.serviceArrivingRPS,
+		reqStatsServer.serviceLatencyStats)
 
 	// get pods to log
 	podNamesToLog := getPodsToLog(podNames)
@@ -333,7 +355,7 @@ func main() {
 
 		if enforcement == "LB" {
 
-			go ccWithLBEnforcement(cpuLogFile, nodes, appNames, podNamesToLog, serviceOutstandingRequests, serviceArrivingRPS)
+			go ccWithLBEnforcement(cpuLogFile, nodes, appNames, podNamesToLog, reqStatsServer)
 
 		} else {
 
@@ -458,7 +480,7 @@ func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat, []ReqS
 
 func ccWithLBEnforcement(
 	cpuLogFile *LogFile, nodes []Node, appNames []string, podsToLog []string,
-	serviceOutstandingReqs *ServiceOutstandingRequests, serviceArrivingRPS *ServiceArrivingRPS) {
+	reqStatsServer *ReqStatsServer) {
 
 	// Initialize cluster state
 	cs := ClusterStateManager{}
@@ -480,15 +502,14 @@ func ccWithLBEnforcement(
 
 		// update the state in the demand estimator and get demand estimates
 		de.UpdateState(getPerAppUtilizations(nodeCPUUtilizations), reqStats)
-		svcCPUConsumptionPerReq := de.GetDemandEstimates(serviceOutstandingReqs)
+		svcCPUConsumptionPerReq := de.GetDemandEstimates(reqStatsServer)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		lbWeights := cs.GetOptimalLBWeights(
 			nodeCPUUtilizations,
 			reqStats,
 			reqSentStats,
-			serviceOutstandingReqs,
-			serviceArrivingRPS,
+			reqStatsServer,
 			svcCPUConsumptionPerReq)
 
 		// log the CPU Utilizations and CPU Shares

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"time"
@@ -28,12 +29,14 @@ type CPUUtilState struct {
 type DemandEstimator struct {
 	CPUUtilizationTimestamps map[string][]CPUUtilState
 	ProcessedReqTimestamps   map[string][]int64
+	HeadRoomPct              map[string]float64
 }
 
 func (de *DemandEstimator) Initialize() {
 	// Initialize the DemandEstimator
 	de.CPUUtilizationTimestamps = make(map[string][]CPUUtilState)
 	de.ProcessedReqTimestamps = make(map[string][]int64)
+	de.HeadRoomPct = make(map[string]float64)
 }
 
 func (de *DemandEstimator) UpdateState(
@@ -105,7 +108,7 @@ func (de *DemandEstimator) UpdateState(
 
 }
 
-func (de *DemandEstimator) GetDemandEstimates(svcOutstandingReqs *ServiceOutstandingRequests) map[string]float64 {
+func (de *DemandEstimator) GetDemandEstimates(reqStatsServer *ReqStatsServer) map[string]float64 {
 
 	// Get the demand estimates for each service
 	cpuConsumptionsPerReq := make(map[string]float64)
@@ -161,7 +164,39 @@ func (de *DemandEstimator) GetDemandEstimates(svcOutstandingReqs *ServiceOutstan
 		}
 
 		cpuConsumptionsPerReq[svcName] = cpuConsumptionPerReq * CPU_PER_REQ_SCALE_FACTOR
+
+		// add in the headroom
+		headroomPct := de.getHeadRoomPct(svcName, reqStatsServer)
+		cpuConsumptionsPerReq[svcName] += cpuConsumptionsPerReq[svcName] * (headroomPct / 100.0)
 	}
 
 	return cpuConsumptionsPerReq
+}
+
+func (de *DemandEstimator) getHeadRoomPct(svcName string, reqStatsServer *ReqStatsServer) float64 {
+
+	// if per-req performance is ideal, decrease headroom by DELTA_HEADROOM_PCT
+	// if per-req performance is no ideal, increase headroom by DELTA_HEADROOM_PCT
+	// headroom cannot go below 0%
+
+	// performance is ideal when slo is met
+	// define SLO as 95th percentile latency < 100ms
+
+	// get the 95th percentile latency for the service in the last 5 seconds
+	latency95th := reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 95.0)
+
+	isPerformanceIdeal := latency95th < 100.0
+
+	headroomPct, ok := de.HeadRoomPct[svcName]
+	if !ok {
+		headroomPct = INIT_HEADROOM_PCT
+	}
+	if isPerformanceIdeal {
+		headroomPct -= DELTA_HEADROOM_PCT
+	} else {
+		headroomPct += DELTA_HEADROOM_PCT
+	}
+	headroomPct = math.Max(MINIMUM_HEADROOM_PCT, headroomPct)
+
+	return headroomPct
 }

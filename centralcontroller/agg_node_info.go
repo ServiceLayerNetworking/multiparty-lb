@@ -1,3 +1,4 @@
+// ...existing code...
 package main
 
 import (
@@ -6,11 +7,79 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+// For latency tracking
+type LatencyRecord struct {
+	Timestamp int64 // seconds
+	LatencyMs int   // milliseconds
+}
+
+type ServiceLatencyStats struct {
+	mu        sync.Mutex
+	latencies map[string][]LatencyRecord // service -> slice of (timestamp, latency in ms)
+}
+
+func NewServiceLatencyStats() *ServiceLatencyStats {
+	return &ServiceLatencyStats{
+		latencies: make(map[string][]LatencyRecord),
+	}
+}
+
+// Record a completed request's latency for a service
+func (s *ServiceLatencyStats) RecordLatency(service string, latencyMs int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().Unix()
+	s.latencies[service] = append(s.latencies[service], LatencyRecord{Timestamp: now, LatencyMs: latencyMs})
+}
+
+// Get the nth percentile latency (ms) for a service over the last 5 seconds
+func (s *ServiceLatencyStats) GetPercentileLatency(service string, percentile float64) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().Unix()
+	cutoff := now - 5
+	records, ok := s.latencies[service]
+	if !ok || len(records) == 0 {
+		return 0
+	}
+	// Prune old records
+	i := 0
+	for ; i < len(records); i++ {
+		if records[i].Timestamp >= cutoff {
+			break
+		}
+	}
+	records = records[i:]
+	s.latencies[service] = records
+	if len(records) == 0 {
+		return 0
+	}
+	// Collect latencies
+	latencies := make([]int, len(records))
+	for j, rec := range records {
+		latencies[j] = rec.LatencyMs
+	}
+	// Sort and get nth percentile
+	sort.Ints(latencies)
+	if percentile < 0 {
+		percentile = 0
+	}
+	if percentile > 100 {
+		percentile = 100
+	}
+	idx := int(float64(len(latencies))*percentile/100.0) - 1
+	if idx < 0 {
+		idx = 0
+	}
+	return latencies[idx]
+}
 
 func getLatencyUsFromData(data []byte) int {
 	dataStr := string(data)
@@ -129,28 +198,38 @@ func NewServiceOutstandingRequests() *ServiceOutstandingRequests {
 func updateReqStats(
 	serviceOutstandingRequests *ServiceOutstandingRequests,
 	serviceArrivingRPS *ServiceArrivingRPS,
+	serviceLatencyStats *ServiceLatencyStats,
 	reqBody []byte) {
 
-	// input := "1745477992498147000|svc0|0|--"
+	// reqBody := b"1745477992498147000|svc0|0|--|32"
+	// or
+	// reqBody := b"1745477992498147000|svc0|0|++|-1"
 	reqBodyStr := string(reqBody)
 	parts := strings.Split(reqBodyStr, "|")
-	if len(parts) >= 4 {
+	if len(parts) >= 5 {
 		service := parts[1] // svc0
 		operation := parts[3]
 
 		serviceOutstandingRequests.mu.Lock()
 
-		if operation == "--" {
+		switch operation {
+		case "--":
 			serviceOutstandingRequests.numOutstandingReq[service]--
 			if serviceOutstandingRequests.numOutstandingReq[service] < 0 {
 				fmt.Println("This shouldn't have happened!")
 			}
-		} else if operation == "++" {
+			// Record latency if ServiceLatencyStats is provided
+			if serviceLatencyStats != nil {
+				if l, err := strconv.Atoi(strings.TrimSpace(parts[4])); err == nil && l >= 0 {
+					serviceLatencyStats.RecordLatency(service, l)
+				}
+			}
+		case "++":
 			serviceOutstandingRequests.numOutstandingReq[service]++
 			if serviceArrivingRPS != nil {
 				serviceArrivingRPS.RecordArrival(service)
 			}
-		} else {
+		default:
 			fmt.Println("Invalid input format", reqBodyStr)
 		}
 
@@ -166,7 +245,8 @@ func updateReqStats(
 func echoServer(
 	ingressGatewayURLs []string,
 	serviceOutstandingRequests *ServiceOutstandingRequests,
-	serviceArrivingRPS *ServiceArrivingRPS) {
+	serviceArrivingRPS *ServiceArrivingRPS,
+	serviceLatencyStats *ServiceLatencyStats) {
 
 	// HTTP Server to Echo POST Request Body
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -184,7 +264,7 @@ func echoServer(
 		// fmt.Printf("Received request to echo: %s\n", body)
 
 		// 1745477992498147000|svc0|0|--
-		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, body)
+		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, serviceLatencyStats, body)
 
 		for _, ingressGatewayURL := range ingressGatewayURLs {
 			// Make request to K8s Host

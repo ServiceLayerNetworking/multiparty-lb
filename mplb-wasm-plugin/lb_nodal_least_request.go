@@ -45,12 +45,12 @@ func getNextDstEndpointNodalLeastRequest(
 
 	// instead of incrementing directly, we will issue a request to the CC t
 	// send this to all the LBs
-	sendEchoRequestToCC(dst, selectedEndpoint, "++")
+	sendEchoRequestToCC(dst, selectedEndpoint, "++", -1)
 
 	return selectedEndpoint, nil
 }
 
-func sendEchoRequestToCC(dst string, selectedEndpoint int, op string) {
+func sendEchoRequestToCC(dst string, selectedEndpoint int, op string, latencyMs int64) {
 
 	dstURL := "echo-server.default.svc.cluster.local"
 	port := 5656
@@ -65,9 +65,10 @@ func sendEchoRequestToCC(dst string, selectedEndpoint int, op string) {
 		{":authority", authority},
 	}
 
-	// request body format: <timestamp>|<dst>|<selectedEndpoint>|<op>
+	// request body format: <timestamp>|<dst>|<selectedEndpoint>|<op>|<latencyMs>
+	// e.g. 1745477992498147000|svc0|0|++|23
 	reqBody := fmt.Sprintf(
-		"%d|%s|%d|%s", getCurrUnixTimeNs(), dst, selectedEndpoint, op)
+		"%d|%s|%d|%s|%d", getCurrUnixTimeNs(), dst, selectedEndpoint, op, latencyMs)
 
 	proxywasm.LogCriticalf("Sending echo request to CC: %s", reqBody)
 
@@ -138,9 +139,9 @@ func processEchoBody(body string) {
 	proxywasm.LogCriticalf("Received echo response from CC: %s", respBody)
 
 	// parse the response body
-	// format: <timestamp>|<dst>|<selectedEndpoint>|<op>
+	// format: <timestamp>|<dst>|<selectedEndpoint>|<op>|<latencyMs>
 	respParts := strings.Split(respBody, "|")
-	if len(respParts) != 4 {
+	if len(respParts) != 5 {
 		proxywasm.LogCriticalf("Invalid response body format from echo server: %s", respBody)
 		return
 	}

@@ -46,7 +46,7 @@ func getNextDstEndpointLeastRequest(
 		// if the load balancing strategy is leastrequest_plus or leastrequest_plus_rl, we will
 		// instead of incrementing directly, we will issue a request to the CC t
 		// send this to all the LBs
-		sendEchoRequestToCC(dst, selectedEndpoint, "++")
+		sendEchoRequestToCC(dst, selectedEndpoint, "++", -1)
 	}
 
 	return selectedEndpoint, nil

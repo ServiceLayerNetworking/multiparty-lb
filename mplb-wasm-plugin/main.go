@@ -711,7 +711,8 @@ func (ctx *httpContext) OnHttpStreamDone() {
 	endTimeStr := fmt.Sprintf("%d", currentTime)
 	proxywasm.LogCriticalf("OnHttpStreamDone: StartTime: %s, EndTime: %s", startTimeStr, endTimeStr)
 
-	notifyRequestCompletedToLB(dstPod)
+	latencyMs := currentTime - atoi64(startTimeStr)
+	notifyRequestCompletedToLB(dstPod, latencyMs)
 
 	currTime := getCurrUnixTimeNs()
 
@@ -832,6 +833,15 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		proxywasm.LogCriticalf("recorded end time for traceId %v: %v", traceId, currentTime)
 	}
 
+}
+
+func atoi64(s string) int64 {
+	i, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't parse string to int64: %v", err)
+		return 0
+	}
+	return i
 }
 
 // callback for OnTick() http call response

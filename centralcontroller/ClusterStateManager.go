@@ -34,8 +34,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	nodeCPUUtilizations []string,
 	reqStats []ReqStat,
 	reqSentStats []ReqStat,
-	serviceOutstandingReqs *ServiceOutstandingRequests,
-	serviceArrivingRPS *ServiceArrivingRPS,
+	reqStatsServer *ReqStatsServer,
 	svcCPUConsumptionPerReq map[string]float64) string {
 
 	var gurobiInput map[string]float64
@@ -45,8 +44,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 		// currentAppUtils := getPerAppRPS(reqStats)
 		currentAppUtils := getPerAppRpsBasedUtil(
 			reqSentStats,
-			serviceOutstandingReqs,
-			serviceArrivingRPS,
+			reqStatsServer,
 			svcCPUConsumptionPerReq)
 
 		slog.Info(fmt.Sprintf("Current App Utils: %v\n", currentAppUtils))
@@ -95,9 +93,11 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 
 func getPerAppRpsBasedUtil(
 	reqSentStats []ReqStat,
-	serviceOutstandingReqs *ServiceOutstandingRequests,
-	serviceArrivingRPS *ServiceArrivingRPS,
+	reqStatsServer *ReqStatsServer,
 	svcCPUConsumptionPerReq map[string]float64) map[string]float64 {
+
+	serviceOutstandingReqs := reqStatsServer.serviceOutstandingRequests
+	serviceArrivingRPS := reqStatsServer.serviceArrivingRPS
 
 	// THIS CODE IS BUGGY. WE DON'T HAVE THE EXACT TIME FOR WHEN WE RECEIVED THE
 	// REQUEST LOG REQUEST SO WE DON'T KNOW WHERE TO START THE RPS_WINDOW_MS
@@ -430,11 +430,19 @@ func parseGurobiResponse(
 			strNodeNums[i] = fmt.Sprintf("%d", getNodeNumberForPod(podname, nodes))
 		}
 
+		// we want to not drop requests if the sum of cpu usage is less than
+		// their fair share, so if appSum < fairShare, set appSum = fairShare
+		cpuAlloc := appSum
+		fairshare := getFShareLoad(nodes, appName)
+		if cpuAlloc < fairshare {
+			cpuAlloc = fairshare
+		}
+
 		// output in the format: "app1:45.0:100.0:45.0|55.0:1|2"
 		lbWeights += fmt.Sprintf("%s:%f:%f:%s:%s ",
 			appName,
 			svcCPUConsumptionPerReq[appName],
-			appSum,
+			cpuAlloc,
 			strings.Join(strSortedWeights, "|"),
 			strings.Join(strNodeNums, "|"))
 	}

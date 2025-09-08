@@ -78,7 +78,7 @@ func getNextDstEndpoint(dst string, weights []float64, podNodes []int) (int, err
 	}
 }
 
-func notifyRequestCompletedToLB(dstPod string) {
+func notifyRequestCompletedToLB(dstPod string, latencyMs int64) {
 
 	parts := strings.Split(dstPod, "-")
 	endpointNumStr := parts[len(parts)-1]
@@ -119,7 +119,7 @@ func notifyRequestCompletedToLB(dstPod string) {
 
 			// try again, another thread has changed outstanding requests since
 			// 	we last read them
-			notifyRequestCompletedToLB(dstPod)
+			notifyRequestCompletedToLB(dstPod, latencyMs)
 		}
 
 	} else if LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
@@ -127,9 +127,9 @@ func notifyRequestCompletedToLB(dstPod string) {
 		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" ||
 		LOAD_BALANCING_STRATEGY == "only_nodal_leastrequest" {
 
-		informReqCompletedToSvcBasedNodalLR(dst, endpointNum)
+		informReqCompletedToSvcBasedNodalLR(dst, endpointNum, latencyMs)
 
-		// informReqCompletedToNodalLR(dstPod, dst, endpointNum)
+		// informReqCompletedToNodalLR(dstPod, dst, endpointNum, latencyMs)
 
 	} else if LOAD_BALANCING_STRATEGY == "locality_aware_weighted_random" {
 
@@ -154,13 +154,13 @@ func notifyRequestCompletedToLB(dstPod string) {
 
 			// try again, another thread has changed laStats since
 			// 	we last read them
-			notifyRequestCompletedToLB(dstPod)
+			notifyRequestCompletedToLB(dstPod, latencyMs)
 		}
 	}
 }
 
-func informReqCompletedToSvcBasedNodalLR(dst string, endpointNum int) {
-	sendEchoRequestToCC(dst, endpointNum, "--")
+func informReqCompletedToSvcBasedNodalLR(dst string, endpointNum int, latencyMs int64) {
+	sendEchoRequestToCC(dst, endpointNum, "--", latencyMs)
 
 	// currTime := getCurrUnixTimeNs()
 	// // sleep for 2ms
@@ -171,7 +171,7 @@ func informReqCompletedToSvcBasedNodalLR(dst string, endpointNum int) {
 	// proxywasm.LogCriticalf("Time taken to update outstanding requests: %dus", timeTaken/1e3)
 }
 
-func informReqCompletedToNodalLR(dstPod string, dst string, endpointNum int) {
+func informReqCompletedToNodalLR(dstPod string, dst string, endpointNum int, latencyMs int64) {
 	// get the outstanding loads for all cluster
 	outstandingLoads, cas, err := getNodalOutstandingLoad()
 	if err != nil {
@@ -216,6 +216,6 @@ func informReqCompletedToNodalLR(dstPod string, dst string, endpointNum int) {
 
 		// try again, another thread has changed outstanding requests since
 		// we last read them
-		notifyRequestCompletedToLB(dstPod)
+		notifyRequestCompletedToLB(dstPod, latencyMs)
 	}
 }

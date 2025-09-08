@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/test_Aug30"
+LOG_FOLDER = "logs/canonical_dual"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -312,9 +312,9 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [0]:
+        for iteration in [23, 24]:
         
-            for distr in ["none"]:
+            for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
@@ -442,10 +442,10 @@ def _main():
     
     prep_for_exps()
     
-    state_id = 4
+    state_id = 1
     svc_loads = [200, 200, 0]
     svc_to_nodes = {
-        "svc0": ["node0", "node1"],
+        "svc0": ["node0", "node0", "node1"],
         "svc1": ["node1"],
         "svc2": ["node2"],
     }
@@ -463,8 +463,22 @@ def _main():
         pod_names,
         lbs=[
             "leastrequest_plus",
-            # "nodal_leastrequest",
-            # "only_nodal_leastrequest"
+            "only_nodal_leastrequest",
+            "nodal_leastrequest",
+        ])
+
+    state_id = 2
+    svc_loads = [300, 200, 0]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
+            "leastrequest_plus",
+            "only_nodal_leastrequest",
+            "nodal_leastrequest",
         ])
 
     # run_exp_for_cluster_state(
