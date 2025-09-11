@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/canonical_dual"
+LOG_FOLDER = "logs/online_sweep_Sep10_2025"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -312,13 +312,13 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [23, 24]:
+        for iteration in [1, 2]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.8]:
+                for load_scale_factor in [0.7]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -477,6 +477,7 @@ def _main():
         pod_names,
         lbs=[
             "leastrequest_plus",
+            "leastrequest_plus_rl",
             "only_nodal_leastrequest",
             "nodal_leastrequest",
         ])
@@ -497,118 +498,125 @@ def main():
     prep_for_exps()
     
     # get 50 random numbers between 0 and 178339
-    # random_states = [
-    #     66752,
-    #     73572,
-    #     41100,
-    #     30527,
-    #     23740,
-    #     3278,
-    #     72380,
-    #     55628,
-    #     173166,
-    #     46194,
-    #     76518,
-    #     84192,
-    #     177161,
-    #     79906,
-    #     15354,
-    #     21677,
-    #     112326,
-    #     74759,
-    #     90158,
-    #     80022,
-    #     90122,
-    #     138139,
-    #     4610,
-    #     17080,
-    #     9296,
-    #     93335,
-    #     44944,
-    #     70096,
-    #     8619,
-    #     122890,
-    #     6872,
-    #     66915,
-    #     64422,
-    #     172969,
-    #     69903,
-    #     130484,
-    #     31901,
-    #     129050,
-    #     80250,
-    #     164440,
-    #     18239,
-    #     108637,
-    #     70217,
-    #     167605,
-    #     140196,
-    #     150379,
-    #     134551,
-    #     99668,
-    #     48415,
-    #     116683
-    # ]
-    # new_random_states = [
-    #     173719,
-    #     130141,
-    #     41695,
-    #     169571,
-    #     88056,
-    #     84408,
-    #     9466,
-    #     161757,
-    #     176691,
-    #     158031,
-    #     86101,
-    #     80711,
-    #     31655,
-    #     72616,
-    #     29334,
-    #     132126,
-    #     114315,
-    #     16210,
-    #     46304,
-    #     134901,
-    #     86750,
-    #     81587,
-    #     170450,
-    #     155222,
-    #     26111,
-    #     6940,
-    #     128644,
-    #     131117,
-    #     17680,
-    #     40995,
-    #     79662,
-    #     120935,
-    #     153032,
-    #     10341,
-    #     88768,
-    #     103542,
-    #     67153,
-    #     159847,
-    #     47983,
-    #     140527,
-    #     104108,
-    #     22320,
-    #     58037,
-    #     127271,
-    #     74228,
-    #     73432,
-    #     75895,
-    #     99389,
-    #     141033,
-    #     121706
-    # ]
+    random_states = [
+        66752,
+        73572,
+        41100,
+        30527,
+        23740,
+        3278,
+        72380,
+        55628,
+        173166,
+        46194,
+        76518,
+        84192,
+        177161,
+        79906,
+        15354,
+        21677,
+        112326,
+        74759,
+        90158,
+        80022,
+        90122,
+        138139,
+        4610,
+        17080,
+        9296,
+        93335,
+        44944,
+        70096,
+        8619,
+        122890,
+        6872,
+        66915,
+        64422,
+        172969,
+        69903,
+        130484,
+        31901,
+        129050,
+        80250,
+        164440,
+        18239,
+        108637,
+        70217,
+        167605,
+        140196,
+        150379,
+        134551,
+        99668,
+        48415,
+        116683
+    ]
+    new_random_states = [
+        173719,
+        130141,
+        41695,
+        169571,
+        88056,
+        84408,
+        9466,
+        161757,
+        176691,
+        158031,
+        86101,
+        80711,
+        31655,
+        72616,
+        29334,
+        132126,
+        114315,
+        16210,
+        46304,
+        134901,
+        86750,
+        81587,
+        170450,
+        155222,
+        26111,
+        6940,
+        128644,
+        131117,
+        17680,
+        40995,
+        79662,
+        120935,
+        153032,
+        10341,
+        88768,
+        103542,
+        67153,
+        159847,
+        47983,
+        140527,
+        104108,
+        22320,
+        58037,
+        127271,
+        74228,
+        73432,
+        75895,
+        99389,
+        141033,
+        121706
+    ]
     
-    # for random_state in new_random_states:
-    #     run_exp_for_cluster_state_id(random_state)
+    all_states = random_states # + new_random_states
+    
+    for random_state in all_states:
+        run_exp_for_cluster_state_id(random_state, lbs=[
+            "leastrequest_plus",
+            "leastrequest_plus_rl",
+            "only_nodal_leastrequest",
+            "nodal_leastrequest",
+        ])
 
 if __name__ == "__main__":
     start_time = time.time()
     
-    _main()
+    main()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")

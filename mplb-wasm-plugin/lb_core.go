@@ -78,6 +78,12 @@ func getNextDstEndpoint(dst string, weights []float64, podNodes []int) (int, err
 	}
 }
 
+func informCCofDroppedReq(dst string) {
+	// send a request to the CC to inform it of the dropped request
+	// so that it can update its stats
+	sendEchoRequestToCC(dst, -1, "DR", -1)
+}
+
 func notifyRequestCompletedToLB(dstPod string, latencyMs int64) {
 
 	parts := strings.Split(dstPod, "-")

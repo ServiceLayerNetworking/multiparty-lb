@@ -229,6 +229,11 @@ func updateReqStats(
 			if serviceArrivingRPS != nil {
 				serviceArrivingRPS.RecordArrival(service)
 			}
+		case "DR":
+			// Dropped request, do nothing to outstanding count
+			if serviceArrivingRPS != nil {
+				serviceArrivingRPS.RecordArrival(service)
+			}
 		default:
 			fmt.Println("Invalid input format", reqBodyStr)
 		}

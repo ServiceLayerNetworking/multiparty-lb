@@ -496,6 +496,14 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				// first log the sent request
 				appendSentReqStats(currentTimeStr, dst, "")
 
+				// then inform CC if lb is going to perform rate limiting
+				if LOAD_BALANCING_STRATEGY == "minimize_diff" ||
+					LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
+					LOAD_BALANCING_STRATEGY == "leastrequest_rl" ||
+					LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" {
+					informCCofDroppedReq(dst)
+				}
+
 				proxywasm.LogCriticalf("Dropping request: %s %s %s", reqMethod, reqPath, reqAuthority)
 				if err := proxywasm.SendHttpResponse(
 					503, nil,

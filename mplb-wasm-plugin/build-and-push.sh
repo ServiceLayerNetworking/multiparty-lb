@@ -5,7 +5,7 @@ set -e
 
 # Define the list of load balancing strategies
 # LB_VALUES=("leastrequest_plus_rl" "leastrequest_rl" "leastrequest_plus" "nodal_leastrequest" "only_nodal_leastrequest" "tmp_nodal_leastrequest" "minimize_diff" "locality_aware_weighted_random" "leastrequest" "weighted_random" "weighted_roundrobin" "weighted_leastrequest")
-LB_VALUES=("nodal_leastrequest" "leastrequest_rl" "leastrequest_plus" "nodal_leastrequest" "only_nodal_leastrequest" "minimize_diff" "leastrequest")
+LB_VALUES=("leastrequest_plus_rl" "nodal_leastrequest" "leastrequest_rl" "leastrequest_plus" "nodal_leastrequest" "only_nodal_leastrequest" "minimize_diff" "leastrequest")
 # LB_VALUES=("locality_aware_weighted_random" "tmp_nodal_leastrequest")
 
 # Path to TinyGo binary (adjust if necessary)

@@ -185,7 +185,7 @@ func (de *DemandEstimator) getHeadRoomPct(svcName string, reqStatsServer *ReqSta
 	// get the 95th percentile latency for the service in the last 5 seconds
 	latency95th := reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 95.0)
 
-	isPerformanceIdeal := latency95th < 100.0
+	isPerformanceIdeal := latency95th < 500.0
 
 	headroomPct, ok := de.HeadRoomPct[svcName]
 	if !ok {
