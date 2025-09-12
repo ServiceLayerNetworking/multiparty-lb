@@ -312,7 +312,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [6, 7, 8]:
+        for iteration in [9, 10, 11]:
         
             for distr in ["exponential"]:
                 
