@@ -35,7 +35,8 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	reqStats []ReqStat,
 	reqSentStats []ReqStat,
 	reqStatsServer *ReqStatsServer,
-	svcCPUConsumptionPerReq map[string]float64) string {
+	svcCPUConsumptionPerReq map[string]float64,
+	svcPerfBasedAllowedRPS map[string]float64) string {
 
 	var gurobiInput map[string]float64
 
@@ -81,8 +82,10 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	// print Gurobi weights:
 	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
 
-	lbWeights := parseGurobiResponse(gurobiResponse,
+	lbWeights := parseGurobiResponse(
+		gurobiResponse,
 		svcCPUConsumptionPerReq,
+		svcPerfBasedAllowedRPS,
 		c.Nodes)
 	return lbWeights
 
@@ -390,6 +393,7 @@ func setInitialGurobiWeights(nodes []Node, appNames []string) {
 func parseGurobiResponse(
 	gurobiResponse string,
 	svcCPUConsumptionPerReq map[string]float64,
+	svcPerfBasedAllowedRPS map[string]float64,
 	nodes []Node) string {
 	// example gurobi response:
 	// {"status": 2, "result": {"app1": {"app1-node1": 89.33617463143995, "app1-node2": 178.6723492628799}, "app2": {"app2-node2": 10.66382536856006, "app2-node3": 189.33617463143995}, "app3": {"app3-node1": 100.0}, "app4": {"app4-node4": 3200.0}}}
@@ -439,10 +443,11 @@ func parseGurobiResponse(
 		}
 
 		// output in the format: "app1:45.0:100.0:45.0|55.0:1|2"
-		lbWeights += fmt.Sprintf("%s:%f:%f:%s:%s ",
+		lbWeights += fmt.Sprintf("%s:%f:%f:%f:%s:%s ",
 			appName,
 			svcCPUConsumptionPerReq[appName],
 			cpuAlloc,
+			svcPerfBasedAllowedRPS[appName],
 			strings.Join(strSortedWeights, "|"),
 			strings.Join(strNodeNums, "|"))
 	}

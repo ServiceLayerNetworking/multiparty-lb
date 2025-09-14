@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/online_sweep_Sep10_2025"
+LOG_FOLDER = "logs/online_sweep_Sep8_2025"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -97,6 +97,8 @@ LB_NAME = {
     "only_nodal_leastrequest": "onlr",
     "leastrequest_plus_rl": "lr++_rl",
     "leastrequest_rl": "lr_rl",
+    "leastrequest_plus_rlpb": "lr++_rlpb",
+    "nodal_leastrequest_rlpb": "nlr_rlpb",
 }
     
 def get_svc_to_nodes(nodes_to_svc: List[List[int]]) -> Dict[str, List[str]]:
@@ -312,13 +314,13 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1, 2]:
+        for iteration in [3, 4, 5]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.7]:
+                for load_scale_factor in [0.8]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -500,55 +502,55 @@ def main():
     # get 50 random numbers between 0 and 178339
     random_states = [
         66752,
-        73572,
-        41100,
-        30527,
-        23740,
-        3278,
-        72380,
-        55628,
-        173166,
-        46194,
-        76518,
-        84192,
-        177161,
-        79906,
-        15354,
-        21677,
-        112326,
-        74759,
-        90158,
-        80022,
-        90122,
-        138139,
-        4610,
-        17080,
-        9296,
-        93335,
-        44944,
-        70096,
-        8619,
-        122890,
-        6872,
-        66915,
-        64422,
-        172969,
-        69903,
-        130484,
-        31901,
-        129050,
-        80250,
-        164440,
-        18239,
-        108637,
-        70217,
-        167605,
-        140196,
-        150379,
-        134551,
-        99668,
-        48415,
-        116683
+        # 73572,
+        # 41100,
+        # 30527,
+        # 23740,
+        # 3278,
+        # 72380,
+        # 55628,
+        # 173166,
+        # 46194,
+        # 76518,
+        # 84192,
+        # 177161,
+        # 79906,
+        # 15354,
+        # 21677,
+        # 112326,
+        # 74759,
+        # 90158,
+        # 80022,
+        # 90122,
+        # 138139,
+        # 4610,
+        # 17080,
+        # 9296,
+        # 93335,
+        # 44944,
+        # 70096,
+        # 8619,
+        # 122890,
+        # 6872,
+        # 66915,
+        # 64422,
+        # 172969,
+        # 69903,
+        # 130484,
+        # 31901,
+        # 129050,
+        # 80250,
+        # 164440,
+        # 18239,
+        # 108637,
+        # 70217,
+        # 167605,
+        # 140196,
+        # 150379,
+        # 134551,
+        # 99668,
+        # 48415,
+        # 116683
     ]
     new_random_states = [
         173719,
@@ -604,6 +606,10 @@ def main():
     ]
     
     all_states = random_states # + new_random_states
+    
+    all_states = [41100, 69903, 44944, 134551, 93335]
+    
+    all_states = [81587]
     
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[

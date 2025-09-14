@@ -51,7 +51,7 @@ const (
 	KEY_MATCH_DISTRIBUTION = "slate_match_distribution"
 
 	// load balancing strategy
-	// [leastrequest_plus_rl|leastrequest_rl|only_nodal_leastrequest|leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
+	// [leastrequest_plus_rlpb|leastrequest_plus_rl|leastrequest_rl|nodal_leastrequest_rlpb|only_nodal_leastrequest|leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
 	LOAD_BALANCING_STRATEGY = "leastrequest"
 )
 
@@ -500,7 +500,10 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				if LOAD_BALANCING_STRATEGY == "minimize_diff" ||
 					LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
 					LOAD_BALANCING_STRATEGY == "leastrequest_rl" ||
-					LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" {
+					LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" ||
+					LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" ||
+					LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb" {
+					// inform CC of dropped request due to rate limiting
 					informCCofDroppedReq(dst)
 				}
 
@@ -908,11 +911,12 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
 				proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
 			}
-		} else if len(svcInfoSplit) == 5 {
+		} else if len(svcInfoSplit) == 6 {
 			svcName := svcInfoSplit[0]
 			svcCPUConsumptionPerReq := svcInfoSplit[1]
 			svcCPUAllocated := svcInfoSplit[2]
-			svcWeights := svcInfoSplit[3] + "/" + svcInfoSplit[4]
+			svcPerfBasedAllowedRPS := svcInfoSplit[3]
+			svcWeights := svcInfoSplit[4] + "/" + svcInfoSplit[5]
 			topo[svcName] = getSvcNodes(svcInfoSplit[4])
 			proxywasm.LogCriticalf(
 				"setting outbound request weights %v: %v, and svcCPUConsumptionPerReq:%s",
@@ -922,6 +926,9 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			}
 			if err := proxywasm.SetSharedData(svcCPUAllocatedKey(svcName), []byte(svcCPUAllocated), 0); err != nil {
 				proxywasm.LogCriticalf("unable to set svcCPUAllocated for endpoint distribution %v: %v", svcName, err)
+			}
+			if err := proxywasm.SetSharedData(svcPerfBasedAllowedRPSKey(svcName), []byte(svcPerfBasedAllowedRPS), 0); err != nil {
+				proxywasm.LogCriticalf("unable to set svcPerfBasedAllowedRPS for endpoint distribution %v: %v", svcName, err)
 			}
 			if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
 				proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
@@ -1621,6 +1628,10 @@ func svcCPUConsumptionPerReqKey(svc string) string {
 
 func svcCPUAllocatedKey(svc string) string {
 	return svc + "-cpu-alloc"
+}
+
+func svcPerfBasedAllowedRPSKey(svc string) string {
+	return svc + "-perf-allowed-rps"
 }
 
 func topoKey() string {

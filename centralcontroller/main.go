@@ -502,7 +502,7 @@ func ccWithLBEnforcement(
 
 		// update the state in the demand estimator and get demand estimates
 		de.UpdateState(getPerAppUtilizations(nodeCPUUtilizations), reqStats)
-		svcCPUConsumptionPerReq := de.GetDemandEstimates(reqStatsServer)
+		svcCPUConsumptionPerReq, svcPerfBasedAllowedRPS := de.GetDemandEstimates(reqStatsServer)
 
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		lbWeights := cs.GetOptimalLBWeights(
@@ -510,7 +510,8 @@ func ccWithLBEnforcement(
 			reqStats,
 			reqSentStats,
 			reqStatsServer,
-			svcCPUConsumptionPerReq)
+			svcCPUConsumptionPerReq,
+			svcPerfBasedAllowedRPS)
 
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(

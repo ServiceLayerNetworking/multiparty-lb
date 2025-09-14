@@ -36,7 +36,10 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	if !(LOAD_BALANCING_STRATEGY == "minimize_diff" ||
 		LOAD_BALANCING_STRATEGY == "nodal_leastrequest" ||
 		LOAD_BALANCING_STRATEGY == "leastrequest_rl" ||
-		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl") {
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" ||
+		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" ||
+		LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb") {
+		// if the load balancing strategy is not cluster-based, don't do rate limiting
 		return false, nil
 	}
 
@@ -55,9 +58,14 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	numReqInPastSec := len(recentlySentReqTimestamps)
 
 	var toReturn bool
+	var maxRPSAllowed int
 
-	maxRPSAllowed := getMaxRPSGivenTheCPUAllocated(dstSvc)
-
+	if LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" ||
+		LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb" {
+		maxRPSAllowed = getPerfBasedAllowedRPS(dstSvc)
+	} else {
+		maxRPSAllowed = getMaxRPSGivenTheCPUAllocated(dstSvc)
+	}
 	// svcOutstandingReqs, _, err := getOutstandingRequests(dstSvc, -1)
 	// numSvcOutstandingReqs := 0
 	// if err == nil {
@@ -91,6 +99,29 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	}
 
 	return toReturn, nil
+}
+
+func getPerfBasedAllowedRPS(dstSvc string) int {
+
+	if USE_DEFAULT_MAX_RPS_ALLOWED {
+		return DEFAULT_MAX_RPS_ALLOWED
+	}
+
+	// get the perf based allowed RPS for the service
+	// if it can't be found, return infinity
+
+	buf, _, err := proxywasm.GetSharedData(svcPerfBasedAllowedRPSKey(dstSvc))
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get perf based allowed RPS for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+	rpsAllowed, err := strconv.ParseFloat(string(buf), 64)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't parse perf based allowed RPS for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+
+	return int(rpsAllowed) / NUM_OF_LB_REPLICAS
 }
 
 func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {

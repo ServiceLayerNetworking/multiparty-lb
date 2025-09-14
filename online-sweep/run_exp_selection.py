@@ -97,6 +97,8 @@ LB_NAME = {
     "only_nodal_leastrequest": "onlr",
     "leastrequest_plus_rl": "lr++_rl",
     "leastrequest_rl": "lr_rl",
+    "leastrequest_plus_rlpb": "lr++_rlpb",
+    "nodal_leastrequest_rlpb": "nlr_rlpb",
 }
     
 def get_svc_to_nodes(nodes_to_svc: List[List[int]]) -> Dict[str, List[str]]:

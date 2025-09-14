@@ -30,6 +30,7 @@ type DemandEstimator struct {
 	CPUUtilizationTimestamps map[string][]CPUUtilState
 	ProcessedReqTimestamps   map[string][]int64
 	HeadRoomPct              map[string]float64
+	PerfBasedAllowedRPS      map[string]float64
 }
 
 func (de *DemandEstimator) Initialize() {
@@ -37,6 +38,7 @@ func (de *DemandEstimator) Initialize() {
 	de.CPUUtilizationTimestamps = make(map[string][]CPUUtilState)
 	de.ProcessedReqTimestamps = make(map[string][]int64)
 	de.HeadRoomPct = make(map[string]float64)
+	de.PerfBasedAllowedRPS = make(map[string]float64)
 }
 
 func (de *DemandEstimator) UpdateState(
@@ -108,10 +110,12 @@ func (de *DemandEstimator) UpdateState(
 
 }
 
-func (de *DemandEstimator) GetDemandEstimates(reqStatsServer *ReqStatsServer) map[string]float64 {
+func (de *DemandEstimator) GetDemandEstimates(
+	reqStatsServer *ReqStatsServer) (map[string]float64, map[string]float64) {
 
 	// Get the demand estimates for each service
 	cpuConsumptionsPerReq := make(map[string]float64)
+	perfBasedAllowedRPS := make(map[string]float64)
 
 	for svcName := range de.CPUUtilizationTimestamps {
 
@@ -166,14 +170,19 @@ func (de *DemandEstimator) GetDemandEstimates(reqStatsServer *ReqStatsServer) ma
 		cpuConsumptionsPerReq[svcName] = cpuConsumptionPerReq * CPU_PER_REQ_SCALE_FACTOR
 
 		// add in the headroom
-		headroomPct := de.getHeadRoomPct(svcName, reqStatsServer)
+		headroomPct, svcPerfBasedAllowedRPS := de.getHeadRoomPctAndPerfBasedAllowedRPS(svcName, reqStatsServer)
 		cpuConsumptionsPerReq[svcName] += cpuConsumptionsPerReq[svcName] * (headroomPct / 100.0)
+
+		// add the allowed rps
+		perfBasedAllowedRPS[svcName] = svcPerfBasedAllowedRPS
 	}
 
-	return cpuConsumptionsPerReq
+	return cpuConsumptionsPerReq, perfBasedAllowedRPS
 }
 
-func (de *DemandEstimator) getHeadRoomPct(svcName string, reqStatsServer *ReqStatsServer) float64 {
+func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
+	svcName string,
+	reqStatsServer *ReqStatsServer) (float64, float64) {
 
 	// if per-req performance is ideal, decrease headroom by DELTA_HEADROOM_PCT
 	// if per-req performance is no ideal, increase headroom by DELTA_HEADROOM_PCT
@@ -183,10 +192,13 @@ func (de *DemandEstimator) getHeadRoomPct(svcName string, reqStatsServer *ReqSta
 	// define SLO as 95th percentile latency < 100ms
 
 	// get the 95th percentile latency for the service in the last 5 seconds
-	latency95th := reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 95.0)
+	latency95pMs := float64(reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 95.0))
 
-	isPerformanceIdeal := latency95th < 200.0
+	targetLatency95pMs := 200.0
 
+	isPerformanceIdeal := latency95pMs < targetLatency95pMs
+
+	// calculate headroom pct
 	headroomPct, ok := de.HeadRoomPct[svcName]
 	if !ok {
 		headroomPct = INIT_HEADROOM_PCT
@@ -197,6 +209,59 @@ func (de *DemandEstimator) getHeadRoomPct(svcName string, reqStatsServer *ReqSta
 		headroomPct += DELTA_HEADROOM_PCT
 	}
 	headroomPct = math.Max(MINIMUM_HEADROOM_PCT, headroomPct)
+	de.HeadRoomPct[svcName] = headroomPct
 
-	return headroomPct
+	// fmt.Printf("Service %s: 95th percentile latency: %dms, target: %dms, isPerformanceIdeal: %v, headroomPct: %f\n",
+	// 	svcName, latency95pMs, targetLatency95pMs, isPerformanceIdeal, headroomPct)
+
+	MIN_ALLOWED_RPS := 5.0
+	MAX_ALLOWED_RPS := 20000000.0
+
+	// calculate perf based allowed rps
+	// if no rps cap, initialize it to the current arriving rps
+	rpsCap, ok := de.PerfBasedAllowedRPS[svcName]
+	if !ok {
+		rpsCap = float64(reqStatsServer.serviceArrivingRPS.GetRPS(svcName))
+	}
+
+	errFromTarget := latency95pMs - targetLatency95pMs
+	if errFromTarget > 0 {
+		rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.05, 0.5)))
+	} else {
+		rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.05)))
+	}
+	de.PerfBasedAllowedRPS[svcName] = rpsCap
+
+	return headroomPct, rpsCap
+}
+
+func clampFloat(val, minVal, maxVal float64) float64 {
+	if val < minVal {
+		return minVal
+	}
+	if val > maxVal {
+		return maxVal
+	}
+	return val
+}
+
+func absFloat(val float64) float64 {
+	if val < 0 {
+		return -val
+	}
+	return val
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func maxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
 }
