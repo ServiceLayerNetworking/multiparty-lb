@@ -917,7 +917,7 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			svcCPUAllocated := svcInfoSplit[2]
 			svcPerfBasedAllowedRPS := svcInfoSplit[3]
 			svcWeights := svcInfoSplit[4] + "/" + svcInfoSplit[5]
-			topo[svcName] = getSvcNodes(svcInfoSplit[4])
+			topo[svcName] = getSvcNodes(svcInfoSplit[5])
 			proxywasm.LogCriticalf(
 				"setting outbound request weights %v: %v, and svcCPUConsumptionPerReq:%s",
 				svcName, svcWeights, svcCPUConsumptionPerReq)

@@ -838,6 +838,7 @@ func addOverhead(
 type LBStat struct {
 	CPUConsumptionPerReq float64            `json:"CPUConsumptionPerReq"`
 	CPUAllocated         float64            `json:"CPUAllocated"`
+	PerfBasedRPSAllowed  float64            `json:"PerfBasedRPSAllowed"`
 	Weights              map[string]float64 `json:"Weights"`
 }
 
@@ -940,16 +941,18 @@ func parseLBWeightStr(lbWeightsStr string) map[string]LBStat {
 	appWeights := strings.Split(lbWeightsStr, " ")
 	for _, appWeight := range appWeights {
 		appWeightMap := strings.Split(appWeight, ":")
-		if len(appWeightMap) != 5 {
+		if len(appWeightMap) != 6 {
 			panic("Invalid lbWeightsStr: " + lbWeightsStr)
 		}
 		appName := appWeightMap[0]
 		cpuConsumptionPerReq := stringToFloat(appWeightMap[1])
 		cpuAllocated := stringToFloat(appWeightMap[2])
-		weights := strings.Split(appWeightMap[3], "|")
+		perfBasedRPSAllowed := stringToFloat(appWeightMap[3])
+		weights := strings.Split(appWeightMap[4], "|")
 		lbWeights[appName] = LBStat{
 			cpuConsumptionPerReq,
 			cpuAllocated,
+			perfBasedRPSAllowed,
 			make(map[string]float64),
 		}
 		for replicaNum, weight := range weights {

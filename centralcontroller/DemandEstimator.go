@@ -31,6 +31,7 @@ type DemandEstimator struct {
 	ProcessedReqTimestamps   map[string][]int64
 	HeadRoomPct              map[string]float64
 	PerfBasedAllowedRPS      map[string]float64
+	PerfBasedAllowedRPSPct   map[string]float64
 }
 
 func (de *DemandEstimator) Initialize() {
@@ -39,6 +40,7 @@ func (de *DemandEstimator) Initialize() {
 	de.ProcessedReqTimestamps = make(map[string][]int64)
 	de.HeadRoomPct = make(map[string]float64)
 	de.PerfBasedAllowedRPS = make(map[string]float64)
+	de.PerfBasedAllowedRPSPct = make(map[string]float64)
 }
 
 func (de *DemandEstimator) UpdateState(
@@ -175,6 +177,7 @@ func (de *DemandEstimator) GetDemandEstimates(
 
 		// add the allowed rps
 		perfBasedAllowedRPS[svcName] = svcPerfBasedAllowedRPS
+
 	}
 
 	return cpuConsumptionsPerReq, perfBasedAllowedRPS
@@ -221,16 +224,54 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	// if no rps cap, initialize it to the current arriving rps
 	rpsCap, ok := de.PerfBasedAllowedRPS[svcName]
 	if !ok {
-		rpsCap = float64(reqStatsServer.serviceArrivingRPS.GetRPS(svcName))
+		rpsCap = MAX_ALLOWED_RPS
 	}
 
 	errFromTarget := latency95pMs - targetLatency95pMs
 	if errFromTarget > 0 {
-		rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.05, 0.5)))
+
+		// if this is the first time we are setting the rps cap, set it to the current arriving rps
+		if rpsCap == MAX_ALLOWED_RPS {
+			currentRPS := reqStatsServer.serviceArrivingRPS.GetRPS(svcName)
+			rpsCap = currentRPS
+		}
+
+		rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(targetLatency95pMs/absFloat(errFromTarget), 0.01, 0.05)))
 	} else {
-		rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.05)))
+		rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(targetLatency95pMs/absFloat(errFromTarget), 0.01, 0.05)))
 	}
 	de.PerfBasedAllowedRPS[svcName] = rpsCap
+
+	// calculate the PerfBasedAllowedRPSPct
+
+	// INIT_PB_RPS_PCT := 105.0
+	// // DELTA_INC_PB_RPS_PCT := 25.0
+	// // RATIO_DECREASE_PB_RATE := 0.75
+	// PB_RPS_HEADROOM_PCT := 5.0
+	// MAX_PB_RPS_PCT := 150.0
+	// MIN_PB_RPS_PCT := 50.0
+
+	// perfBasedAllowedRPSPct, ok := de.PerfBasedAllowedRPSPct[svcName]
+	// if !ok {
+	// 	perfBasedAllowedRPSPct = INIT_PB_RPS_PCT
+	// }
+
+	// if isPerformanceIdeal {
+	// 	perfBasedAllowedRPSPct *= 2
+	// } else {
+	// 	perfBasedAllowedRPSPct -= 5
+	// }
+	// perfBasedAllowedRPSPct = clampFloat(perfBasedAllowedRPSPct, MIN_PB_RPS_PCT, MAX_PB_RPS_PCT)
+	// de.PerfBasedAllowedRPSPct[svcName] = perfBasedAllowedRPSPct
+
+	// currRPS := reqStatsServer.serviceArrivingRPS.GetRPS(svcName)
+	// if currRPS < 1.0 {
+
+	// }
+	// rpsCap := currRPS * ((perfBasedAllowedRPSPct + PB_RPS_HEADROOM_PCT) / 100.0)
+
+	// fmt.Printf("\n\n++++++++++++lp95: %f (%v) rpsPct: %f, currRPS: %f rpsCap: %f\n\n\n",
+	// 	latency95pMs, isPerformanceIdeal, perfBasedAllowedRPSPct, currRPS, rpsCap)
 
 	return headroomPct, rpsCap
 }

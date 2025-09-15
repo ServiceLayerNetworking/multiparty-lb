@@ -121,7 +121,7 @@ func getPerfBasedAllowedRPS(dstSvc string) int {
 		return math.MaxInt
 	}
 
-	return int(rpsAllowed) / NUM_OF_LB_REPLICAS
+	return int(rpsAllowed+RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED) / NUM_OF_LB_REPLICAS
 }
 
 func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {

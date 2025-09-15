@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/online_sweep_Sep10_2025_test"
+LOG_FOLDER = "logs/online_sweep_Sep14_2025_test"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -314,7 +314,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [9, 10, 11]:
+        for iteration in [1]:
         
             for distr in ["exponential"]:
                 
@@ -453,6 +453,7 @@ def _main():
     }
     pod_names = [
         "svc0-node0-0",
+        "svc0-node0-1",
         "svc0-node1-0",
         "svc1-node1-0",
         "svc2-node2-0",
@@ -465,9 +466,11 @@ def _main():
         pod_names,
         lbs=[
             # "leastrequest_plus",
+            # "leastrequest_plus_rl",
+            "leastrequest_plus_rlpb",
             # "only_nodal_leastrequest",
-            "leastrequest_plus_rl",
-            "nodal_leastrequest",
+            "nodal_leastrequest_rlpb",
+            # "nodal_leastrequest",
         ])
 
     state_id = 2
@@ -480,9 +483,11 @@ def _main():
         pod_names,
         lbs=[
             # "leastrequest_plus",
+            # "leastrequest_plus_rl",
+            "leastrequest_plus_rlpb",
             # "only_nodal_leastrequest",
-            "leastrequest_plus_rl",
-            "nodal_leastrequest",
+            "nodal_leastrequest_rlpb",
+            # "nodal_leastrequest",
         ])
 
     # run_exp_for_cluster_state(

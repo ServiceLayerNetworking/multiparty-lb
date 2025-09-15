@@ -16,8 +16,8 @@ import (
 
 // For latency tracking
 type LatencyRecord struct {
-	Timestamp int64 // seconds
-	LatencyMs int   // milliseconds
+	TimestampMs int64 // milliseconds
+	LatencyMs   int   // milliseconds
 }
 
 type ServiceLatencyStats struct {
@@ -35,16 +35,16 @@ func NewServiceLatencyStats() *ServiceLatencyStats {
 func (s *ServiceLatencyStats) RecordLatency(service string, latencyMs int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	now := time.Now().Unix()
-	s.latencies[service] = append(s.latencies[service], LatencyRecord{Timestamp: now, LatencyMs: latencyMs})
+	now := time.Now().UnixMilli()
+	s.latencies[service] = append(s.latencies[service], LatencyRecord{TimestampMs: now, LatencyMs: latencyMs})
 }
 
 // Get the nth percentile latency (ms) for a service over the last 5 seconds
 func (s *ServiceLatencyStats) GetPercentileLatency(service string, percentile float64) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	now := time.Now().Unix()
-	cutoff := now - 5
+	now := time.Now().UnixMilli()
+	cutoffMs := now - 5000 // last 5 seconds
 	records, ok := s.latencies[service]
 	if !ok || len(records) == 0 {
 		return 0
@@ -52,7 +52,7 @@ func (s *ServiceLatencyStats) GetPercentileLatency(service string, percentile fl
 	// Prune old records
 	i := 0
 	for ; i < len(records); i++ {
-		if records[i].Timestamp >= cutoff {
+		if records[i].TimestampMs >= cutoffMs {
 			break
 		}
 	}
@@ -136,13 +136,13 @@ func makeReqToK8sHost(dstURL string, data []byte) {
 }
 
 type ServiceArrivingRPS struct {
-	mu                sync.Mutex
-	arrivalTimestamps map[string][]int64 // map from service to slice of arrival unix seconds
+	mu                  sync.Mutex
+	arrivalTimestampsMs map[string][]int64 // map from service to slice of arrival unix seconds
 }
 
 func NewServiceArrivingRPS() *ServiceArrivingRPS {
 	return &ServiceArrivingRPS{
-		arrivalTimestamps: make(map[string][]int64),
+		arrivalTimestampsMs: make(map[string][]int64),
 	}
 }
 
@@ -150,38 +150,44 @@ func NewServiceArrivingRPS() *ServiceArrivingRPS {
 func (s *ServiceArrivingRPS) RecordArrival(service string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	now := time.Now().Unix()
-	s.arrivalTimestamps[service] = append(s.arrivalTimestamps[service], now)
+	now := time.Now().UnixMilli()
+	s.arrivalTimestampsMs[service] = append(s.arrivalTimestampsMs[service], now)
 }
 
 // Returns the average RPS for the service over the rolling window
 func (s *ServiceArrivingRPS) GetRPS(service string) float64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	now := time.Now().Unix()
-	cutoff := now - NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS
-	ts, ok := s.arrivalTimestamps[service]
+	now := time.Now().UnixMilli()
+	cutoffMs := now - NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS*1000
+	ts, ok := s.arrivalTimestampsMs[service]
 	if !ok {
-		log.Printf("[ServiceArrivingRPS] ERROR: service '%s' not found in arrivalTimestamps, returning 0", service)
+		log.Printf("[ServiceArrivingRPS] ERROR: service '%s' not found in arrivalTimestampsMs, returning 0", service)
 		return 0.0
 	}
 	// Prune old timestamps
 	i := 0
 	for ; i < len(ts); i++ {
-		if ts[i] >= cutoff {
+		if ts[i] >= cutoffMs {
 			break
 		}
 	}
 	ts = ts[i:]
-	s.arrivalTimestamps[service] = ts
+	s.arrivalTimestampsMs[service] = ts
 	numReqsArrived := len(ts)
 	if numReqsArrived == 0 {
 		return 0.0
 	}
-	fmt.Printf("[ServiceArrivingRPS] Service: %s | NumReqsArrived in last %d seconds: %d | RPS: %f\n",
-		service, NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS, numReqsArrived,
-		float64(numReqsArrived)/float64(NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS))
-	return float64(numReqsArrived) / float64(NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS)
+
+	timeElapsedSinceFirstReqMs := now - ts[0]
+	timeElapsedSinceFirstReq := float64(timeElapsedSinceFirstReqMs) / 1000.0
+
+	currRPS := float64(numReqsArrived) / timeElapsedSinceFirstReq
+
+	fmt.Printf("[ServiceArrivingRPS] Service: %s | NumReqsArrived in last %.2f seconds: %d | RPS: %.2f\n",
+		service, timeElapsedSinceFirstReq, numReqsArrived,
+		currRPS)
+	return currRPS
 }
 
 type ServiceOutstandingRequests struct {
@@ -234,6 +240,7 @@ func updateReqStats(
 			if serviceArrivingRPS != nil {
 				serviceArrivingRPS.RecordArrival(service)
 			}
+			// fmt.Println("====\n========== Dropped request for service ===\n===", service)
 		default:
 			fmt.Println("Invalid input format", reqBodyStr)
 		}
