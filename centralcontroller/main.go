@@ -38,7 +38,8 @@ const (
 	NUM_OF_SECS_FOR_REQ_STATS = 5    // Number of seconds of past request stats to consider
 	INIT_HEADROOM_PCT         = 10.0 // Initial headroom percentage for each service
 	MINIMUM_HEADROOM_PCT      = 0.0  // Minimum headroom percentage for each service
-	DELTA_HEADROOM_PCT        = 5.0  // Change in headroom percentage for each service
+	MAXIMUM_HEADROOM_PCT      = 100  // Maximum headroom percentage for each service
+	DELTA_HEADROOM_PCT        = 15.0 // Change in headroom percentage for each service
 
 	NODE_CAP_SCALE_FACTOR = 1
 	M_CPUS_IN_NODE        = 2000 * NODE_CAP_SCALE_FACTOR

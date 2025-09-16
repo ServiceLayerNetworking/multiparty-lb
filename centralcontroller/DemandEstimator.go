@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strings"
 	"time"
@@ -32,6 +31,7 @@ type DemandEstimator struct {
 	HeadRoomPct              map[string]float64
 	PerfBasedAllowedRPS      map[string]float64
 	PerfBasedAllowedRPSPct   map[string]float64
+	Counter                  int
 }
 
 func (de *DemandEstimator) Initialize() {
@@ -41,6 +41,7 @@ func (de *DemandEstimator) Initialize() {
 	de.HeadRoomPct = make(map[string]float64)
 	de.PerfBasedAllowedRPS = make(map[string]float64)
 	de.PerfBasedAllowedRPSPct = make(map[string]float64)
+	de.Counter = -1
 }
 
 func (de *DemandEstimator) UpdateState(
@@ -187,6 +188,18 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	svcName string,
 	reqStatsServer *ReqStatsServer) (float64, float64) {
 
+	// // we are only going to update the headroom every 5 calls to this function,
+	// // or if the headroom or rps cap is not initialized
+	// // this is to avoid too frequent changes in headroom and rps cap
+	// // since this function is called every 700 ms but the feedback doesn't change this quickly
+	// de.Counter += 1
+	// headroomPct, ok1 := de.HeadRoomPct[svcName]
+	// perfBasedAllowedRPS, ok2 := de.PerfBasedAllowedRPS[svcName]
+
+	// if (de.Counter%5 != 0) && ok1 && ok2 {
+	// 	return headroomPct, perfBasedAllowedRPS
+	// }
+
 	// if per-req performance is ideal, decrease headroom by DELTA_HEADROOM_PCT
 	// if per-req performance is no ideal, increase headroom by DELTA_HEADROOM_PCT
 	// headroom cannot go below 0%
@@ -194,31 +207,47 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	// performance is ideal when slo is met
 	// define SLO as 95th percentile latency < 100ms
 
-	// get the 95th percentile latency for the service in the last 5 seconds
-	latency95pMs := float64(reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 95.0))
+	// // get the 95th percentile latency for the service in the last 5 seconds
+	// latency95pMs := float64(reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 95.0))
+	// targetLatency95pMs := 700.0
+	// isPerformanceIdeal := latency95pMs < targetLatency95pMs
+	// errFromTarget := latency95pMs - targetLatency95pMs
 
-	targetLatency95pMs := 200.0
-
-	isPerformanceIdeal := latency95pMs < targetLatency95pMs
+	latencyMeanMs := float64(reqStatsServer.serviceLatencyStats.GetMean(svcName))
+	targetMeanMs := 100.0
+	isPerformanceIdeal := latencyMeanMs < targetMeanMs
+	errFromTarget := latencyMeanMs - targetMeanMs
 
 	// calculate headroom pct
 	headroomPct, ok := de.HeadRoomPct[svcName]
 	if !ok {
-		headroomPct = INIT_HEADROOM_PCT
+		headroomPct = 10.0
 	}
+
 	if isPerformanceIdeal {
-		headroomPct -= DELTA_HEADROOM_PCT
+		headroomPct -= 5.0
 	} else {
-		headroomPct += DELTA_HEADROOM_PCT
+		headroomPct += 5.0
 	}
-	headroomPct = math.Max(MINIMUM_HEADROOM_PCT, headroomPct)
+	headroomPct = clampFloat(headroomPct, 0.0, 50.0)
+
+	// errorFromTarget := latency95pMs - targetLatency95pMs
+	// // performance is ideal when errorFromTarget < 0
+	// if errorFromTarget < 0 {
+	// 	// performance is ideal, decrease headroom
+	// 	headroomPct = maxFloat(MINIMUM_HEADROOM_PCT, headroomPct*(1.0-clampFloat(absFloat(errorFromTarget)/targetLatency95pMs, 0.01, 0.10)))
+	// } else {
+	// 	// performance is not ideal, increase headroom
+	// 	headroomPct = minFloat(MAXIMUM_HEADROOM_PCT, headroomPct*(1.0+clampFloat(absFloat(errorFromTarget)/targetLatency95pMs, 0.01, 0.025)))
+	// }
+
 	de.HeadRoomPct[svcName] = headroomPct
 
 	// fmt.Printf("Service %s: 95th percentile latency: %dms, target: %dms, isPerformanceIdeal: %v, headroomPct: %f\n",
 	// 	svcName, latency95pMs, targetLatency95pMs, isPerformanceIdeal, headroomPct)
 
 	MIN_ALLOWED_RPS := 5.0
-	MAX_ALLOWED_RPS := 20000000.0
+	MAX_ALLOWED_RPS := 1000.0
 
 	// calculate perf based allowed rps
 	// if no rps cap, initialize it to the current arriving rps
@@ -227,19 +256,25 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 		rpsCap = MAX_ALLOWED_RPS
 	}
 
-	errFromTarget := latency95pMs - targetLatency95pMs
 	if errFromTarget > 0 {
 
-		// if this is the first time we are setting the rps cap, set it to the current arriving rps
 		if rpsCap == MAX_ALLOWED_RPS {
 			currentRPS := reqStatsServer.serviceArrivingRPS.GetRPS(svcName)
 			rpsCap = currentRPS
 		}
 
-		rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(targetLatency95pMs/absFloat(errFromTarget), 0.01, 0.05)))
+		rpsCap *= 1.0 - (5.0 / 100.0)
+
+		// rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.50)))
 	} else {
-		rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(targetLatency95pMs/absFloat(errFromTarget), 0.01, 0.05)))
+
+		rpsCap += 5.0
+
+		// rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.20)))
 	}
+
+	rpsCap = clampFloat(rpsCap, MIN_ALLOWED_RPS, MAX_ALLOWED_RPS)
+
 	de.PerfBasedAllowedRPS[svcName] = rpsCap
 
 	// calculate the PerfBasedAllowedRPSPct

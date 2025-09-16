@@ -38,13 +38,13 @@ func (s *ServiceLatencyStats) RecordLatency(service string, latencyMs int) {
 	now := time.Now().UnixMilli()
 	s.latencies[service] = append(s.latencies[service], LatencyRecord{TimestampMs: now, LatencyMs: latencyMs})
 }
-
+ 
 // Get the nth percentile latency (ms) for a service over the last 5 seconds
 func (s *ServiceLatencyStats) GetPercentileLatency(service string, percentile float64) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now().UnixMilli()
-	cutoffMs := now - 5000 // last 5 seconds
+	cutoffMs := now - 500 // last 0.5 seconds
 	records, ok := s.latencies[service]
 	if !ok || len(records) == 0 {
 		return 0
@@ -79,6 +79,45 @@ func (s *ServiceLatencyStats) GetPercentileLatency(service string, percentile fl
 		idx = 0
 	}
 	return latencies[idx]
+}
+
+// Get the mean latency (ms) for a service
+func (s *ServiceLatencyStats) GetMean(service string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UnixMilli()
+	cutoffMs := now - 1500 // last 1.5 seconds
+	records, ok := s.latencies[service]
+	if !ok || len(records) == 0 {
+		return 0
+	}
+	// Prune old records
+	i := 0
+	for ; i < len(records); i++ {
+		if records[i].TimestampMs >= cutoffMs {
+			break
+		}
+	}
+	records = records[i:]
+	s.latencies[service] = records
+	if len(records) == 0 {
+		return 0
+	}
+	// Collect latencies
+	latencies := make([]int, len(records))
+	for j, rec := range records {
+		latencies[j] = rec.LatencyMs
+	}
+	// Sort and get mean
+	sort.Ints(latencies)
+	if len(latencies) == 0 {
+		return 0
+	}
+	sum := 0
+	for _, lat := range latencies {
+		sum += lat
+	}
+	return sum / len(latencies)
 }
 
 func getLatencyUsFromData(data []byte) int {

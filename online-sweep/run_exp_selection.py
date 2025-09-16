@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/online_sweep_Sep14_2025_test"
+LOG_FOLDER = "logs/online_sweep_Sep15_2025_canonical"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -314,13 +314,13 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1]:
+        for iteration in [1, 2, 3, 4, 5]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.7]:
+                for load_scale_factor in [0.8]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -459,18 +459,31 @@ def _main():
         "svc2-node2-0",
     ]
     
+    # svc_to_nodes = {
+    #     "svc0": ["node0", "node1"],
+    #     "svc1": ["node1"],
+    #     "svc2": ["node2"],
+    # }
+    # pod_names = [
+    #     "svc0-node0-0",
+    #     "svc0-node1-0",
+    #     "svc1-node1-0",
+    #     "svc2-node2-0",
+    # ]
+    
     run_exp_for_cluster_state(
         state_id,
         svc_loads,
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "leastrequest_plus",
+            "leastrequest_plus",
             # "leastrequest_plus_rl",
             "leastrequest_plus_rlpb",
-            # "only_nodal_leastrequest",
+            "only_nodal_leastrequest",
             "nodal_leastrequest_rlpb",
-            # "nodal_leastrequest",
+            "nodal_leastrequest",
+            "minimize_diff",
         ])
 
     state_id = 2
@@ -482,12 +495,13 @@ def _main():
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "leastrequest_plus",
+            "leastrequest_plus",
             # "leastrequest_plus_rl",
             "leastrequest_plus_rlpb",
-            # "only_nodal_leastrequest",
+            "only_nodal_leastrequest",
             "nodal_leastrequest_rlpb",
-            # "nodal_leastrequest",
+            "nodal_leastrequest",
+            "minimize_diff",
         ])
 
     # run_exp_for_cluster_state(
