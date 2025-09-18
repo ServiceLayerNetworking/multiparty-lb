@@ -103,7 +103,6 @@ func notifyRequestCompletedToLB(dstPod string, latencyMs int64) {
 	} else if LOAD_BALANCING_STRATEGY == "weighted_leastrequest" ||
 		LOAD_BALANCING_STRATEGY == "leastrequest" ||
 		LOAD_BALANCING_STRATEGY == "leastrequest_rl" ||
-		LOAD_BALANCING_STRATEGY == "minimize_diff" ||
 		LOAD_BALANCING_STRATEGY == "tmp_nodal_leastrequest" {
 
 		// get the outstanding requests for all endpoints of the dst
@@ -135,6 +134,7 @@ func notifyRequestCompletedToLB(dstPod string, latencyMs int64) {
 		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rl" ||
 		LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" ||
 		LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb" ||
+		LOAD_BALANCING_STRATEGY == "minimize_diff" ||
 		LOAD_BALANCING_STRATEGY == "only_nodal_leastrequest" {
 
 		informReqCompletedToSvcBasedNodalLR(dst, endpointNum, latencyMs)

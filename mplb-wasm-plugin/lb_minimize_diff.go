@@ -10,7 +10,7 @@ import (
 func getNextDstEndpointMinimizeDiff(
 	dst string, weights []float64) (int, error) {
 
-	outstandingReqs, cas, err := getOutstandingRequests(dst, len(weights))
+	outstandingReqs, _, err := getOutstandingRequests(dst, len(weights))
 	if err != nil {
 		proxywasm.LogCriticalf(
 			"Couldn't get outstanding requests for endpoint %s: %v",
@@ -21,18 +21,21 @@ func getNextDstEndpointMinimizeDiff(
 	// perform least request
 	selectedEndpoint := doMinimizeDiff(outstandingReqs, weights)
 
-	// Increment the active request count for the selected server
-	(*outstandingReqs)[selectedEndpoint]++
+	// we're going to use echo server from cc to notify all LBs of the new request
+	sendEchoRequestToCC(dst, selectedEndpoint, "++", -1)
 
-	// set the new outstanding requests
-	err = setOutstandingReqs(cas, dst, outstandingReqs)
-	if err != nil {
-		proxywasm.LogCriticalf("Couldn't set outstanding requests: %v", err)
+	// // Increment the active request count for the selected server
+	// (*outstandingReqs)[selectedEndpoint]++
 
-		// try again, another thread has changed outstanding requests since we
-		// 	last read them
-		return getNextDstEndpointLeastRequest(dst, weights)
-	}
+	// // set the new outstanding requests
+	// err = setOutstandingReqs(cas, dst, outstandingReqs)
+	// if err != nil {
+	// 	proxywasm.LogCriticalf("Couldn't set outstanding requests: %v", err)
+
+	// 	// try again, another thread has changed outstanding requests since we
+	// 	// 	last read them
+	// 	return getNextDstEndpointLeastRequest(dst, weights)
+	// }
 
 	return selectedEndpoint, nil
 }
