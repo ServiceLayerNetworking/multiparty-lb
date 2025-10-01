@@ -15,6 +15,7 @@ spec:
       labels:
         app: hostagent-node0
     spec:
+      priorityClassName: high-priority-mplb   # <-- Added here
       containers:
         - name: hostagent-node0
           image: ghcr.io/talha-waheed/hostagent:latest
@@ -31,7 +32,7 @@ spec:
             runAsUser: 0
           resources:
             requests:
-              cpu: 100m
+              cpu: 1500m
           volumeMounts:
             - mountPath: /host
               name: host-filesystem
@@ -42,7 +43,7 @@ spec:
       volumes:
       - name: host-filesystem
         hostPath:
-          path: /         # This will mount the root filesystem of the host
+          path: /
           type: Directory
       affinity:
         nodeAffinity:

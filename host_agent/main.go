@@ -327,8 +327,12 @@ func processClient(
 			sendMsgToConnection(connection, cpuUtilizations)
 
 		} else if msgType == "getCPUUtilsAndReqStats" {
+			cT := time.Now()
 			cpuUtilizations := getCPUUtilizations(podUIDs)
+			fmt.Printf("Time to get CPU utils: %.2f ms\n", float64(time.Since(cT).Microseconds())/1000.0)
+			cT = time.Now()
 			reqStatsStr, sentReqStatsStr := getReqStatsStr(reqStats, sentReqStats)
+			fmt.Printf("Time to get Req stats: %.2f ms\n", float64(time.Since(cT).Microseconds())/1000.0)
 			toSend := cpuUtilizations + "\n<SEP>\n" + reqStatsStr + "\n<SEP>\n" + sentReqStatsStr
 			sendMsgToConnection(connection, toSend)
 

@@ -15,6 +15,7 @@ spec:
       labels:
         app: hostagent-node0
     spec:
+      priorityClassName: high-priority-mplb   # <-- Added here
       containers:
         - name: hostagent-node0
           image: ghcr.io/talha-waheed/hostagent:latest
