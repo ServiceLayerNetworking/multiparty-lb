@@ -70,3 +70,171 @@ spec:
       kubernetes.io/hostname: node5.${CLUSTER_NAME}
   environmentVariables:
     ISTIO_META_NODE_NAME: node5.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig6
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node6.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node6.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig7
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node7.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node7.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig8
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node8.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node8.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig9
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node9.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node9.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig10
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node10.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node10.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig11
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node11.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node11.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig12
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node12.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node12.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig13
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node13.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node13.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig14
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node14.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node14.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig15
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node15.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node15.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig16
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node16.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node16.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig17
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node17.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node17.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig18
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node18.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node18.${CLUSTER_NAME}
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ProxyConfig
+metadata:
+  name: proxyconfig19
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      kubernetes.io/hostname: node19.${CLUSTER_NAME}
+  environmentVariables:
+    ISTIO_META_NODE_NAME: node19.${CLUSTER_NAME}

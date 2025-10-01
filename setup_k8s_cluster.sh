@@ -12,8 +12,16 @@ if ! command -v istioctl &> /dev/null; then
     exit 1
 fi
 
+# number of nodes in the cluster
+ALL_NODES=20
+# number of control plane nodes
+CP_NODES=1
 # number of worker nodes
-NODES=4
+NODES=19
+# number of worker nodes to be used as load balancer nodes
+LB_NODES=4
+# number of services
+N_SVCS=15
 
 # echo "[SCRIPT] Deleting any previous minikube cluster..."
 # minikube delete --all
@@ -48,12 +56,19 @@ do
 done
 kubectl label node node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane=master --overwrite
 
-# if nodes <= 3 then label master node as the mplb/lb-node else label last worker node as mplb/lb-node
+# if nodes <= 3 then label master node as the mplb/lb-node else label last LB_NODES worker nodes as mplb/lb-node
 if [ "$NODES" -le 3 ]; then
   kubectl label node node0.$CLUSTER_NAME mplb/lb-node=master --overwrite
 else
-  kubectl label node node$NODES.$CLUSTER_NAME mplb/lb-node=worker --overwrite
+  for i in $(seq $((NODES-LB_NODES+1)) $NODES); do
+    kubectl label node node$i.$CLUSTER_NAME mplb/lb-node=worker --overwrite
+  done
 fi
+
+# kubectl label node node16.$CLUSTER_NAME mplb/lb-node=worker --overwrite
+# kubectl label node node17.$CLUSTER_NAME mplb/lb-node=worker --overwrite
+# kubectl label node node18.$CLUSTER_NAME mplb/lb-node=worker --overwrite
+# kubectl label node node19.$CLUSTER_NAME mplb/lb-node=worker --overwrite
 
 sudo apt update && sudo apt install socat -y
 NAMESPACE="istio-ingress"
@@ -66,7 +81,9 @@ if [ "$NODES" -le 3 ]; then
   kubectl taint nodes node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane:NoSchedule-
 fi
 
-istioctl install -y -f ~/multiparty-lb/dst-rules_virtual-svcs/multiGateway.yaml
+python3 generate_istio_gateways.py $N_SVCS > dst-rules_virtual-svcs/istio-multi-gateways.yaml
+
+istioctl install -y -f ~/multiparty-lb/dst-rules_virtual-svcs/istio-multi-gateways.yaml
 kubectl label namespace default istio-injection=enabled --overwrite
 kubectl rollout restart statefulset
 
@@ -113,6 +130,9 @@ echo "[SCRIPT] Creating namespace mplb-system if it doesn't exist..."
 kubectl get namespace mplb-system > /dev/null 2>&1 || kubectl create namespace mplb-system
 
 # kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
+
+echo "[SCRIPT] Creating high priority class for host agents..."
+kubectl apply -f host_agent/priority_class.yaml 
 
 echo "[SCRIPT] Spawning host agents on each node..."
 kubectl apply -f host_agent/pod_svc_for_master_node.yaml

@@ -83,6 +83,8 @@ def apply_manifest(dyn_client, manifest):
         resource = dyn_client.resources.get(api_version=api_version, kind=kind)
         resource.create(body=manifest, namespace=namespace)
         print(f"✅ Created {kind}: {manifest['metadata']['name']}")
+        print(manifest)
+        print("-----")
     except ResourceNotFoundError:
         print(f"❌ Could not find resource for kind {kind}")
     except client.exceptions.ApiException as e:
@@ -135,7 +137,7 @@ def set_istio_routing_rules(apps_to_pods: Dict[str, List[str]]):
                 }]
             }
         }
-        apply_manifest(dyn_client, gateway)
+        # apply_manifest(dyn_client, gateway)
 
         # ---------------- DestinationRule ----------------
         destination_rule = {
@@ -155,7 +157,7 @@ def set_istio_routing_rules(apps_to_pods: Dict[str, List[str]]):
                 } for pod_name in pod_names]
             }
         }
-        apply_manifest(dyn_client, destination_rule)
+        # apply_manifest(dyn_client, destination_rule)
         # kubectl get pods -n istio-ingress -l istio=ingressgateway-svc0 -o jsonpath='{.items[0].metadata.name}'
 
 
@@ -199,6 +201,16 @@ def set_istio_routing_rules(apps_to_pods: Dict[str, List[str]]):
                 "http": http_routes
             }
         }
+        # apply_manifest(dyn_client, virtual_service)
+        print(f"Applying Istio configs for app: {app}")
+        print("----- Gateway -----")
+        print(yaml.dump(gateway))
+        print("----- DestinationRule -----")
+        print(yaml.dump(destination_rule))
+        print("----- VirtualService -----")
+        print(yaml.dump(virtual_service))
+        apply_manifest(dyn_client, gateway)
+        apply_manifest(dyn_client, destination_rule)
         apply_manifest(dyn_client, virtual_service)
 
     print("\n✅ All Istio configs applied successfully.")
@@ -479,14 +491,36 @@ def test():
     
 if __name__ == "__main__":
     
-    pod_names = [
-        "svc0-node0-0",
-        "svc0-node1-0",
-        "svc1-node1-0",
-        "svc1-node2-0",
-        "svc2-node0-0",
-    ]
-    setup_clutser_with_new_pods(pod_names)
+    os.system("kubectl delete destinationrules.networking.istio.io --all -n default")
+    os.system("kubectl delete virtualservices.networking.istio.io --all -n default")
+    os.system("kubectl delete gateways.networking.istio.io --all -n default")
+    
+    # print("All pods, services, statefulsets, deployments, " + 
+    #       "destinationrules, virtualservices, and gateways " + 
+    #       "deleted from the default namespace.")
+    
+    os.system("kubectl delete destinationrules.networking.istio.io --all -n istio-ingress")
+    os.system("kubectl delete virtualservices.networking.istio.io --all -n istio-ingress")
+    os.system("kubectl delete gateways.networking.istio.io --all -n istio-ingress")
+    
+    # get current apps and pods
+    print("Getting current apps and pods...")
+    curr_app_to_pods = get_current_app_and_pods()
+    
+    print("Current apps and pods:", curr_app_to_pods)
+    
+    # set routing rules
+    print("Setting Istio gateway, destination rules, and virtual services...")
+    set_istio_routing_rules(curr_app_to_pods)
+    
+    # pod_names = [
+    #     "svc0-node0-0",
+    #     "svc0-node1-0",
+    #     "svc1-node1-0",
+    #     "svc1-node2-0",
+    #     "svc2-node0-0",
+    # ]
+    # setup_clutser_with_new_pods(pod_names)
     
     # # config 71296
     # pod_names = [

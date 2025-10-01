@@ -11,12 +11,12 @@ import sys
 from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
 
 # Everything in seconds:
-DURATION = 60
+DURATION = 60*5
 DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/online_sweep_Sep15_2025_canonical"
+LOG_FOLDER = "logs/test_15_nodes"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -314,7 +314,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1, 2, 3, 4, 5]:
+        for iteration in [3]:
         
             for distr in ["exponential"]:
                 
@@ -445,11 +445,28 @@ def _main():
     prep_for_exps()
     
     state_id = 1
-    svc_loads = [200, 200, 0]
+    svc_loads = [200, 200] + [0]*18  # total 20 services
     svc_to_nodes = {
         "svc0": ["node0", "node0", "node1"],
         "svc1": ["node1"],
         "svc2": ["node2"],
+        "svc3": ["node3"],
+        "svc4": ["node4"],
+        "svc5": ["node5"],
+        "svc6": ["node6"],
+        "svc7": ["node7"],
+        "svc8": ["node8"],
+        "svc9": ["node9"],
+        "svc10": ["node10"],
+        "svc11": ["node11"],
+        "svc12": ["node12"],
+        "svc13": ["node13"],
+        "svc14": ["node14"],
+        "svc15": ["node15"],
+        "svc16": ["node15"],
+        "svc17": ["node15"],
+        "svc18": ["node15"],
+        "svc19": ["node15"],
     }
     pod_names = [
         "svc0-node0-0",
@@ -457,6 +474,23 @@ def _main():
         "svc0-node1-0",
         "svc1-node1-0",
         "svc2-node2-0",
+        "svc3-node3-0",
+        "svc4-node4-0",
+        "svc5-node5-0",
+        "svc6-node6-0",
+        "svc7-node7-0",
+        "svc8-node8-0",
+        "svc9-node9-0",
+        "svc10-node10-0",
+        "svc11-node11-0",
+        "svc12-node12-0",
+        "svc13-node13-0",
+        "svc14-node14-0",
+        "svc15-node15-0",
+        "svc16-node15-0",
+        "svc17-node15-0",
+        "svc18-node15-0",
+        "svc19-node15-0",
     ]
     
     # svc_to_nodes = {
@@ -479,30 +513,30 @@ def _main():
         lbs=[
             "leastrequest_plus",
             # "leastrequest_plus_rl",
-            "leastrequest_plus_rlpb",
-            "only_nodal_leastrequest",
-            "nodal_leastrequest_rlpb",
-            "nodal_leastrequest",
-            "minimize_diff",
+            # "leastrequest_plus_rlpb",
+            # "only_nodal_leastrequest",
+            # "nodal_leastrequest_rlpb",
+            # "nodal_leastrequest",
+            # "minimize_diff",
         ])
 
-    state_id = 2
-    svc_loads = [300, 200, 0]
+    # state_id = 2
+    # svc_loads = [300, 200, 0]
     
-    run_exp_for_cluster_state(
-        state_id,
-        svc_loads,
-        svc_to_nodes,
-        pod_names,
-        lbs=[
-            "leastrequest_plus",
-            # "leastrequest_plus_rl",
-            "leastrequest_plus_rlpb",
-            "only_nodal_leastrequest",
-            "nodal_leastrequest_rlpb",
-            "nodal_leastrequest",
-            "minimize_diff",
-        ])
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "leastrequest_plus",
+    #         # "leastrequest_plus_rl",
+    #         "leastrequest_plus_rlpb",
+    #         "only_nodal_leastrequest",
+    #         "nodal_leastrequest_rlpb",
+    #         "nodal_leastrequest",
+    #         "minimize_diff",
+    #     ])
 
     # run_exp_for_cluster_state(
     #     state_id,
@@ -514,6 +548,251 @@ def _main():
     #         "leastrequest_plus_rl",
     #         "minimize_diff"
     #     ])
+
+def main_exp_state_2():
+    
+    # print(parse_svc_load(300*0.7))
+    # print(parse_svc_load(200*0.7))
+    # return
+    
+    prep_for_exps()
+    
+    state_id = 2
+    svc_loads = [200] * 15  # total 15 services
+    svc_to_nodes = {
+        "svc0": ["node0"],
+        "svc1": ["node0", "node1"],
+        "svc2": ["node0", "node2"],
+        "svc3": ["node0", "node3"],
+        "svc4": ["node0", "node4"],
+        "svc5": ["node0", "node5"],
+        "svc6": ["node0", "node6"],
+        "svc7": ["node0", "node7"],
+        "svc8": ["node0", "node8"],
+        "svc9": ["node0", "node9"],
+        "svc10": ["node0", "node10"],
+        "svc11": ["node0", "node11"],
+        "svc12": ["node0", "node12"],
+        "svc13": ["node0", "node13"],
+        "svc14": ["node0", "node14"],
+    }
+    pod_names = [
+        "svc0-node0-0",
+        "svc1-node0-0",
+        "svc1-node1-0",
+        "svc2-node0-0",
+        "svc2-node2-0",
+        "svc3-node0-0",
+        "svc3-node3-0",
+        "svc4-node0-0",
+        "svc4-node4-0",
+        "svc5-node0-0",
+        "svc5-node5-0",
+        "svc6-node0-0",
+        "svc6-node6-0",
+        "svc7-node0-0",
+        "svc7-node7-0",
+        "svc8-node0-0",
+        "svc8-node8-0",
+        "svc9-node0-0",
+        "svc9-node9-0",
+        "svc10-node0-0",
+        "svc10-node10-0",
+        "svc11-node0-0",
+        "svc11-node11-0",
+        "svc12-node0-0",
+        "svc12-node12-0",
+        "svc13-node0-0",
+        "svc13-node13-0",
+        "svc14-node0-0",
+        "svc14-node14-0",
+    ]
+    
+    # svc_to_nodes = {
+    #     "svc0": ["node0", "node1"],
+    #     "svc1": ["node1"],
+    #     "svc2": ["node2"],
+    # }
+    # pod_names = [
+    #     "svc0-node0-0",
+    #     "svc0-node1-0",
+    #     "svc1-node1-0",
+    #     "svc2-node2-0",
+    # ]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
+            # "only_nodal_leastrequest",
+            # "nodal_leastrequest_rlpb",
+            "leastrequest_plus_rlpb",
+            "nodal_leastrequest",
+            # "leastrequest_plus",
+            # "minimize_diff",
+            # "leastrequest_plus_rl",
+        ])
+
+    # state_id = 2
+    # svc_loads = [300, 200, 0]
+    
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "leastrequest_plus",
+    #         # "leastrequest_plus_rl",
+    #         "leastrequest_plus_rlpb",
+    #         "only_nodal_leastrequest",
+    #         "nodal_leastrequest_rlpb",
+    #         "nodal_leastrequest",
+    #         "minimize_diff",
+    #     ])
+
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "nodal_leastrequest",
+    #         "leastrequest_plus_rl",
+    #         "minimize_diff"
+    #     ])
+
+def main_exp_state_3():
+    
+    # print(parse_svc_load(300*0.7))
+    # print(parse_svc_load(200*0.7))
+    # return
+    
+    prep_for_exps()
+    
+    state_id = 4
+    svc_loads = [200] * 2 + [0] * 13  # total 15 services
+    svc_to_nodes = {
+        "svc0": ["node0"],
+        "svc1": ["node0", "node1"],
+        "svc2": ["node1", "node2"],
+        "svc3": ["node2", "node3"],
+        "svc4": ["node3", "node4"],
+        "svc5": ["node4", "node5"],
+        "svc6": ["node5", "node6"],
+        "svc7": ["node6", "node7"],
+        "svc8": ["node7", "node8"],
+        "svc9": ["node8", "node9"],
+        "svc10": ["node9", "node10"],
+        "svc11": ["node10", "node11"],
+        "svc12": ["node11", "node12"],
+        "svc13": ["node12", "node13"],
+        "svc14": ["node13", "node14"],
+    }
+    pod_names = [
+        "svc0-node0-0",
+        
+        "svc1-node0-0",
+        "svc1-node1-0",
+        
+        "svc2-node1-0",
+        "svc2-node2-0",
+        
+        "svc3-node2-0",
+        "svc3-node3-0",
+        
+        "svc4-node3-0",
+        "svc4-node4-0",
+        
+        "svc5-node4-0",
+        "svc5-node5-0",
+        
+        "svc6-node5-0",
+        "svc6-node6-0",
+        
+        "svc7-node6-0",
+        "svc7-node7-0",
+        
+        "svc8-node7-0",
+        "svc8-node8-0",
+        
+        "svc9-node8-0",
+        "svc9-node9-0",
+        
+        "svc10-node9-0",
+        "svc10-node10-0",
+        
+        "svc11-node10-0",
+        "svc11-node11-0",
+        
+        "svc12-node11-0",
+        "svc12-node12-0",
+        
+        "svc13-node12-0",
+        "svc13-node13-0",
+        
+        "svc14-node13-0",
+        "svc14-node14-0",
+    ]
+    
+    # svc_to_nodes = {
+    #     "svc0": ["node0", "node1"],
+    #     "svc1": ["node1"],
+    #     "svc2": ["node2"],
+    # }
+    # pod_names = [
+    #     "svc0-node0-0",
+    #     "svc0-node1-0",
+    #     "svc1-node1-0",
+    #     "svc2-node2-0",
+    # ]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
+            "only_nodal_leastrequest",
+            # "nodal_leastrequest_rlpb",
+            # "leastrequest_plus_rlpb",
+            # "nodal_leastrequest",
+            # "minimize_diff",
+            # "leastrequest_plus",
+            # "leastrequest_plus_rl",
+        ])
+
+    # state_id = 2
+    # svc_loads = [300, 200, 0]
+    
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "leastrequest_plus",
+    #         # "leastrequest_plus_rl",
+    #         "leastrequest_plus_rlpb",
+    #         "only_nodal_leastrequest",
+    #         "nodal_leastrequest_rlpb",
+    #         "nodal_leastrequest",
+    #         "minimize_diff",
+    #     ])
+
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "nodal_leastrequest",
+    #         "leastrequest_plus_rl",
+    #         "minimize_diff"
+    #     ])
+
     
 def main():
     
@@ -630,7 +909,7 @@ def main():
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
             # "leastrequest_plus",
-            "leastrequest_plus_rl",
+            # "leastrequest_plus_rl",
             # "only_nodal_leastrequest",
             # "nodal_leastrequest",
         ])
@@ -638,7 +917,7 @@ def main():
 if __name__ == "__main__":
     start_time = time.time()
     
-    _main()
+    main_exp_state_3()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")
