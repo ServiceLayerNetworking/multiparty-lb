@@ -164,6 +164,14 @@ func (k8sClient *KubernetesClient) GetAppNames() []string {
 	return appNames
 }
 
+func getMilliCoresInNode(nodeNum int, k8sCpuMilliCores int) int {
+	if nodeNum >= 1 && nodeNum <= 15 {
+		return CPUS_IN_NODE * 10
+	} else {
+		return k8sCpuMilliCores
+	}
+}
+
 func (k8sClient *KubernetesClient) GetNodes() []Node {
 
 	// List all nodes in the cluster
@@ -184,9 +192,7 @@ func (k8sClient *KubernetesClient) GetNodes() []Node {
 		nodeNum := getNodeNum(node)
 		cpuCapacity := node.Status.Capacity[v1.ResourceCPU]
 		cpuMilliCores := int(cpuCapacity.MilliValue())
-		if nodeNum >= 1 && nodeNum <= 3 {
-			cpuMilliCores = M_CPUS_IN_NODE
-		}
+		cpuMilliCores = getMilliCoresInNode(nodeNum, cpuMilliCores)
 		nodeList = append(nodeList,
 			Node{
 				Num:               nodeNum,

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -70,7 +69,14 @@ func (de *DemandEstimator) UpdateState(
 	// appending all the processed requests to the state
 	for _, reqStat := range reqStats {
 		// if ".mplb.com" is in the service name, we need to remove it
-		reqStat.DstSvc = strings.ReplaceAll(reqStat.DstSvc, ".mplb.com", "")
+		// the service name should be like "svc0", "svc1", etc.
+		// but it comes as "svc0.mplb.com"
+		// so we need to remove the ".mplb.com" part very efficiently
+		// check if the last 9 characters are ".mplb.com"
+		if len(reqStat.DstSvc) > 9 && reqStat.DstSvc[len(reqStat.DstSvc)-9:] == ".mplb.com" {
+			reqStat.DstSvc = reqStat.DstSvc[:len(reqStat.DstSvc)-9]
+		}
+
 		if _, ok := de.ProcessedReqTimestamps[reqStat.DstSvc]; !ok {
 			de.ProcessedReqTimestamps[reqStat.DstSvc] = make([]int64, 0)
 		}

@@ -30,10 +30,40 @@ func (c *ClusterStateManager) Initialize(nodes []Node, appNames []string) {
 	c.Nodes = nodes
 }
 
+func getSvcNamesFromPodCPUUtilizations(nodeCPUUtilizations []string) []string {
+
+	svcNames := make(map[string]struct{})
+	for _, cpuUtil := range nodeCPUUtilizations {
+
+		// example cpuUtil to parse: "utils:hostagent-node2-0:1.676123 svc0-1:0.470927 svc1-0:0.453747"
+
+		if cpuUtil[:6] == "utils:" {
+			cpuUtil = cpuUtil[6:] // remove "utils:"
+		}
+
+		cpuUtilStrs := strings.Split(cpuUtil, " ")
+		for _, cpuUtilStr := range cpuUtilStrs {
+			util := strings.Split(cpuUtilStr, ":")
+			podName := util[0]
+			svcName := strings.Split(podName, "-")[0] // get "svc0" from "svc0-1"
+			if svcName == "hostagent" {
+				continue
+			}
+			svcNames[svcName] = struct{}{}
+		}
+	}
+
+	// convert map keys to slice
+	svcNamesSlice := make([]string, 0, len(svcNames))
+	for svcName := range svcNames {
+		svcNamesSlice = append(svcNamesSlice, svcName)
+	}
+
+	return svcNamesSlice
+}
+
 func (c *ClusterStateManager) GetOptimalLBWeights(
 	nodeCPUUtilizations []string,
-	reqStats []ReqStat,
-	reqSentStats []ReqStat,
 	reqStatsServer *ReqStatsServer,
 	svcCPUConsumptionPerReq map[string]float64,
 	svcPerfBasedAllowedRPS map[string]float64) string {
@@ -42,9 +72,10 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 
 	if USE_RPS_INSTEAD_OF_CPU {
 
+		svcNames := getSvcNamesFromPodCPUUtilizations(nodeCPUUtilizations)
 		// currentAppUtils := getPerAppRPS(reqStats)
 		currentAppUtils := getPerAppRpsBasedUtil(
-			reqSentStats,
+			svcNames,
 			reqStatsServer,
 			svcCPUConsumptionPerReq)
 
@@ -95,68 +126,28 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 }
 
 func getPerAppRpsBasedUtil(
-	reqSentStats []ReqStat,
+	svcNames []string,
 	reqStatsServer *ReqStatsServer,
 	svcCPUConsumptionPerReq map[string]float64) map[string]float64 {
 
 	serviceOutstandingReqs := reqStatsServer.serviceOutstandingRequests
 	serviceArrivingRPS := reqStatsServer.serviceArrivingRPS
 
-	// THIS CODE IS BUGGY. WE DON'T HAVE THE EXACT TIME FOR WHEN WE RECEIVED THE
-	// REQUEST LOG REQUEST SO WE DON'T KNOW WHERE TO START THE RPS_WINDOW_MS
-	// FROM. WE ESTIMATE THE TIME BY TAKING THE START TIME OF MOST RECENTLY SENT
-	// REQUEST
-
-	// UPDATE: WE IMPROVED THE CODE BY USING CURRENT TIME AS THE START TIME OF THE WINDOW
-	// UPDATE: CHANGED IT BACK, IT DOESN'T WORK THAT WELL
-
-	// get the most recently sent request's time
-	var maxStartTimeMs int64 = 0
-	for _, reqStat := range reqSentStats {
-		if reqStat.StartTimeMs > maxStartTimeMs {
-			maxStartTimeMs = reqStat.StartTimeMs
-		}
-	}
-	// curentTimeMs := time.Now().UnixMilli()
-	// maxStartTimeMs := curentTimeMs
-
-	// get the number of requests sent in the last RPS_WINDOW_MS
-	svcSentReqs := make(map[string]int)
-	for _, reqStat := range reqSentStats {
-		if maxStartTimeMs-reqStat.StartTimeMs <= RPS_WINDOW_MS {
-			// remove .mplb.com from the dstSvc
-			dstSvc := strings.ReplaceAll(reqStat.DstSvc, ".mplb.com", "")
-			_, ok := svcSentReqs[dstSvc]
-			if !ok {
-				svcSentReqs[dstSvc] = 0
-			}
-			svcSentReqs[dstSvc]++
-		}
-	}
-
 	// get the number of requests outstanding
 	serviceOutstandingReqs.mu.Lock()
 
 	// get the RPS for each service
 	svcRPSBasedUtil := make(map[string]float64)
-	for svc, sentReqs := range svcSentReqs {
+	for _, svc := range svcNames {
 
 		oustandingRequests := serviceOutstandingReqs.numOutstandingReq[svc]
-		// reqsProcessed := max(oustandingRequests, sentReqs)
-
-		// // TEMP
-		// if svc == "svc0" {
-		// 	reqsProcessed = 70
-		// } else {
-		// 	reqsProcessed = 42
-		// }
 
 		// svcRPS := float64(sentReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
 		svcRPS := serviceArrivingRPS.GetRPS(svc)
 		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc] // * SVC_UTIL_SCALE_FACTOR
 
-		fmt.Printf("svcRPSBasedUtil |||||| %s: %d rps(depr) %f rps %d ots-req %f%% util\n",
-			svc, sentReqs, svcRPS, oustandingRequests, svcRPSBasedUtil[svc])
+		fmt.Printf("svcRPSBasedUtil |||||| %s: %f rps %d ots-req %f%% util\n",
+			svc, svcRPS, oustandingRequests, svcRPSBasedUtil[svc])
 	}
 
 	serviceOutstandingReqs.mu.Unlock()

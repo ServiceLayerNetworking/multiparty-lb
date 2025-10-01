@@ -3,9 +3,11 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strconv"
@@ -13,6 +15,9 @@ import (
 	"sync"
 	"time"
 )
+
+const AGGREGATE_ECHO_MESSAGES = true
+const AGGREGATE_ECHO_MESSAGES_INTERVAL_MS = 5
 
 // For latency tracking
 type LatencyRecord struct {
@@ -38,7 +43,7 @@ func (s *ServiceLatencyStats) RecordLatency(service string, latencyMs int) {
 	now := time.Now().UnixMilli()
 	s.latencies[service] = append(s.latencies[service], LatencyRecord{TimestampMs: now, LatencyMs: latencyMs})
 }
- 
+
 // Get the nth percentile latency (ms) for a service over the last 5 seconds
 func (s *ServiceLatencyStats) GetPercentileLatency(service string, percentile float64) int {
 	s.mu.Lock()
@@ -134,7 +139,49 @@ func getLatencyUsFromData(data []byte) int {
 	return int(latency / 1000)
 }
 
-func makeReqToK8sHost(dstURL string, data []byte) {
+func makeReqToK8sHost(dstURL string, aggregatedMessages []string) {
+
+	// JSON marshal the aggregated messages
+	jsonData, err := json.Marshal(aggregatedMessages)
+	if err != nil {
+		fmt.Printf("client: error marshalling aggregated messages: %s\n", err)
+		return
+	}
+
+	req, err := http.NewRequest(http.MethodPost, dstURL, bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Printf("client: error creating http request to echo: %s\n", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Connection", "close")
+
+	// for identifying the request in the LB
+	req.Header.Set("CC-State", "aggregated")
+	req.Header.Set("CC-StartTime", strconv.FormatInt(time.Now().UnixNano(), 10))
+
+	startReq := time.Now()
+	client := &http.Client{
+		Timeout: 15 * time.Second, // Set a timeout for the entire request
+	}
+	res, err := client.Do(req)
+	_ = time.Since(startReq)
+	if err != nil {
+		fmt.Printf("client: error creating http request to echo: %s\n", err)
+		return
+	}
+	_, err = io.ReadAll(res.Body)
+	if err != nil {
+		errMsg := fmt.Sprintf("client: could not read response body: %s", err)
+		fmt.Println(errMsg)
+		return
+	}
+
+	// fmt.Printf("Request to %s | Response: [%s] %s, %dμs\n",
+	// 	dstURL, res.Status, string(resBody), latency.Microseconds())
+}
+
+func makeReqToK8sHostImmediate(dstURL string, data []byte) {
 
 	// fmt.Printf("Request to %s\n", dstURL)
 
@@ -155,7 +202,7 @@ func makeReqToK8sHost(dstURL string, data []byte) {
 
 	startReq := time.Now()
 	client := &http.Client{
-		Timeout: 3 * time.Second, // Set a timeout for the entire request
+		Timeout: 15 * time.Second, // Set a timeout for the entire request
 	}
 	res, err := client.Do(req)
 	_ = time.Since(startReq)
@@ -240,6 +287,32 @@ func NewServiceOutstandingRequests() *ServiceOutstandingRequests {
 	}
 }
 
+type MessageAggregator struct {
+	mu       sync.Mutex
+	messages []string
+}
+
+func NewMessageAggregator() *MessageAggregator {
+	return &MessageAggregator{
+		messages: make([]string, 0),
+	}
+}
+
+func (ma *MessageAggregator) AddMessage(message string) {
+	ma.mu.Lock()
+	defer ma.mu.Unlock()
+	ma.messages = append(ma.messages, message)
+}
+
+func (ma *MessageAggregator) FlushMessages() []string {
+	ma.mu.Lock()
+	defer ma.mu.Unlock()
+	messages := make([]string, len(ma.messages))
+	copy(messages, ma.messages)
+	ma.messages = ma.messages[:0] // Clear the slice
+	return messages
+}
+
 func updateReqStats(
 	serviceOutstandingRequests *ServiceOutstandingRequests,
 	serviceArrivingRPS *ServiceArrivingRPS,
@@ -261,7 +334,7 @@ func updateReqStats(
 		case "--":
 			serviceOutstandingRequests.numOutstandingReq[service]--
 			if serviceOutstandingRequests.numOutstandingReq[service] < 0 {
-				fmt.Println("This shouldn't have happened!")
+				slog.Error("Warning: outstanding requests < 0 for service " + service)
 			}
 			// Record latency if ServiceLatencyStats is provided
 			if serviceLatencyStats != nil {
@@ -299,6 +372,27 @@ func echoServer(
 	serviceArrivingRPS *ServiceArrivingRPS,
 	serviceLatencyStats *ServiceLatencyStats) {
 
+	var messageAggregator *MessageAggregator
+
+	if AGGREGATE_ECHO_MESSAGES {
+		// Create message aggregator
+		messageAggregator = NewMessageAggregator()
+
+		// Start background goroutine to send aggregated messages periodically
+		go func() {
+			ticker := time.NewTicker(AGGREGATE_ECHO_MESSAGES_INTERVAL_MS * time.Millisecond)
+			defer ticker.Stop()
+			for range ticker.C {
+				messages := messageAggregator.FlushMessages()
+				if len(messages) > 0 {
+					for _, ingressGatewayURL := range ingressGatewayURLs {
+						go makeReqToK8sHost(ingressGatewayURL, messages)
+					}
+				}
+			}
+		}()
+	}
+
 	// HTTP Server to Echo POST Request Body
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 
@@ -314,16 +408,18 @@ func echoServer(
 
 		// fmt.Printf("Received request to echo: %s\n", body)
 
-		// 1745477992498147000|svc0|0|--
+		// Update request stats immediately (don't wait)
 		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, serviceLatencyStats, body)
 
-		for _, ingressGatewayURL := range ingressGatewayURLs {
-			// Make request to K8s Host
-			go makeReqToK8sHost(ingressGatewayURL, body)
+		if AGGREGATE_ECHO_MESSAGES {
+			// Add message to aggregator (will be sent later in batch)
+			messageAggregator.AddMessage(string(body))
+		} else {
+			// Send immediately (old behavior)
+			for _, ingressGatewayURL := range ingressGatewayURLs {
+				go makeReqToK8sHostImmediate(ingressGatewayURL, body)
+			}
 		}
-		// go makeReqToK8sHost(ingressGatewayURL, "app1.mplb.com", body)
-		// go makeReqToK8sHost(ingressGatewayURL, "app1.mplb.com", body)
-		// go makeReqToK8sHost("http://172.24.92.73:3333", "app1.mplb.com", body)
 
 		defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)

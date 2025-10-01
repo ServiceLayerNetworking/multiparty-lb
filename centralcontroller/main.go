@@ -424,12 +424,19 @@ func parseReqStats(reqStatsStr string) []ReqStat {
 	reqStats := make([]ReqStat, 0)
 	reqStatsStr = strings.TrimSpace(reqStatsStr)
 	if reqStatsStr == "reqStats:" || reqStatsStr == "sentReqStats:" {
+		// no req stats
 		return reqStats
 	}
 	reqStatsStrs := strings.Split(reqStatsStr, "\n")[1:]
 	for _, reqStatStr := range reqStatsStrs {
 		reqStatParts := strings.Split(reqStatStr, " ")
 		slog.Info(fmt.Sprintf("reqStatToStore: %s\n", reqStatParts))
+		// dstSvc should contain "svc" or "app". If it doesn't, skip this reqStat
+		dstSvc := reqStatParts[2]
+		dstSvcPrefix := dstSvc[:3]
+		if dstSvcPrefix != "svc" && dstSvcPrefix != "app" {
+			continue
+		}
 		reqStats = append(reqStats, ReqStat{
 			SrcSvc:      reqStatParts[0],
 			SrcPod:      reqStatParts[1],
@@ -450,6 +457,8 @@ func stringToInt64(str string) int64 {
 
 func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat, []ReqStat) {
 
+	startTime := time.Now()
+
 	// - Get CPU Utilizations from host agents
 	cpuUtilizationCh := make(chan NodeStats)
 	for i := range nodes {
@@ -467,14 +476,18 @@ func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat, []ReqS
 	reqStats := make([]ReqStat, 0)
 	reqSentStats := make([]ReqStat, 0)
 	nodeCPUUtilizations := make([]string, len(nodes))
+	fmt.Printf("Waiting for CPU utils from %d nodes\n", len(nodes))
 	for range nodes {
 		nodeStats := <-cpuUtilizationCh
 		nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
 		reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
-		reqSentStats = append(reqSentStats, parseReqStats(nodeStats.ReqSentStats)...)
+		// reqSentStats = append(reqSentStats, parseReqStats(nodeStats.ReqSentStats)...)
 		slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
 			nodeStats.Node, nodeStats.CPUUtilizations))
+		fmt.Printf("Received CPU utils from node %d after %f ms\n", nodeStats.Node, float64(time.Since(startTime).Microseconds())/1000.0)
 	}
+
+	fmt.Printf("Time taken to get CPU utils from all nodes: %f ms\n", float64(time.Since(startTime).Microseconds())/1000.0)
 
 	return nodeCPUUtilizations, reqStats, reqSentStats
 }
@@ -498,31 +511,49 @@ func ccWithLBEnforcement(
 	// - Get CPU Utilizations from host agents
 	for {
 
-		// Get CPU Utilizations and Request Stats from host agents
-		nodeCPUUtilizations, reqStats, reqSentStats := getCPUUtilAndReqStatsFromCluster(nodes)
+		fmt.Printf("---------------- Starting new round of LB enforcement...\n")
 
+		fmt.Printf("---------------- Step 1: Get CPU utils from all nodes\n")
+		currentTime := time.Now()
+		// Get CPU Utilizations and Request Stats from host agents
+		nodeCPUUtilizations, reqStats, _ := getCPUUtilAndReqStatsFromCluster(nodes)
+		fmt.Printf("---------------- Done Step 1: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
+
+		// // log to info the node CPU utils, reqStats, reqSentStats
+		// slog.Error(fmt.Sprintf("Update from Host Agents:\n CPU Utils: %v\n ReqStats: %s\n SentReqStats: %s\n",
+		// 	nodeCPUUtilizations, getReqStatsJSON(reqStats), getReqStatsJSON(reqSentStats)))
+
+		fmt.Printf("---------------- Step 2: Get Demand Estimates\n")
+		currentTime = time.Now()
 		// update the state in the demand estimator and get demand estimates
 		de.UpdateState(getPerAppUtilizations(nodeCPUUtilizations), reqStats)
 		svcCPUConsumptionPerReq, svcPerfBasedAllowedRPS := de.GetDemandEstimates(reqStatsServer)
+		fmt.Printf("---------------- Done Step 2: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
 
+		fmt.Printf("---------------- Step 3: Get Optimal LB Weights\n")
+		currentTime = time.Now()
 		// - Solve the optimization problem by connection to Gurobi Optimizer
 		lbWeights := cs.GetOptimalLBWeights(
 			nodeCPUUtilizations,
-			reqStats,
-			reqSentStats,
 			reqStatsServer,
 			svcCPUConsumptionPerReq,
 			svcPerfBasedAllowedRPS)
+		fmt.Printf("---------------- Done Step 3: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
 
+		fmt.Printf("---------------- Step 4: Print stats to console\n")
+		currentTime = time.Now()
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(
 			getLogFileFormatLBEnforcement(nodeCPUUtilizations, lbWeights))
 		printCPUStatsToConsole(nodeCPUUtilizations, reqStats, podsToLog)
+		fmt.Printf("---------------- Done Step 4: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
 
 		// log the request stats
 		cpuLogFile.Writeln(
 			fmt.Sprintf("ReqStats: %s", getReqStatsJSON(reqStats)))
 
+		fmt.Printf("---------------- Step 5: Apply LB Weights\n")
+		currentTime = time.Now()
 		// lbWeights := getLBWeights()
 		// lbWeights := "profile:0.0|100.0 frontend:0.0|100.0 recommendation:100.0"
 		// - Send the CPU Quotas to the host agents to be applied
@@ -534,6 +565,9 @@ func ccWithLBEnforcement(
 					nodes[i].IP)
 			}
 		}
+		fmt.Printf("---------------- Done Step 5: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
+
+		fmt.Printf("---------------- Finished round of LB enforcement.\n\n")
 	}
 }
 
