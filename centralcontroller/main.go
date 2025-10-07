@@ -35,6 +35,8 @@ const (
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 10 // Number of seconds for rolling average of RPS
 
+	USE_HARDCODE_GUROBI_RESPONSE = true
+
 	NUM_OF_SECS_FOR_REQ_STATS = 5    // Number of seconds of past request stats to consider
 	INIT_HEADROOM_PCT         = 10.0 // Initial headroom percentage for each service
 	MINIMUM_HEADROOM_PCT      = 0.0  // Minimum headroom percentage for each service

@@ -467,24 +467,36 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		proxywasm.LogCriticalf("Latency from CC to LB: %dμs", ccReqLatencyUs)
 
 		if ccState == "aggregated" {
-			// Handle aggregated messages - need to parse the POST body as JSON array
-			// Set flag and continue to process the body
-			ctx.isProcessingAggregated = true
-			return types.ActionContinue
+			// Handle aggregated messages from header CC-States
+			ccStates, err := proxywasm.GetHttpRequestHeader("CC-States")
+			if err != nil {
+				proxywasm.LogCriticalf("Couldn't get CC-States header: %v", err)
+			} else {
+				// Parse JSON array of strings from CC-States header
+				var messages []string
+				if err := json.Unmarshal([]byte(ccStates), &messages); err != nil {
+					proxywasm.LogCriticalf("Failed to parse CC-States JSON: %v", err)
+				} else {
+					proxywasm.LogCriticalf("Processing %d aggregated messages from CC-States header", len(messages))
+					// Process each message
+					for _, message := range messages {
+						processEchoBody(message)
+					}
+				}
+			}
 		} else {
 			// Handle single message (old behavior)
 			processEchoBody(ccState)
-
-			proxywasm.SendHttpResponse(
-				200,
-				[][2]string{
-					{"Content-Type", "text/plain"},
-				},
-				[]byte("Received the state"), // Body of the response
-				0,                            // GRPC status code OK
-			)
-			return types.ActionPause
 		}
+		proxywasm.SendHttpResponse(
+			200,
+			[][2]string{
+				{"Content-Type", "text/plain"},
+			},
+			[]byte("Received the state"), // Body of the response
+			0,                            // GRPC status code OK
+		)
+		return types.ActionPause
 	}
 
 	// the request is originating from this sidecar to another service, we will perform routing magic
@@ -636,60 +648,62 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 	return types.ActionContinue
 }
 
-// OnHttpRequestBody is called when request body arrives.
-func (ctx *httpContext) OnHttpRequestBody(bodySize int, endOfStream bool) types.Action {
-	if ctx.isProcessingAggregated && endOfStream {
-		// Get the complete body
-		body, err := proxywasm.GetHttpRequestBody(0, bodySize)
-		if err != nil {
-			proxywasm.LogCriticalf("Failed to get request body: %v", err)
-			proxywasm.SendHttpResponse(
-				500,
-				[][2]string{
-					{"Content-Type", "text/plain"},
-				},
-				[]byte("Failed to process aggregated messages"),
-				0,
-			)
-			return types.ActionPause
-		}
+// // OnHttpRequestBody is called when request body arrives.
+// func (ctx *httpContext) OnHttpRequestBody(bodySize int, endOfStream bool) types.Action {
+// 	proxywasm.LogCriticalf("OnHttpRequestBody: bodySize=%d, endOfStream=%v, isProcessingAggregated=%v", bodySize, endOfStream, ctx.isProcessingAggregated)
 
-		// Parse JSON array of strings
-		var messages []string
-		if err := json.Unmarshal(body, &messages); err != nil {
-			proxywasm.LogCriticalf("Failed to parse aggregated messages JSON: %v", err)
-			proxywasm.SendHttpResponse(
-				400,
-				[][2]string{
-					{"Content-Type", "text/plain"},
-				},
-				[]byte("Invalid JSON format for aggregated messages"),
-				0,
-			)
-			return types.ActionPause
-		}
+// 	if ctx.isProcessingAggregated && endOfStream {
+// 		// Get the complete body
+// 		body, err := proxywasm.GetHttpRequestBody(0, bodySize)
+// 		if err != nil {
+// 			proxywasm.LogCriticalf("Failed to get request body: %v", err)
+// 			proxywasm.SendHttpResponse(
+// 				500,
+// 				[][2]string{
+// 					{"Content-Type", "text/plain"},
+// 				},
+// 				[]byte("Failed to process aggregated messages"),
+// 				0,
+// 			)
+// 			return types.ActionPause
+// 		}
 
-		proxywasm.LogCriticalf("Processing %d aggregated messages", len(messages))
+// 		// Parse JSON array of strings
+// 		var messages []string
+// 		if err := json.Unmarshal(body, &messages); err != nil {
+// 			proxywasm.LogCriticalf("Failed to parse aggregated messages JSON: %v", err)
+// 			proxywasm.SendHttpResponse(
+// 				400,
+// 				[][2]string{
+// 					{"Content-Type", "text/plain"},
+// 				},
+// 				[]byte("Invalid JSON format for aggregated messages"),
+// 				0,
+// 			)
+// 			return types.ActionPause
+// 		}
 
-		// Process each message
-		for _, message := range messages {
-			processEchoBody(message)
-		}
+// 		proxywasm.LogCriticalf("Processing %d aggregated messages", len(messages))
 
-		// Send response and pause
-		proxywasm.SendHttpResponse(
-			200,
-			[][2]string{
-				{"Content-Type", "text/plain"},
-			},
-			[]byte("Processed aggregated messages"),
-			0,
-		)
-		return types.ActionPause
-	}
+// 		// Process each message
+// 		for _, message := range messages {
+// 			processEchoBody(message)
+// 		}
 
-	return types.ActionContinue
-}
+// 		// Send response and pause
+// 		proxywasm.SendHttpResponse(
+// 			200,
+// 			[][2]string{
+// 				{"Content-Type", "text/plain"},
+// 			},
+// 			[]byte("Processed aggregated messages"),
+// 			0,
+// 		)
+// 		return types.ActionPause
+// 	}
+
+// 	return types.ActionContinue
+// }
 
 // OnHttpResponseHeaders is called when response headers arrive.
 // Return types.ActionPause if you want to stop sending headers to downstream.

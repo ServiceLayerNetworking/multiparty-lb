@@ -17,7 +17,7 @@ import (
 )
 
 const AGGREGATE_ECHO_MESSAGES = true
-const AGGREGATE_ECHO_MESSAGES_INTERVAL_MS = 5
+const AGGREGATE_ECHO_MESSAGES_INTERVAL_US = 5000 // microseconds
 
 // For latency tracking
 type LatencyRecord struct {
@@ -160,6 +160,14 @@ func makeReqToK8sHost(dstURL string, aggregatedMessages []string) {
 	req.Header.Set("CC-State", "aggregated")
 	req.Header.Set("CC-StartTime", strconv.FormatInt(time.Now().UnixNano(), 10))
 
+	// Add aggregated messages to header as JSON string
+	ccStatesData, err := json.Marshal(aggregatedMessages)
+	if err != nil {
+		fmt.Printf("client: error marshalling aggregated messages for header: %s\n", err)
+	} else {
+		req.Header.Set("CC-States", string(ccStatesData))
+	}
+
 	startReq := time.Now()
 	client := &http.Client{
 		Timeout: 15 * time.Second, // Set a timeout for the entire request
@@ -184,8 +192,6 @@ func makeReqToK8sHost(dstURL string, aggregatedMessages []string) {
 func makeReqToK8sHostImmediate(dstURL string, data []byte) {
 
 	// fmt.Printf("Request to %s\n", dstURL)
-
-	// fmt.Printf("Latency from LB to CC: %dμs\n", getLatencyUsFromData(data))
 
 	req, err := http.NewRequest(http.MethodPost, dstURL, bytes.NewBuffer(data))
 	if err != nil {
@@ -380,7 +386,7 @@ func echoServer(
 
 		// Start background goroutine to send aggregated messages periodically
 		go func() {
-			ticker := time.NewTicker(AGGREGATE_ECHO_MESSAGES_INTERVAL_MS * time.Millisecond)
+			ticker := time.NewTicker(AGGREGATE_ECHO_MESSAGES_INTERVAL_US * time.Microsecond)
 			defer ticker.Stop()
 			for range ticker.C {
 				messages := messageAggregator.FlushMessages()
@@ -406,7 +412,8 @@ func echoServer(
 			return
 		}
 
-		// fmt.Printf("Received request to echo: %s\n", body)
+		// fmt.Printf("++ECHO++ Received request to echo at %d: %s\n", time.Now().UnixNano(), body)
+		fmt.Printf("++ECHO++ Latency from LB to CC: %dμs\n", getLatencyUsFromData(body))
 
 		// Update request stats immediately (don't wait)
 		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, serviceLatencyStats, body)

@@ -11,12 +11,12 @@ import sys
 from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
 
 # Everything in seconds:
-DURATION = 60*5
+DURATION = 60
 DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/test_15_nodes"
+LOG_FOLDER = "logs/debug_15_nodes"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -314,7 +314,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [3]:
+        for iteration in [4]:
         
             for distr in ["exponential"]:
                 
@@ -627,10 +627,10 @@ def main_exp_state_2():
         pod_names,
         lbs=[
             # "only_nodal_leastrequest",
-            # "nodal_leastrequest_rlpb",
-            "leastrequest_plus_rlpb",
-            "nodal_leastrequest",
             # "leastrequest_plus",
+            # "leastrequest_plus_rlpb",
+            "nodal_leastrequest",
+            "nodal_leastrequest_rlpb",
             # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
@@ -917,7 +917,7 @@ def main():
 if __name__ == "__main__":
     start_time = time.time()
     
-    main_exp_state_3()
+    main_exp_state_2()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")

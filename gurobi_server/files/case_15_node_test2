@@ -1,0 +1,308 @@
+[
+    [
+        {
+            "name": "node0.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 4000
+        },
+        {
+            "name": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node10.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node11.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node12.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node13.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node14.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node15.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node16.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 4000
+        },
+        {
+            "name": "node17.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 4000
+        },
+        {
+            "name": "node18.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 4000
+        },
+        {
+            "name": "node19.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 4000
+        },
+        {
+            "name": "node2.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node3.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node4.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node5.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node6.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node7.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node8.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        },
+        {
+            "name": "node9.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us",
+            "cap": 200
+        }
+    ],
+    [
+        {
+            "name": "svc5",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc14",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc13",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc2",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc8",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc11",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc4",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc12",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc0",
+            "load": 200,
+            "fshareload": 13.333333333333334
+        },
+        {
+            "name": "svc10",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc9",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc3",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc1",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc7",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        },
+        {
+            "name": "svc6",
+            "load": 200,
+            "fshareload": 213.33333333333334
+        }
+    ],
+    [
+        {
+            "name": "svc1-0",
+            "tenant": "svc1",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc9-0",
+            "tenant": "svc9",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc2-0",
+            "tenant": "svc2",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc4-0",
+            "tenant": "svc4",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc5-0",
+            "tenant": "svc5",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc7-0",
+            "tenant": "svc7",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc0-0",
+            "tenant": "svc0",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc10-0",
+            "tenant": "svc10",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc8-0",
+            "tenant": "svc8",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc3-0",
+            "tenant": "svc3",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc6-0",
+            "tenant": "svc6",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc11-0",
+            "tenant": "svc11",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc12-0",
+            "tenant": "svc12",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc13-0",
+            "tenant": "svc13",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc14-0",
+            "tenant": "svc14",
+            "host": "node1.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc9-1",
+            "tenant": "svc9",
+            "host": "node10.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc10-1",
+            "tenant": "svc10",
+            "host": "node11.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc11-1",
+            "tenant": "svc11",
+            "host": "node12.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc12-1",
+            "tenant": "svc12",
+            "host": "node13.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc13-1",
+            "tenant": "svc13",
+            "host": "node14.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc14-1",
+            "tenant": "svc14",
+            "host": "node15.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc1-1",
+            "tenant": "svc1",
+            "host": "node2.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc2-1",
+            "tenant": "svc2",
+            "host": "node3.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc3-1",
+            "tenant": "svc3",
+            "host": "node4.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc4-1",
+            "tenant": "svc4",
+            "host": "node5.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc5-1",
+            "tenant": "svc5",
+            "host": "node6.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc6-1",
+            "tenant": "svc6",
+            "host": "node7.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc7-1",
+            "tenant": "svc7",
+            "host": "node8.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        },
+        {
+            "name": "svc8-1",
+            "tenant": "svc8",
+            "host": "node9.k8sl-mplb.mlnetwork-pg0.clemson.cloudlab.us"
+        }
+    ]
+]
