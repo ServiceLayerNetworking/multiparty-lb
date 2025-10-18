@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -35,7 +34,8 @@ const (
 	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
 	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 10 // Number of seconds for rolling average of RPS
 
-	USE_HARDCODE_GUROBI_RESPONSE = true
+	GUROBI_TIMEOUT_MS            = 5000
+	USE_HARDCODE_GUROBI_RESPONSE = false
 
 	NUM_OF_SECS_FOR_REQ_STATS = 5    // Number of seconds of past request stats to consider
 	INIT_HEADROOM_PCT         = 10.0 // Initial headroom percentage for each service
@@ -1175,31 +1175,6 @@ func getFShareLoad(nodes []Node, appName string) float64 {
 type GurobiGenericResponse struct {
 	Status int                           `json:"status"`
 	Result map[string]map[string]float64 `json:"result"`
-}
-
-func sendPostRequest(url, payload string) (string, error) {
-	// Send the POST request
-	response, err := http.Post(url, "application/json",
-		bytes.NewBuffer([]byte(payload)))
-	if err != nil {
-		return "", err
-	}
-	// Ensure the response body is closed after the function returns
-	defer response.Body.Close()
-
-	// Check the response status
-	if response.StatusCode != http.StatusOK {
-		return "", errors.New("received non-201 status code")
-	}
-
-	// Read the response body
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return "", err
-	}
-
-	// Print the response body
-	return string(body), nil
 }
 
 func getNodeNumOfPod(podName string, nodes []Node) (int, error) {

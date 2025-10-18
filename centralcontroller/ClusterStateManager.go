@@ -1,9 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"net"
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
@@ -335,10 +341,47 @@ func getGenericWeightsFromGurobi(
 
 	slog.Info(fmt.Sprintf("Payload sending to Gurobi: %s\n", payload))
 
-	resBody, err := sendPostRequest(baseURL, payload)
+	resBody, err := sendPostRequestToGurobi(baseURL, payload)
 	check(err)
 
 	return string(resBody)
+}
+
+func sendPostRequestToGurobi(url, payload string) (string, error) {
+	// HTTP client with a 2s timeout per attempt
+	client := &http.Client{Timeout: GUROBI_TIMEOUT_MS * time.Millisecond}
+
+	for {
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(payload)))
+		if err != nil {
+			return "", err
+		}
+		req.Header.Set("Content-Type", "application/json")
+
+		response, err := client.Do(req)
+		if err != nil {
+			// Retry only on timeouts
+			var netErr net.Error
+			if errors.As(err, &netErr) && netErr.Timeout() || errors.Is(err, context.DeadlineExceeded) {
+				time.Sleep(10 * time.Millisecond)
+				continue
+			}
+			return "", err
+		}
+
+		// Read and close the body before returning/looping
+		body, readErr := io.ReadAll(response.Body)
+		response.Body.Close()
+		if readErr != nil {
+			return "", readErr
+		}
+
+		// Stop retrying once we receive any response (200 or otherwise)
+		if response.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("received non-200 status code: %d, body: %s", response.StatusCode, string(body))
+		}
+		return string(body), nil
+	}
 }
 
 func getEqualPodWeightsForGurobi(nodes []Node, appNames []string) string {
@@ -389,7 +432,7 @@ func setInitialGurobiWeights(nodes []Node, appNames []string) {
 	slog.Info(fmt.Sprintf(
 		"Payload sending to Gurobi to set initial weights: %s\n", payload))
 
-	resBody, err := sendPostRequest(baseURL, payload)
+	resBody, err := sendPostRequestToGurobi(baseURL, payload)
 	check(err)
 
 	slog.Info(fmt.Sprintf(

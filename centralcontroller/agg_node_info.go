@@ -91,7 +91,7 @@ func (s *ServiceLatencyStats) GetMean(service string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now().UnixMilli()
-	cutoffMs := now - 1500 // last 1.5 seconds
+	cutoffMs := now - 500 // last 0.5 seconds
 	records, ok := s.latencies[service]
 	if !ok || len(records) == 0 {
 		return 0
@@ -413,7 +413,7 @@ func echoServer(
 		}
 
 		// fmt.Printf("++ECHO++ Received request to echo at %d: %s\n", time.Now().UnixNano(), body)
-		fmt.Printf("++ECHO++ Latency from LB to CC: %dμs\n", getLatencyUsFromData(body))
+		fmt.Printf("++ECHO++ Latency from LB to CC: %.2fms\n", float64(getLatencyUsFromData(body))/1000)
 
 		// Update request stats immediately (don't wait)
 		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, serviceLatencyStats, body)

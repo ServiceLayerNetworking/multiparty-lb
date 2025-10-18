@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/debug_15_nodes"
+LOG_FOLDER = "logs/debug_15_nodes_Oct15"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -165,7 +165,7 @@ def parse_svc_load(svc_load: float) -> Tuple[int, float]:
     load = svc_load / 100.0
     
     # default duration of each request (only when load > 1 core per unit time)
-    default_duration_ms = 30.0
+    default_duration_ms = 50.0
     
     # max cpu cores per unit time that a request can consume
     max_cpu_per_time = 1
@@ -314,13 +314,13 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [4]:
+        for iteration in [1, 2, 3]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.8]:
+                for load_scale_factor in [0.7]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -513,11 +513,11 @@ def _main():
         lbs=[
             "leastrequest_plus",
             # "leastrequest_plus_rl",
-            # "leastrequest_plus_rlpb",
-            # "only_nodal_leastrequest",
-            # "nodal_leastrequest_rlpb",
-            # "nodal_leastrequest",
-            # "minimize_diff",
+            "leastrequest_plus_rlpb",
+            "only_nodal_leastrequest",
+            "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
+            "minimize_diff",
         ])
 
     # state_id = 2
@@ -626,12 +626,12 @@ def main_exp_state_2():
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "only_nodal_leastrequest",
-            # "leastrequest_plus",
-            # "leastrequest_plus_rlpb",
+            "only_nodal_leastrequest",
             "nodal_leastrequest",
+            "leastrequest_plus_rlpb",
             "nodal_leastrequest_rlpb",
-            # "minimize_diff",
+            "minimize_diff",
+            "leastrequest_plus",
             # "leastrequest_plus_rl",
         ])
 
@@ -672,8 +672,8 @@ def main_exp_state_3():
     
     prep_for_exps()
     
-    state_id = 4
-    svc_loads = [200] * 2 + [0] * 13  # total 15 services
+    state_id = 3
+    svc_loads = [200] * 15 # total 15 services
     svc_to_nodes = {
         "svc0": ["node0"],
         "svc1": ["node0", "node1"],
@@ -756,14 +756,147 @@ def main_exp_state_3():
         pod_names,
         lbs=[
             "only_nodal_leastrequest",
-            # "nodal_leastrequest_rlpb",
-            # "leastrequest_plus_rlpb",
-            # "nodal_leastrequest",
-            # "minimize_diff",
-            # "leastrequest_plus",
+            "nodal_leastrequest",
+            "leastrequest_plus_rlpb",
+            "nodal_leastrequest_rlpb",
+            "minimize_diff",
+            "leastrequest_plus",
             # "leastrequest_plus_rl",
         ])
 
+    # state_id = 2
+    # svc_loads = [300, 200, 0]
+    
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "leastrequest_plus",
+    #         # "leastrequest_plus_rl",
+    #         "leastrequest_plus_rlpb",
+    #         "only_nodal_leastrequest",
+    #         "nodal_leastrequest_rlpb",
+    #         "nodal_leastrequest",
+    #         "minimize_diff",
+    #     ])
+
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "nodal_leastrequest",
+    #         "leastrequest_plus_rl",
+    #         "minimize_diff"
+    #     ])
+
+def main_exp_state_4():
+    
+    # print(parse_svc_load(300*0.7))
+    # print(parse_svc_load(200*0.7))
+    # return
+    
+    prep_for_exps()
+    
+    # this exp is to determine the allowed rps we should have for each svc
+    # we will have svc0 with 200% util and the rest with 0% util
+    # check latency of svc0. This will be our target rps
+    
+    state_id = 4
+    svc_loads = [200] + ([0] * 14) # total 15 services
+    svc_to_nodes = {
+        "svc0": ["node0"],
+        "svc1": ["node0", "node1"],
+        "svc2": ["node1", "node2"],
+        "svc3": ["node2", "node3"],
+        "svc4": ["node3", "node4"],
+        "svc5": ["node4", "node5"],
+        "svc6": ["node5", "node6"],
+        "svc7": ["node6", "node7"],
+        "svc8": ["node7", "node8"],
+        "svc9": ["node8", "node9"],
+        "svc10": ["node9", "node10"],
+        "svc11": ["node10", "node11"],
+        "svc12": ["node11", "node12"],
+        "svc13": ["node12", "node13"],
+        "svc14": ["node13", "node14"],
+    } 
+    pod_names = [
+        "svc0-node0-0",
+        
+        "svc1-node0-0",
+        "svc1-node1-0",
+        
+        "svc2-node1-0",
+        "svc2-node2-0",
+        
+        "svc3-node2-0",
+        "svc3-node3-0",
+        
+        "svc4-node3-0",
+        "svc4-node4-0",
+        
+        "svc5-node4-0",
+        "svc5-node5-0",
+        
+        "svc6-node5-0",
+        "svc6-node6-0",
+        
+        "svc7-node6-0",
+        "svc7-node7-0",
+        
+        "svc8-node7-0",
+        "svc8-node8-0",
+        
+        "svc9-node8-0",
+        "svc9-node9-0",
+        
+        "svc10-node9-0",
+        "svc10-node10-0",
+        
+        "svc11-node10-0",
+        "svc11-node11-0",
+        
+        "svc12-node11-0",
+        "svc12-node12-0",
+        
+        "svc13-node12-0",
+        "svc13-node13-0",
+        
+        "svc14-node13-0",
+        "svc14-node14-0",
+    ]
+    
+    # svc_to_nodes = {
+    #     "svc0": ["node0", "node1"],
+    #     "svc1": ["node1"],
+    #     "svc2": ["node2"],
+    # }
+    # pod_names = [
+    #     "svc0-node0-0",
+    #     "svc0-node1-0",
+    #     "svc1-node1-0",
+    #     "svc2-node2-0",
+    # ]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
+            # "only_nodal_leastrequest",
+            # "nodal_leastrequest",
+            # "leastrequest_plus_rlpb",
+            # "nodal_leastrequest_rlpb",
+            # "minimize_diff",
+            "leastrequest_plus",
+            # "leastrequest_plus_rl",
+        ])
+  
     # state_id = 2
     # svc_loads = [300, 200, 0]
     
@@ -917,7 +1050,9 @@ def main():
 if __name__ == "__main__":
     start_time = time.time()
     
-    main_exp_state_2()
+    # main_exp_state_2()
+    # main_exp_state_3()
+    main_exp_state_4()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")
