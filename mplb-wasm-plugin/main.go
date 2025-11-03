@@ -44,6 +44,7 @@ const (
 	USE_DEFAULT_MAX_RPS_ALLOWED                        = false
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 5
 	NUM_OF_LB_REPLICAS                                 = 3
+	USE_CONCURENT_CONNECTIONS_IN_RATE_LIMITER          = true
 
 	// Hash mod for frequency of request tracing.
 	DEFAULT_HASH_MOD = 10
@@ -52,7 +53,7 @@ const (
 
 	// load balancing strategy
 	// [leastrequest_plus_rlpb|leastrequest_plus_rl|leastrequest_rl|nodal_leastrequest_rlpb|only_nodal_leastrequest|leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOAD_BALANCING_STRATEGY = "minimize_diff"
+	LOAD_BALANCING_STRATEGY = "leastrequest_plus_rlpb"
 )
 
 var (

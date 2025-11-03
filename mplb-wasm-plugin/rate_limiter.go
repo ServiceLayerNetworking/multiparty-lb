@@ -43,62 +43,99 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 		return false, nil
 	}
 
-	recentlySentReqTimestamps, cas := getRecentlySentRequestTimeStamps(dstSvc)
+	if (LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" || LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb") &&
+		USE_CONCURENT_CONNECTIONS_IN_RATE_LIMITER {
+		// if we are using performance based rate liming and concurrent connections in rate limit
 
-	// remove timestamps that are older than 1 second
-	truncatingIndex := len(recentlySentReqTimestamps)
-	for i, ts := range recentlySentReqTimestamps {
-		if ts >= currentTimeMs-1000 {
-			truncatingIndex = i
-			break
+		toDrop, err := shouldDropRequestConcurrencyBased(dstSvc)
+		return toDrop, err
+
+	} else {
+
+		recentlySentReqTimestamps, cas := getRecentlySentRequestTimeStamps(dstSvc)
+
+		// remove timestamps that are older than 1 second
+		truncatingIndex := len(recentlySentReqTimestamps)
+		for i, ts := range recentlySentReqTimestamps {
+			if ts >= currentTimeMs-1000 {
+				truncatingIndex = i
+				break
+			}
 		}
+		recentlySentReqTimestamps = recentlySentReqTimestamps[truncatingIndex:]
+
+		numReqInPastSec := len(recentlySentReqTimestamps)
+
+		var toReturn bool
+		var maxRPSAllowed int
+
+		if LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" ||
+			LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb" {
+			maxRPSAllowed = getPerfBasedAllowedRPS(dstSvc)
+		} else {
+			maxRPSAllowed = getMaxRPSGivenTheCPUAllocated(dstSvc)
+		}
+		// svcOutstandingReqs, _, err := getOutstandingRequests(dstSvc, -1)
+		// numSvcOutstandingReqs := 0
+		// if err == nil {
+		// 	for _, numOutstandingReqs := range *svcOutstandingReqs {
+		// 		numSvcOutstandingReqs += numOutstandingReqs
+		// 	}
+		// }
+
+		// if max(numReqInPastSec, numSvcOutstandingReqs) >= maxRPSAllowed {
+		if numReqInPastSec >= maxRPSAllowed {
+			proxywasm.LogCriticalf(
+				"Rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
+			// "Rate limiting request to %s: %d requests in the last second with %d outstanding [%d allowed]", dstSvc, numReqInPastSec, numSvcOutstandingReqs, maxRPSAllowed)
+
+			toReturn = true
+		} else {
+			recentlySentReqTimestamps = append(recentlySentReqTimestamps, currentTimeMs)
+			proxywasm.LogCriticalf(
+				"Not rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
+			toReturn = false
+		}
+
+		err := setRecentlySentRequestTimeStamps(cas, dstSvc, recentlySentReqTimestamps)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't set recently sent requests: %v", err)
+			if errors.Is(err, types.ErrorStatusCasMismatch) {
+				// try again, another thread has changed the list since we last read it
+				return shouldDropRequest(time.Now().UnixMilli(), dstSvc)
+			}
+			return false, err
+		}
+
+		return toReturn, nil
 	}
-	recentlySentReqTimestamps = recentlySentReqTimestamps[truncatingIndex:]
+}
 
-	numReqInPastSec := len(recentlySentReqTimestamps)
+func shouldDropRequestConcurrencyBased(dstSvc string) (bool, error) {
 
-	var toReturn bool
-	var maxRPSAllowed int
-
-	if LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" ||
-		LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb" {
-		maxRPSAllowed = getPerfBasedAllowedRPS(dstSvc)
-	} else {
-		maxRPSAllowed = getMaxRPSGivenTheCPUAllocated(dstSvc)
-	}
-	// svcOutstandingReqs, _, err := getOutstandingRequests(dstSvc, -1)
-	// numSvcOutstandingReqs := 0
-	// if err == nil {
-	// 	for _, numOutstandingReqs := range *svcOutstandingReqs {
-	// 		numSvcOutstandingReqs += numOutstandingReqs
-	// 	}
-	// }
-
-	// if max(numReqInPastSec, numSvcOutstandingReqs) >= maxRPSAllowed {
-	if numReqInPastSec >= maxRPSAllowed {
-		proxywasm.LogCriticalf(
-			"Rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
-		// "Rate limiting request to %s: %d requests in the last second with %d outstanding [%d allowed]", dstSvc, numReqInPastSec, numSvcOutstandingReqs, maxRPSAllowed)
-
-		toReturn = true
-	} else {
-		recentlySentReqTimestamps = append(recentlySentReqTimestamps, currentTimeMs)
-		proxywasm.LogCriticalf(
-			"Not rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
-		toReturn = false
-	}
-
-	err := setRecentlySentRequestTimeStamps(cas, dstSvc, recentlySentReqTimestamps)
+	// get the current number of concurrent connections to the service
+	outstandingReqs, _, err := getOutstandingRequests(dstSvc, -1)
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't set recently sent requests: %v", err)
-		if errors.Is(err, types.ErrorStatusCasMismatch) {
-			// try again, another thread has changed the list since we last read it
-			return shouldDropRequest(time.Now().UnixMilli(), dstSvc)
-		}
+		proxywasm.LogCriticalf(
+			"Couldn't get outstanding requests for endpoint %s: %v",
+			dstSvc, err)
 		return false, err
 	}
 
-	return toReturn, nil
+	requestsInFight := 0
+	for _, numOutstandingReqs := range *outstandingReqs {
+		requestsInFight += numOutstandingReqs
+	}
+
+	maxConcurrentRequestsAllowed := getPerfBasedAllowedRPS(dstSvc)
+
+	if requestsInFight >= maxConcurrentRequestsAllowed {
+		proxywasm.LogCriticalf(
+			"Rate limiting request to %s: %d concurrent requests in flight [%d allowed]", dstSvc, requestsInFight, maxConcurrentRequestsAllowed)
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func getPerfBasedAllowedRPS(dstSvc string) int {
