@@ -1,6 +1,6 @@
 from typing import List, Dict, Tuple
 from itertools import product, combinations, chain, combinations_with_replacement
-from math import comb
+from math import comb, ceil, floor
 import json
 import sys
 import os
@@ -30,9 +30,13 @@ UB_SVC_LOAD = 1.5
 # app latencies
 # threshhold values and the 
 # plots the threshhold values 
-LOGFILE = "logs/offline_sweep_Apr3_2237.log"
+LOGFILE = "logs/offline_sweep_Nov13.log"
 
 def write_config():
+    # Ensure log directory exists
+    log_dir = os.path.dirname(LOGFILE)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
     with open(LOGFILE, "w") as f:
         f.write(json.dumps({
             "NumOfNodes": NUM_NODES,
@@ -203,6 +207,9 @@ def remove_mirror_topologies(topologies):
     return np.array(list(unique.values()))
 
 def generate_cluster_states():
+    """
+    Exhaustively enumerate feasible cluster states (original slower version).
+    """
     
     num_nodes = NUM_NODES
     num_services = NUM_SERVICES
@@ -253,6 +260,132 @@ def generate_cluster_states():
     print(f"Total number of states: {n_states}")
     
     return all_states
+
+def generate_cluster_states_fast(k: int, seed: int | None = None):
+    """
+    Generate k random feasible cluster states (fast sampling version).
+    """
+    num_nodes = NUM_NODES
+    num_services = NUM_SERVICES
+    num_pods_per_node = NUM_PODS_PER_NODE
+    node_cap = NODE_LOAD_CAP
+    node_caps = [node_cap] * num_nodes
+    pod_cap = node_cap // num_pods_per_node
+    cluster_loads = CLUSTER_LOADS
+    lb_svc_load = LB_SVC_LOAD
+    ub_svc_load = UB_SVC_LOAD
+
+    rng = np.random.default_rng(seed)
+    sampled_states = []
+
+    # Precompute cluster loads in units of atomic load for easier arithmetic
+    au = LOAD_ATOMIC_UNIT
+    cluster_loads_units = [L // au for L in cluster_loads]
+
+    def sample_topology() -> np.ndarray:
+        topo = np.zeros((num_nodes, num_services), dtype=int)
+        for n in range(num_nodes):
+            alloc = rng.multinomial(num_pods_per_node, [1.0 / num_services] * num_services)
+            topo[n, :] = alloc
+        # Ensure at least one pod for each service across the cluster by borrowing from donors
+        col_sums = np.sum(topo, axis=0)
+        zero_svcs = np.where(col_sums == 0)[0]
+        for svc in zero_svcs:
+            donor_candidates = [j for j in range(num_services) if j != svc and col_sums[j] > 1]
+            if donor_candidates:
+                donor = int(rng.choice(donor_candidates))
+                donor_nodes = np.where(topo[:, donor] > 0)[0]
+                if len(donor_nodes) > 0:
+                    node_idx = int(rng.choice(donor_nodes))
+                    topo[node_idx, donor] -= 1
+                    topo[node_idx, svc] += 1
+                    col_sums[donor] -= 1
+                    col_sums[svc] += 1
+        return topo
+
+    def sample_bounded_composition(R: int, b: np.ndarray) -> np.ndarray:
+        """Sample z s.t. 0 <= z_i <= b_i and sum z_i = R, rejection-free."""
+        n = len(b)
+        z = np.zeros(n, dtype=int)
+        order = rng.permutation(n)
+        remaining = R
+        # Precompute suffix sums of caps for quick min allocation calculation
+        caps_ordered = b[order]
+        suffix_caps = np.zeros(n + 1, dtype=int)
+        suffix_caps[n - 1] = 0
+        for i in range(n - 2, -1, -1):
+            suffix_caps[i] = suffix_caps[i + 1] + caps_ordered[i + 1]
+        for pos, idx in enumerate(order):
+            cap_i = b[idx]
+            caps_after = suffix_caps[pos]
+            low = max(0, remaining - caps_after)
+            high = min(cap_i, remaining)
+            take = int(rng.integers(low, high + 1)) if high >= low else low
+            z[idx] = take
+            remaining -= take
+        # At this point remaining must be 0
+        return z
+
+    for _ in range(k):
+        # 1) Choose a topology
+        topology = sample_topology()
+
+        # 2) Compute per-service capacity and bounds (in atomic units)
+        caps = np.sum(topology, axis=0) * pod_cap
+        L_units = np.array([ceil(lb_svc_load * c / au) for c in caps], dtype=int)
+        U_units = np.array([floor(ub_svc_load * c / au) for c in caps], dtype=int)
+
+        # If any service has infeasible bounds, resample topology
+        if np.any(U_units < L_units):
+            # Resample a new topology that yields feasible bounds
+            while True:
+                topology = sample_topology()
+                caps = np.sum(topology, axis=0) * pod_cap
+                L_units = np.array([ceil(lb_svc_load * c / au) for c in caps], dtype=int)
+                U_units = np.array([floor(ub_svc_load * c / au) for c in caps], dtype=int)
+                if np.all(U_units >= L_units):
+                    break
+
+        sumL = int(np.sum(L_units))
+        sumU = int(np.sum(U_units))
+
+        # 3) Pick a cluster load in units within [sumL, sumU]
+        feasible_T_units = [t for t in cluster_loads_units if sumL <= t <= sumU]
+        if not feasible_T_units:
+            # Resample topology until we find non-empty range
+            while True:
+                topology = sample_topology()
+                caps = np.sum(topology, axis=0) * pod_cap
+                L_units = np.array([ceil(lb_svc_load * c / au) for c in caps], dtype=int)
+                U_units = np.array([floor(ub_svc_load * c / au) for c in caps], dtype=int)
+                if np.any(U_units < L_units):
+                    continue
+                sumL = int(np.sum(L_units))
+                sumU = int(np.sum(U_units))
+                feasible_T_units = [t for t in cluster_loads_units if sumL <= t <= sumU]
+                if feasible_T_units:
+                    break
+
+        T_units = int(rng.choice(feasible_T_units))
+        R = T_units - sumL
+        b_units = U_units - L_units
+
+        # 4) Sample bounded composition z with sum R and 0<=z_i<=b_i, then add L back
+        z_units = sample_bounded_composition(R, b_units)
+        svc_units = L_units + z_units
+        svc_loads = (svc_units * au).astype(int).tolist()
+
+        cluster_state = {
+            "NumOfNodes": num_nodes,
+            "NumOfSvc": num_services,
+            "NodesToSvc": topology,
+            "NodeCaps": node_caps,
+            "SvcLoads": svc_loads,
+        }
+        sampled_states.append(cluster_state)
+
+    print(f"Generated {len(sampled_states)} random states")
+    return sampled_states
 
 def _generate_cluster_states():   
     """
@@ -377,8 +510,20 @@ def run_offline_exp(state: Dict[str, any]):
         f.write(json.dumps(output) + "\n")
 
 def run_offline_sweep():
+    # Local knobs for faster experiments; modify as needed.
+    use_fast = True   # Set to False to run exhaustive (slow) path
+    k = 200           # Number of random states to generate in fast mode
+    seed = 42         # RNG seed for reproducibility in fast mode
+
+    if use_fast:
+        states = generate_cluster_states_fast(k=k, seed=seed)
+        for i, state in enumerate(states):
+            run_offline_exp(state)
+            print(f"Done with state {i+1}/{len(states)}")
+        return
+
+    # Exhaustive path: original behavior (restrict to selected indices)
     states = generate_cluster_states()
-    
     for i, state in enumerate(states):
         if i in [143929, 159856, 162078, 163838, 170111, 174690, 175995, 177452]:
             run_offline_exp(state)
@@ -386,6 +531,5 @@ def run_offline_sweep():
             input()
 
 if __name__ == "__main__":
-    
     write_config()
     run_offline_sweep()
