@@ -36,7 +36,7 @@ class Worker:
     def __str__(self):
         return f"{self.name}: tenant={self.tenant}, host={self.host}"
 
-def get_topology(n_hosts: int) -> Tuple[List[Host], List[Tenant], List[Worker]]:
+def get_topology(n_hosts: int, host_capacity : float = HOST_CAPACITY) -> Tuple[List[Host], List[Tenant], List[Worker]]:
     
     print(f"number of hosts: {n_hosts}")
     
@@ -74,7 +74,7 @@ def get_topology(n_hosts: int) -> Tuple[List[Host], List[Tenant], List[Worker]]:
     
     for host in hosts:
         
-        fshare_of_each_worker = HOST_CAPACITY / len(host.worker_ids) if len(host.worker_ids) > 0 else 0.0
+        fshare_of_each_worker = host_capacity / len(host.worker_ids) if len(host.worker_ids) > 0 else 0.0
         
         for worker_id in host.worker_ids:
             worker = workers[worker_id]

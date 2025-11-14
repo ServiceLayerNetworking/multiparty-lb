@@ -302,7 +302,7 @@ def run_from_json(hosts, tenants, workers):
     tenants = [Tenant(t["name"], t["load"]) for t in tenants]
     workers = [Worker(w["name"], w["tenant"], w["host"]) for w in workers]
     
-    to_return = get_locally_optimal_load_distribution_fast(hosts, tenants, workers)
+    to_return = get_locally_optimal_load_distribution(hosts, tenants, workers)
 
     return to_return
 
