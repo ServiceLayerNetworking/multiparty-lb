@@ -5,6 +5,7 @@ import numpy as np
 from gurobi_server import run_generic_model
 
 N_WORKERS_EXPONENTIAL_DISTR_LAMBDA = 17
+# WORKER_LOAD_EXPONENTIAL_DISTR_LAMBDA = 0.7
 WORKER_LOAD_EXPONENTIAL_DISTR_LAMBDA = 0.7
 HOST_CAPACITY = 1.0
 
@@ -36,27 +37,26 @@ class Worker:
     def __str__(self):
         return f"{self.name}: tenant={self.tenant}, host={self.host}"
 
-def get_topology(n_hosts: int, host_capacity : float = HOST_CAPACITY) -> Tuple[List[Host], List[Tenant], List[Worker]]:
+def get_topology(n_hosts: int, load_lambda: float = WORKER_LOAD_EXPONENTIAL_DISTR_LAMBDA, host_capacity : float = HOST_CAPACITY) -> Tuple[List[Host], List[Tenant], List[Worker]]:
     
-    print(f"number of hosts: {n_hosts}")
+    # print(f"number of hosts: {n_hosts}")
     
     n_tenants = int(n_hosts * 0.65)
-    print(f"number of tenants: {n_tenants}")    
+    # print(f"number of tenants: {n_tenants}")    
     
     n_workers_per_ms = list(map(int, np.random.exponential(
         N_WORKERS_EXPONENTIAL_DISTR_LAMBDA, size=n_tenants)))
-    print(f"number of workers: {np.sum(n_workers_per_ms)}")
+    # print(f"number of workers: {np.sum(n_workers_per_ms)}")
     
-    hosts = [Host(f"host{i}", 1.0) for i in range(n_hosts)]
+    hosts = [Host(f"host{i}", float(host_capacity)) for i in range(n_hosts)]
     
     tenants = []
     workers = []
     worker_id = 0
     for i in range(n_tenants):
         
-        tenant_load = np.sum(np.random.exponential(
-            WORKER_LOAD_EXPONENTIAL_DISTR_LAMBDA, size=n_workers_per_ms[i]))
-        
+        tenant_load = np.sum(np.random.exponential(load_lambda, size=n_workers_per_ms[i]))
+
         tenant = Tenant(f"tenant{i}", tenant_load)
         tenants.append(tenant)
         
@@ -74,24 +74,28 @@ def get_topology(n_hosts: int, host_capacity : float = HOST_CAPACITY) -> Tuple[L
     
     for host in hosts:
         
-        fshare_of_each_worker = host_capacity / len(host.worker_ids) if len(host.worker_ids) > 0 else 0.0
+        fshare_of_each_worker = float(host_capacity) / len(host.worker_ids) if len(host.worker_ids) > 0 else 0.0
         
         for worker_id in host.worker_ids:
             worker = workers[worker_id]
             tenant = tenants[worker.tenant_id]
             tenant.fshareload += fshare_of_each_worker
     
-    print("Hosts:")
-    for host in hosts:
-        print(host)
+    # for i in range(n_tenants):
+    #     tenant_load = np.random.exponential(
+    #         tenants[i].fshareload * WORKER_LOAD_EXPONENTIAL_DISTR_LAMBDA)
     
-    print("Tenants:")
-    for tenant in tenants:
-        print(tenant)
+    # print("Hosts:")
+    # for host in hosts:
+    #     print(host)
+    
+    # print("Tenants:")
+    # for tenant in tenants:
+    #     print(tenant)
         
-    print("Workers:")
-    for worker in workers:
-        print(worker)
+    # print("Workers:")
+    # for worker in workers:
+    #     print(worker)
     
     return hosts, tenants, workers
 
@@ -110,4 +114,4 @@ def run_scale_experiment():
         print(f"Time taken for {n_hosts} hosts: {time_taken*1000:.2f}ms")
 
 
-run_scale_experiment()
+# run_scale_experiment()

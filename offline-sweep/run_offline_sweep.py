@@ -551,10 +551,11 @@ def parse_cluster_state_for_gs(
         
     return hosts, list(tenants.values()), workers
 
-def run_offline_exp(state: Dict[str, any]):
+def run_offline_exp(state: Dict[str, any], hosts=None, tenants=None, workers=None):
     
-    # parse the state to get Hosts, Tenants, Workers
-    hosts, tenants, workers = parse_cluster_state_for_gs(state)
+    if hosts is None or tenants is None or workers is None:
+        # parse the state to get Hosts, Tenants, Workers
+        hosts, tenants, workers = parse_cluster_state_for_gs(state)
     
     global_result = gs_g.run_from_json(hosts, tenants, workers)
     local_result = gs_l.run_from_json(hosts, tenants, workers)
@@ -575,34 +576,55 @@ def run_offline_exp(state: Dict[str, any]):
     with open(LOGFILE, "a") as f:
         f.write(json.dumps(output) + "\n")
 
-def generate_alibaba_based_cluster_states(k: int):
+def generate_alibaba_based_cluster_states(l: float = 0.08, k: int = 10000):
     sampled_states = []
 
     for _ in range(k):
-        topo = grt.get_topology(NUM_NODES, HOST_CAPACITY=NODE_LOAD_CAP)
-        sampled_states.append(topo)
+        hosts, tenants, workers = grt.get_topology(NUM_NODES, load_lambda=l*NODE_LOAD_CAP, host_capacity=NODE_LOAD_CAP)
+        
+        hosts = [{"name": h.name, "cap": h.cap} for h in hosts]
+        tenants = [{"name": t.name, "load": t.load, "fshareload": t.fshareload} for t in tenants]
+        workers = [{"name": w.name, "host": w.host, "tenant": w.tenant} for w in workers]
+        
+        sampled_states.append((hosts, tenants, workers))
+        print(f"\rGenerated {len(sampled_states)}/{k} random states so far...", end='', flush=True)
+
+    print(f"Generated {len(sampled_states)} random states")
+        
+    return sampled_states
 
 def run_offline_sweep():
-    # Local knobs for faster experiments; modify as needed.
-    use_fast = True   # Set to False to run exhaustive (slow) path
-    k = 10000           # Number of random states to generate in fast mode
-    # seed = 42         # RNG seed for reproducibility in fast mode
+    
+    global LOGFILE
+    
+    for l in np.arange(0.01, 0.20, 0.01):
+        
+        LOGFILE = f"logs/offline_sweep_Nov13_loadlambda_{l:.2f}.log"
+    
+        # Local knobs for faster experiments; modify as needed.
+        use_fast = True   # Set to False to run exhaustive (slow) path
+        k = 10000           # Number of random states to generate in fast mode
+        # seed = 42         # RNG seed for reproducibility in fast mode
 
-    if use_fast:
-        states = generate_cluster_states_fast_wo_total_cluster_load(k=k) #, seed=seed)
-    else:
-        # Exhaustive path: original behavior (restrict to elected indices)
-        states = generate_cluster_states()
-    
-    # sample 100 states from all the states
-    states = np.random.choice(states, size=100, replace=False).tolist()
-    
-    # input("Press Enter to start processing states...")
-    
-    for i, state in enumerate(states):
-        run_offline_exp(state)
-        print(f"Done with state {i+1}/{len(states)}")
-        # input()
+        if use_fast:
+            states = generate_alibaba_based_cluster_states(l=l, k=k) #, seed=seed)
+        else:
+            # Exhaustive path: original behavior (restrict to elected indices)
+            states = generate_cluster_states()
+        
+        # sample 100 states from all the states
+        states = random.sample(states, 1000)
+        
+        # input("Press Enter to start processing states...")
+        
+        for i, state in enumerate(states):
+            if type(state) is tuple:
+                hosts, tenants, workers = state
+                run_offline_exp(state={}, hosts=hosts, tenants=tenants, workers=workers)
+            else:
+                run_offline_exp(state)
+            print(f"Done with state {i+1}/{len(states)}")
+            # input()
 
 if __name__ == "__main__":
     write_config()
