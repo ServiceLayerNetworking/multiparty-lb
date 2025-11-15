@@ -290,7 +290,7 @@ def random_split_with_caps(T, n, U, rng: np.random.Generator):
 
 def get_load(fshare: float, lb: int, ub: int) -> float:
     # return (np.random.exponential(scale=mean_ms_util) / 100.0) * fshare
-    return (random.randint(lb*100, ub*100) / 100.0) * fshare
+    return (random.randint(int(lb*100), int(ub*100)) / 100.0) * fshare
 
 def generate_cluster_states_fast(k: int, seed: int | None = None):
     """
@@ -398,7 +398,7 @@ def generate_cluster_states_fast(k: int, seed: int | None = None):
             return []
     return sampled_states
 
-def generate_cluster_states_fast_wo_total_cluster_load(k: int, seed: int | None = None):
+def generate_cluster_states_fast_wo_total_cluster_load(k: int, seed: int | None = None, lb: float = LB_SVC_LOAD, ub: float = UB_SVC_LOAD):
     """
     Generate k random feasible cluster states (fast sampling version).
     Process:
@@ -435,7 +435,7 @@ def generate_cluster_states_fast_wo_total_cluster_load(k: int, seed: int | None 
         caps = np.sum(topology, axis=0) * pod_cap
         fshares = np.array(caps, dtype=int)
 
-        svc_loads = [get_load(fs, LB_SVC_LOAD, UB_SVC_LOAD) for fs in fshares]
+        svc_loads = [get_load(fs, lb, ub) for fs in fshares]
 
         cluster_state = {
             "NumOfNodes": num_nodes,
@@ -597,9 +597,9 @@ def run_offline_sweep():
     
     global LOGFILE
     
-    for l in np.arange(0.01, 0.20, 0.01):
+    for ub in np.arange(2.0, 3.0, 0.1):
         
-        LOGFILE = f"logs/offline_sweep_Nov13_loadlambda_{l:.2f}.log"
+        LOGFILE = f"logs/offline_sweep_Nov13_lb_0.00_ub_{ub:.2f}.log"
     
         # Local knobs for faster experiments; modify as needed.
         use_fast = True   # Set to False to run exhaustive (slow) path
@@ -607,13 +607,14 @@ def run_offline_sweep():
         # seed = 42         # RNG seed for reproducibility in fast mode
 
         if use_fast:
-            states = generate_alibaba_based_cluster_states(l=l, k=k) #, seed=seed)
+            # states = generate_cluster_states_fast_wo_total_cluster_load(l=l, k=k) #, seed=seed)
+            states = generate_cluster_states_fast_wo_total_cluster_load(k=k, lb=0.0, ub=ub) #, seed=seed)
         else:
             # Exhaustive path: original behavior (restrict to elected indices)
             states = generate_cluster_states()
         
         # sample 100 states from all the states
-        states = random.sample(states, 1000)
+        states = random.sample(states, 100)
         
         # input("Press Enter to start processing states...")
         
