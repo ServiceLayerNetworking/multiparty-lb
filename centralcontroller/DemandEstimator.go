@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"time"
 )
@@ -194,31 +195,6 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	svcName string,
 	reqStatsServer *ReqStatsServer) (float64, float64) {
 
-	// // we are only going to update the headroom every 5 calls to this function,
-	// // or if the headroom or rps cap is not initialized
-	// // this is to avoid too frequent changes in headroom and rps cap
-	// // since this function is called every 700 ms but the feedback doesn't change this quickly
-	// de.Counter += 1
-	// headroomPct, ok1 := de.HeadRoomPct[svcName]
-	// perfBasedAllowedRPS, ok2 := de.PerfBasedAllowedRPS[svcName]
-
-	// if (de.Counter%5 != 0) && ok1 && ok2 {
-	// 	return headroomPct, perfBasedAllowedRPS
-	// }
-
-	// if per-req performance is ideal, decrease headroom by DELTA_HEADROOM_PCT
-	// if per-req performance is no ideal, increase headroom by DELTA_HEADROOM_PCT
-	// headroom cannot go below 0%
-
-	// performance is ideal when slo is met
-	// define SLO as 95th percentile latency < 100ms
-
-	// // get the 95th percentile latency for the service in the last 5 seconds
-	// latency95pMs := float64(reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 95.0))
-	// targetLatency95pMs := 700.0
-	// isPerformanceIdeal := latency95pMs < targetLatency95pMs
-	// errFromTarget := latency95pMs - targetLatency95pMs
-
 	latencyMeanMs := float64(reqStatsServer.serviceLatencyStats.GetMean(svcName))
 	targetMeanMs := 100.0
 	isPerformanceIdeal := latencyMeanMs < targetMeanMs
@@ -237,84 +213,87 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	}
 	headroomPct = clampFloat(headroomPct, 0.0, 50.0)
 
-	// errorFromTarget := latency95pMs - targetLatency95pMs
-	// // performance is ideal when errorFromTarget < 0
-	// if errorFromTarget < 0 {
-	// 	// performance is ideal, decrease headroom
-	// 	headroomPct = maxFloat(MINIMUM_HEADROOM_PCT, headroomPct*(1.0-clampFloat(absFloat(errorFromTarget)/targetLatency95pMs, 0.01, 0.10)))
-	// } else {
-	// 	// performance is not ideal, increase headroom
-	// 	headroomPct = minFloat(MAXIMUM_HEADROOM_PCT, headroomPct*(1.0+clampFloat(absFloat(errorFromTarget)/targetLatency95pMs, 0.01, 0.025)))
-	// }
-
 	de.HeadRoomPct[svcName] = headroomPct
 
-	// fmt.Printf("Service %s: 95th percentile latency: %dms, target: %dms, isPerformanceIdeal: %v, headroomPct: %f\n",
-	// 	svcName, latency95pMs, targetLatency95pMs, isPerformanceIdeal, headroomPct)
+	// -------------------------------------------------------------------------
 
-	MIN_ALLOWED_RPS := 5.0
-	MAX_ALLOWED_RPS := 1000.0
+	if USE_CONCURENT_CONNECTIONS_FOR_RATE_LIMITER {
 
-	// calculate perf based allowed rps
-	// if no rps cap, initialize it to the current arriving rps
-	rpsCap, ok := de.PerfBasedAllowedRPS[svcName]
-	if !ok {
-		rpsCap = MAX_ALLOWED_RPS
-	}
+		// Netflix Gradient algorithm from
+		// Note: This is how the algorithm below is different from the implementation in Netflix code:
+		// 	(i) rttTolerance multiplier is not used to adjust the rttNoLoad
+		// 	(ii) in netflix, they use backoffRatio to reduce the allowed rif when there is a request drop
+		// 	(iii) in netflix do not grow the allowed rif when the current rif < half of the previous allowed rif
+		//  (iv) Netflix has a new algorithm version of the algorithm now too
+		// 			called Gradient2: https://github.com/Netflix/concurrency-limits/blob/main/concurrency-limits-core/src/main/java/com/netflix/concurrency/limits/limit/Gradient2Limit.java
+		//			where they attempt to address bias and drift when using
+		// 			minimum latency measurements. To do this the algorithm
+		// 			tracks uses the measure of divergence between two exponential
+		// 			averages over a long and short time time window. Using averages
+		// 			the algorithm can smooth out the impact of outliers for bursty
+		// 			traffic. Divergence duration is used as a proxy to identify a
+		// 			queueing trend at which point the algorithm aggresively reduces
+		// 			the limit. We acheive this instead by taking the mean over an interval
+		//			instead of the per request rtt observed.
 
-	if errFromTarget > 0 {
+		INIT_ALLOWED_RIF := 5.0
+		MIN_ALLOWED_RIF := 1.0
+		MAX_ALLOWED_RIF := 50.0
 
-		if rpsCap == MAX_ALLOWED_RPS {
-			currentRPS := reqStatsServer.serviceArrivingRPS.GetRPS(svcName)
-			rpsCap = currentRPS
+		// calculate perf based allowed rps
+		// if no rps cap, initialize it to the current arriving rps
+		currentLimit, ok := de.PerfBasedAllowedRPSPct[svcName]
+		if !ok {
+			currentLimit = INIT_ALLOWED_RIF
 		}
 
-		rpsCap *= 1.0 - (5.0 / 100.0)
+		gradient := targetMeanMs / (latencyMeanMs + 0.001)
+		gradient = clampFloat(gradient, 0.5, 1.0)
 
-		// rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.50)))
+		queueSize := math.Sqrt(currentLimit)
+
+		newLimit := currentLimit*gradient + queueSize
+
+		newLimit = clampFloat(newLimit, MIN_ALLOWED_RIF, MAX_ALLOWED_RIF)
+
+		de.PerfBasedAllowedRPS[svcName] = newLimit
+
 	} else {
 
-		rpsCap += 5.0
+		MIN_ALLOWED_RPS := 5.0
+		MAX_ALLOWED_RPS := 1000.0
 
-		// rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.20)))
+		// calculate perf based allowed rps
+		// if no rps cap, initialize it to the current arriving rps
+		rpsCap, ok := de.PerfBasedAllowedRPS[svcName]
+		if !ok {
+			rpsCap = MAX_ALLOWED_RPS
+		}
+
+		if errFromTarget > 0 {
+
+			if rpsCap == MAX_ALLOWED_RPS {
+				currentRPS := reqStatsServer.serviceArrivingRPS.GetRPS(svcName)
+				rpsCap = currentRPS
+			}
+
+			rpsCap *= 1.0 - (5.0 / 100.0)
+
+			// rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.50)))
+		} else {
+
+			rpsCap += 5.0
+
+			// rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.20)))
+		}
+
+		rpsCap = clampFloat(rpsCap, MIN_ALLOWED_RPS, MAX_ALLOWED_RPS)
+
+		de.PerfBasedAllowedRPS[svcName] = rpsCap
+
 	}
 
-	rpsCap = clampFloat(rpsCap, MIN_ALLOWED_RPS, MAX_ALLOWED_RPS)
-
-	de.PerfBasedAllowedRPS[svcName] = rpsCap
-
-	// calculate the PerfBasedAllowedRPSPct
-
-	// INIT_PB_RPS_PCT := 105.0
-	// // DELTA_INC_PB_RPS_PCT := 25.0
-	// // RATIO_DECREASE_PB_RATE := 0.75
-	// PB_RPS_HEADROOM_PCT := 5.0
-	// MAX_PB_RPS_PCT := 150.0
-	// MIN_PB_RPS_PCT := 50.0
-
-	// perfBasedAllowedRPSPct, ok := de.PerfBasedAllowedRPSPct[svcName]
-	// if !ok {
-	// 	perfBasedAllowedRPSPct = INIT_PB_RPS_PCT
-	// }
-
-	// if isPerformanceIdeal {
-	// 	perfBasedAllowedRPSPct *= 2
-	// } else {
-	// 	perfBasedAllowedRPSPct -= 5
-	// }
-	// perfBasedAllowedRPSPct = clampFloat(perfBasedAllowedRPSPct, MIN_PB_RPS_PCT, MAX_PB_RPS_PCT)
-	// de.PerfBasedAllowedRPSPct[svcName] = perfBasedAllowedRPSPct
-
-	// currRPS := reqStatsServer.serviceArrivingRPS.GetRPS(svcName)
-	// if currRPS < 1.0 {
-
-	// }
-	// rpsCap := currRPS * ((perfBasedAllowedRPSPct + PB_RPS_HEADROOM_PCT) / 100.0)
-
-	// fmt.Printf("\n\n++++++++++++lp95: %f (%v) rpsPct: %f, currRPS: %f rpsCap: %f\n\n\n",
-	// 	latency95pMs, isPerformanceIdeal, perfBasedAllowedRPSPct, currRPS, rpsCap)
-
-	return headroomPct, rpsCap
+	return de.HeadRoomPct[svcName], de.PerfBasedAllowedRPS[svcName]
 }
 
 func clampFloat(val, minVal, maxVal float64) float64 {

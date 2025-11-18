@@ -54,6 +54,8 @@ const (
 	SVC_UTIL_SCALE_FACTOR       = 1    // by this factor, scale the cpuutil
 	CPU_PER_REQ_SCALE_FACTOR    = 1    // by this factor, scale the cpuconsumptionperreq
 
+	USE_CONCURENT_CONNECTIONS_FOR_RATE_LIMITER = true
+
 	// these are deprecated
 	OVERHEAD           = 10 // 10% overhead
 	POD_QUOTA_OVERHEAD = 10 // 5% overhead

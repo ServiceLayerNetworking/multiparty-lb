@@ -13,15 +13,15 @@ if ! command -v istioctl &> /dev/null; then
 fi
 
 # number of nodes in the cluster
-ALL_NODES=10
+ALL_NODES=20
 # number of control plane nodes
 CP_NODES=1
 # number of worker nodes
-NODES=9
+NODES=19
 # number of worker nodes to be used as load balancer nodes
-LB_NODES=2
+LB_NODES=4
 # number of services
-N_SVCS=7
+N_SVCS=15
 
 # echo "[SCRIPT] Deleting any previous minikube cluster..."
 # minikube delete --all
