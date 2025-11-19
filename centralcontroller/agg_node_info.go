@@ -413,7 +413,7 @@ func echoServer(
 		}
 
 		// fmt.Printf("++ECHO++ Received request to echo at %d: %s\n", time.Now().UnixNano(), body)
-		fmt.Printf("++ECHO++ Latency from LB to CC: %.2fms\n", float64(getLatencyUsFromData(body))/1000)
+		// fmt.Printf("++ECHO++ Latency from LB to CC: %.2fms\n", float64(getLatencyUsFromData(body))/1000)
 
 		// Update request stats immediately (don't wait)
 		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, serviceLatencyStats, body)

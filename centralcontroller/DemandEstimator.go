@@ -244,19 +244,19 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 		// if no rps cap, initialize it to the current arriving rps
 		currentLimit, ok := de.PerfBasedAllowedRPSPct[svcName]
 		if !ok {
-			currentLimit = INIT_ALLOWED_RIF
+			de.PerfBasedAllowedRPSPct[svcName] = INIT_ALLOWED_RIF
+		} else {
+			gradient := targetMeanMs / latencyMeanMs
+			gradient = clampFloat(gradient, 0.5, 1.0)
+
+			queueSize := math.Sqrt(currentLimit)
+
+			newLimit := currentLimit*gradient + queueSize
+
+			newLimit = clampFloat(newLimit, MIN_ALLOWED_RIF, MAX_ALLOWED_RIF)
+
+			de.PerfBasedAllowedRPS[svcName] = newLimit
 		}
-
-		gradient := targetMeanMs / (latencyMeanMs + 0.001)
-		gradient = clampFloat(gradient, 0.5, 1.0)
-
-		queueSize := math.Sqrt(currentLimit)
-
-		newLimit := currentLimit*gradient + queueSize
-
-		newLimit = clampFloat(newLimit, MIN_ALLOWED_RIF, MAX_ALLOWED_RIF)
-
-		de.PerfBasedAllowedRPS[svcName] = newLimit
 
 	} else {
 
