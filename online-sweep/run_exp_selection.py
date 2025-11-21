@@ -309,7 +309,7 @@ def run_exp_for_cluster_state(
                 print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
                 continue
         
-        # return
+        return
         
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)

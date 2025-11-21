@@ -327,8 +327,10 @@ func (p *pluginContext) OnTick() {
 		tsSentReqListStr)
 	proxywasm.LogCriticalf("<OnTick>@%dns\nreqDest:%s\nreqBody:\n%s", getCurrUnixTimeNs(), reqDest, reqBody)
 
-	proxywasm.DispatchHttpCall(reqDest, controllerHeaders,
-		[]byte(reqBody), make([][2]string, 0), 5000, OnTickHttpCallResponse)
+	if _, err := proxywasm.DispatchHttpCall(reqDest, controllerHeaders,
+		[]byte(reqBody), make([][2]string, 0), 5000, OnTickHttpCallResponse); err != nil {
+		proxywasm.LogCriticalf("dispatch httpcall failed: %v", err)
+	}
 
 }
 

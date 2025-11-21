@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -92,6 +93,53 @@ func runCPUBudgetFair(threadID int, targetMillis int) {
 	fmt.Printf("[Thread %d] Done. CPU used: %v\n", threadID, totalUsed)
 }
 
+func runCPUBudgetFairWithContext(ctx context.Context, threadID int, targetMillis int) bool {
+	target := time.Duration(targetMillis) * time.Millisecond
+	totalUsed := time.Duration(0)
+
+	fmt.Printf("[Thread %d] Starting. Target: %v\n", threadID, target)
+
+	for totalUsed < target {
+		// Check for cancellation periodically
+		select {
+		case <-ctx.Done():
+			fmt.Printf("[Thread %d] Cancelled. CPU used so far: %v\n", threadID, totalUsed)
+			return false
+		default:
+		}
+
+		runtime.LockOSThread()
+		start := getThreadCPUTime()
+
+		// Do a short burst of CPU work (~few ms)
+		workUntil := time.Now().Add(1 * time.Millisecond)
+		for time.Now().Before(workUntil) {
+			// Check context more frequently during tight loops
+			select {
+			case <-ctx.Done():
+				runtime.UnlockOSThread()
+				fmt.Printf("[Thread %d] Cancelled mid-burst. CPU used: %v\n", threadID, totalUsed)
+				return false
+			default:
+				for i := 0; i < 1000; i++ { // Smaller batches for more responsive cancellation
+					_ = i * i
+				}
+			}
+		}
+
+		end := getThreadCPUTime()
+		runtime.UnlockOSThread()
+
+		burstUsed := end - start
+		totalUsed += burstUsed
+
+		runtime.Gosched()
+	}
+
+	fmt.Printf("[Thread %d] Done. CPU used: %v\n", threadID, totalUsed)
+	return true
+}
+
 func getThreadCPUTime() time.Duration {
 	var ru syscall.Rusage
 	_ = syscall.Getrusage(syscall.RUSAGE_THREAD, &ru)
@@ -110,6 +158,45 @@ func processRequest(totalLoopCount, base, exp float64) float64 {
 		resultSum += result
 	}
 	return resultSum
+}
+
+func processRequestWithContext(ctx context.Context, totalLoopCount, base, exp float64) (float64, bool) {
+	resultSum := 0.0
+	checkInterval := 100 // Check context every N outer iterations
+
+	for loopCount := 0.0; loopCount < totalLoopCount; loopCount++ {
+		// Check for cancellation periodically
+		if int(loopCount)%checkInterval == 0 {
+			select {
+			case <-ctx.Done():
+				fmt.Printf("processRequest cancelled after %.0f/%.0f outer iterations\n", loopCount, totalLoopCount)
+				return 0.0, false
+			default:
+			}
+		}
+
+		result := 0.0
+		innerLoopMax := math.Pow(base, exp)
+		innerCheckInterval := int(innerLoopMax / 10) // Check ~10 times per inner loop
+		if innerCheckInterval < 1 {
+			innerCheckInterval = 1
+		}
+
+		for i := innerLoopMax; i >= 0; i-- {
+			// Check context occasionally in inner loop too
+			if int(i)%innerCheckInterval == 0 {
+				select {
+				case <-ctx.Done():
+					fmt.Printf("processRequest cancelled in inner loop (outer: %.0f/%.0f)\n", loopCount, totalLoopCount)
+					return 0.0, false
+				default:
+				}
+			}
+			result += math.Atan(i)
+		}
+		resultSum += result
+	}
+	return resultSum, true
 }
 
 func convParamsToFloat(loopCount string, base string, exp string) (float64, float64, float64, bool) {
@@ -165,6 +252,8 @@ func respondWithSuccess(
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
+	// Get the request context to detect client disconnection
+	ctx := r.Context()
 
 	numOutstandingReqs := int64(-1)
 	currentTime := time.Now().UnixNano()
@@ -177,10 +266,17 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		cpuConsumption, err := strconv.ParseFloat(strCPUConsumption, 64)
 		if err != nil {
 			respondWithError(w, strCPUConsumption, "", "", numOutstandingReqs, currentTime)
+			return
 		}
 
 		randomInt := rand.Intn(100)
-		runCPUBudgetFair(randomInt, int(cpuConsumption))
+		completed := runCPUBudgetFairWithContext(ctx, randomInt, int(cpuConsumption))
+
+		if !completed {
+			// Client disconnected/timed out during processing
+			fmt.Printf("Request cancelled by client before CPU work completed\n")
+			return
+		}
 
 		respondWithSuccess(w, strCPUConsumption, "", "", 0.0, numOutstandingReqs, currentTime)
 	} else
@@ -194,12 +290,18 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		loopCountFloat, baseFloat, expFloat, isErr := convParamsToFloat(loopCount, base, exp)
 		if isErr {
 			respondWithError(w, loopCount, base, exp, numOutstandingReqs, currentTime)
-		} else {
-			reqResult := processRequest(loopCountFloat, baseFloat, expFloat)
-
-			respondWithSuccess(w, loopCount, base, exp, reqResult, numOutstandingReqs, currentTime)
-
+			return
 		}
+
+		reqResult, completed := processRequestWithContext(ctx, loopCountFloat, baseFloat, expFloat)
+
+		if !completed {
+			// Client disconnected/timed out during processing
+			fmt.Printf("Request cancelled by client before math operations completed\n")
+			return
+		}
+
+		respondWithSuccess(w, loopCount, base, exp, reqResult, numOutstandingReqs, currentTime)
 	}
 }
 
