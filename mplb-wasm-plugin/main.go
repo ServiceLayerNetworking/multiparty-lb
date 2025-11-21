@@ -33,8 +33,9 @@ const (
 	KEY_RPS_SHARED_QUEUE      = "slate_rps_shared_queue"
 	KEY_RPS_SHARED_QUEUE_SIZE = "slate_rps_shared_queue_size"
 
-	TIMESTAMPS_SHARED_QUEUE = "slate_timestamps_shared_queue"
-	SENT_REQ_SHARED_QUEUE   = "slate_sent_req_shared_queue"
+	TIMESTAMPS_SHARED_QUEUE = "mplb_timestamps_shared_queue"
+	SENT_REQ_SHARED_QUEUE   = "mplb_sent_req_shared_queue"
+	RIF_SHARED_QUEUE        = "mplb_rif_shared_queue"
 
 	// this is the reporting period in millis
 	TICK_PERIOD = 500
@@ -59,7 +60,7 @@ const (
 var (
 	ALL_KEYS = []string{KEY_INFLIGHT_REQ_COUNT, KEY_REQUEST_COUNT, KEY_LAST_RESET, KEY_RPS_THRESHOLDS, KEY_HASH_MOD, AGGREGATE_REQUEST_LATENCY,
 		KEY_TRACED_REQUESTS, KEY_MATCH_DISTRIBUTION, KEY_INFLIGHT_ENDPOINT_LIST, KEY_ENDPOINT_RPS_LIST, KEY_RPS_SHARED_QUEUE, KEY_RPS_SHARED_QUEUE_SIZE,
-		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE}
+		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE, RIF_SHARED_QUEUE}
 	cur_idx      int
 	latency_list []int64
 	ts_list      []int64
@@ -452,12 +453,22 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 		}
 
 		// add current time to request header for latency logging when req finishes
-		proxywasm.LogCriticalf("Setting x-slate-start-time: " + currentTimeStr)
+		proxywasm.LogCriticalf("Setting x-mplb-start-time: " + currentTimeStr)
 		headerErr := proxywasm.ReplaceHttpRequestHeader(
-			"x-slate-start-time", currentTimeStr)
+			"x-mplb-start-time", currentTimeStr)
 		if headerErr != nil {
 			proxywasm.LogCriticalf(
-				"Error adding x-slate-start-time header: %v", headerErr)
+				"Error adding x-mplb-start-time header: %v", headerErr)
+		}
+
+		// add a unique id to the request
+		var reqId string = getRandomReqId()
+		proxywasm.LogCriticalf("Setting x-mplb-req-id: " + reqId)
+		headerErr = proxywasm.ReplaceHttpRequestHeader(
+			"x-mplb-req-id", reqId)
+		if headerErr != nil {
+			proxywasm.LogCriticalf(
+				"Error adding x-mplb-req-id header: %v", headerErr)
 		}
 
 		// get stored weights from central controller
@@ -490,6 +501,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				if err != nil {
 					proxywasm.LogCriticalf("Couldn't parse weights: %v", err)
 					appendSentReqStats(currentTimeStr, dst, "")
+					addToRIF(reqId, dst, "", currentTime)
 					return types.ActionContinue
 				}
 
@@ -498,6 +510,7 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				if err != nil {
 					proxywasm.LogCriticalf("Couldn't get next endpoint: %v", err)
 					appendSentReqStats(currentTimeStr, dst, "")
+					addToRIF(reqId, dst, "", currentTime)
 					return types.ActionContinue
 				}
 
@@ -512,10 +525,12 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 				}
 
 				appendSentReqStats(currentTimeStr, dst, header)
+				addToRIF(reqId, dst, header, currentTime)
 				return types.ActionContinue
 			}
 		}
 		appendSentReqStats(currentTimeStr, dst, "")
+		addToRIF(reqId, dst, "", currentTime)
 		return types.ActionContinue
 	}
 
@@ -581,10 +596,17 @@ func (ctx *httpContext) OnHttpStreamDone() {
 		return
 	}
 
-	// get x-slate-start-time from request headers
-	startTimeStr, err := proxywasm.GetHttpRequestHeader("x-slate-start-time")
+	// get x-mplb-start-time from request headers
+	startTimeStr, err := proxywasm.GetHttpRequestHeader("x-mplb-start-time")
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get request header x-slate-start-time in the response: %v", err)
+		proxywasm.LogCriticalf("Couldn't get request header x-mplb-start-time in the response: %v", err)
+		return
+	}
+
+	// get x-mplb-req-id from request headers
+	reqId, err := proxywasm.GetHttpRequestHeader("x-mplb-req-id")
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get request header x-mplb-req-id in the response: %v", err)
 		return
 	}
 
@@ -619,6 +641,9 @@ func (ctx *httpContext) OnHttpStreamDone() {
 
 	latencyMs := currentTime - atoi64(startTimeStr)
 	notifyRequestCompletedToLB(dstPod, latencyMs)
+
+	// remove from RIF
+	removeFromRIF(reqId)
 
 	currTime := getCurrUnixTimeNs()
 
@@ -859,6 +884,110 @@ func appendSentReqStats(currentTime, dstSvc, dstPod string) {
 		} else {
 			proxywasm.LogCriticalf("added timestamp to shared data")
 			isTsListChangeSuccessful = true
+		}
+	}
+
+}
+
+type RIFEntry struct {
+	DstSvc    string `json:"DstSvc"`
+	DstPod    string `json:"DstPod"`
+	Timestamp int64  `json:"Timestamp"`
+}
+
+func addToRIF(reqId, dstSvc, dstPod string, currentTime int64) {
+
+	isAddSuccessful := false
+
+	for !isAddSuccessful {
+
+		// get the current array of timestamps
+		rifBytes, cas, err := proxywasm.GetSharedData(RIF_SHARED_QUEUE)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't get shared data for RIF_SHARED_QUEUE: %v", err)
+			// this should never happen
+			return
+		}
+
+		// unmarshal rifBytes to a map[string]string
+		currentRif := map[string]RIFEntry{}
+		err = json.Unmarshal(rifBytes, &currentRif)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't unmarshal rifBytes: %v", err)
+			// this should never happen
+			return
+		}
+
+		currentRif[reqId] = RIFEntry{
+			DstSvc:    dstSvc,
+			DstPod:    dstPod,
+			Timestamp: currentTime,
+		}
+
+		// marshal the map back to bytes
+		updatedRIFBytes, err := json.Marshal(currentRif)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't marshal updatedRIFBytes: %v", err)
+			// this should never happen
+			return
+		}
+
+		// set the new list
+		if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, updatedRIFBytes, cas); err != nil {
+			proxywasm.LogCriticalf("unable to set shared data for RIF_SHARED_QUEUE: %v", err)
+			if errors.Is(err, types.ErrorStatusCasMismatch) {
+				proxywasm.LogCriticalf("CAS Mismatch on RIF_SHARED_QUEUE, failing: %v", err)
+			}
+		} else {
+			proxywasm.LogCriticalf("added timestamp to shared data")
+			isAddSuccessful = true
+		}
+	}
+
+}
+
+func removeFromRIF(reqId string) {
+
+	isRemoveSuccessful := false
+
+	for !isRemoveSuccessful {
+
+		// get the current array of timestamps
+		rifBytes, cas, err := proxywasm.GetSharedData(RIF_SHARED_QUEUE)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't get shared data for RIF_SHARED_QUEUE: %v", err)
+			// this should never happen
+			return
+		}
+
+		// unmarshal rifBytes to a map[string]string
+		currentRif := map[string]RIFEntry{}
+		err = json.Unmarshal(rifBytes, &currentRif)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't unmarshal rifBytes: %v", err)
+			// this should never happen
+			return
+		}
+
+		delete(currentRif, reqId)
+
+		// marshal the map back to bytes
+		updatedRIFBytes, err := json.Marshal(currentRif)
+		if err != nil {
+			proxywasm.LogCriticalf("Couldn't marshal updatedRIFBytes: %v", err)
+			// this should never happen
+			return
+		}
+
+		// set the new list
+		if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, updatedRIFBytes, cas); err != nil {
+			proxywasm.LogCriticalf("unable to set shared data for RIF_SHARED_QUEUE: %v", err)
+			if errors.Is(err, types.ErrorStatusCasMismatch) {
+				proxywasm.LogCriticalf("CAS Mismatch on RIF_SHARED_QUEUE, failing: %v", err)
+			}
+		} else {
+			proxywasm.LogCriticalf("removed entry from RIF shared data")
+			isRemoveSuccessful = true
 		}
 	}
 
