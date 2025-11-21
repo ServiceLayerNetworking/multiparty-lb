@@ -127,7 +127,7 @@ func shouldDropRequestConcurrencyBased(dstSvc string) (bool, error) {
 		requestsInFight += numOutstandingReqs
 	}
 
-	maxConcurrentRequestsAllowed := getPerfBasedAllowedRPS(dstSvc)
+	maxConcurrentRequestsAllowed := getAllowedConcurrencyLimit(dstSvc)
 
 	if requestsInFight >= maxConcurrentRequestsAllowed {
 		proxywasm.LogCriticalf(
@@ -136,6 +136,29 @@ func shouldDropRequestConcurrencyBased(dstSvc string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func getAllowedConcurrencyLimit(dstSvc string) int {
+
+	if USE_DEFAULT_MAX_RPS_ALLOWED {
+		return DEFAULT_MAX_RPS_ALLOWED
+	}
+
+	// get the perf based allowed RPS for the service
+	// if it can't be found, return infinity
+
+	buf, _, err := proxywasm.GetSharedData(svcPerfBasedAllowedRPSKey(dstSvc))
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get perf based allowed RPS for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+	rpsAllowed, err := strconv.ParseFloat(string(buf), 64)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't parse perf based allowed RPS for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+
+	return int(rpsAllowed)
 }
 
 func getPerfBasedAllowedRPS(dstSvc string) int {

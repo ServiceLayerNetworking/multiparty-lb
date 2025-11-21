@@ -196,7 +196,7 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	reqStatsServer *ReqStatsServer) (float64, float64) {
 
 	latencyMeanMs := float64(reqStatsServer.serviceLatencyStats.GetMean(svcName))
-	targetMeanMs := 100.0
+	targetMeanMs := 140.0
 	isPerformanceIdeal := latencyMeanMs < targetMeanMs
 	errFromTarget := latencyMeanMs - targetMeanMs
 

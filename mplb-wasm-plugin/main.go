@@ -57,13 +57,13 @@ const (
 
 	// load balancing strategy
 	// [leastrequest_plus_rlpb|leastrequest_plus_rl|leastrequest_rl|nodal_leastrequest_rlpb|only_nodal_leastrequest|leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOAD_BALANCING_STRATEGY = "nodal_leastrequest_rlpb"
+	LOAD_BALANCING_STRATEGY = "leastrequest"
 )
 
 var (
 	ALL_KEYS = []string{KEY_INFLIGHT_REQ_COUNT, KEY_REQUEST_COUNT, KEY_LAST_RESET, KEY_RPS_THRESHOLDS, KEY_HASH_MOD, AGGREGATE_REQUEST_LATENCY,
 		KEY_TRACED_REQUESTS, KEY_MATCH_DISTRIBUTION, KEY_INFLIGHT_ENDPOINT_LIST, KEY_ENDPOINT_RPS_LIST, KEY_RPS_SHARED_QUEUE, KEY_RPS_SHARED_QUEUE_SIZE,
-		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE, RIF_SHARED_QUEUE}
+		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE}
 	cur_idx      int
 	latency_list []int64
 	ts_list      []int64
@@ -114,6 +114,15 @@ func (*vmContext) OnVMStart(vmConfigurationSize int) types.OnVMStartStatus {
 		if err := proxywasm.SetSharedData(key, make([]byte, 8), 0); err != nil {
 			proxywasm.LogCriticalf("unable to set shared data: %v", err)
 		}
+	}
+	// set rif key
+	emptyRIF := map[string]RIFEntry{}
+	emptyRIFBytes, err := json.Marshal(emptyRIF)
+	if err != nil {
+		proxywasm.LogCriticalf("unable to marshal empty RIF: %v", err)
+	}
+	if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, emptyRIFBytes, 0); err != nil {
+		proxywasm.LogCriticalf("unable to set shared data: %v", err)
 	}
 	// set default hash mod
 	buf := make([]byte, 8)
@@ -945,7 +954,7 @@ func addToRIF(reqId, dstSvc, dstPod string, currentTime int64) {
 				proxywasm.LogCriticalf("CAS Mismatch on RIF_SHARED_QUEUE, failing: %v", err)
 			}
 		} else {
-			proxywasm.LogCriticalf("added timestamp to shared data")
+			proxywasm.LogCriticalf("added entry to RIF shared data")
 			isAddSuccessful = true
 		}
 	}
@@ -1025,6 +1034,9 @@ func removeTimedOutRIFEntries() {
 			return
 		}
 
+		// log the current time and current RIF
+		proxywasm.LogCriticalf("removeTimedOutRIFEntries: currentTimeMs: %d, currentRif: %v", currentTimeMs, currentRif)
+
 		// remove timed out entries
 		entriesRemoved = []RIFEntry{}
 		for reqId, entry := range currentRif {
@@ -1049,10 +1061,13 @@ func removeTimedOutRIFEntries() {
 				proxywasm.LogCriticalf("CAS Mismatch on RIF_SHARED_QUEUE, failing: %v", err)
 			}
 		} else {
-			proxywasm.LogCriticalf("removed timed out entries from RIF shared data")
+			// proxywasm.LogCriticalf("removed timed out entries from RIF shared data")
 			isTimedOutRemovalSuccessful = true
 		}
 	}
+
+	// log the entries removed
+	proxywasm.LogCriticalf("removeTimedOutRIFEntries: entriesRemoved: %v", entriesRemoved)
 
 	// notify LB of removed entries
 	for _, entry := range entriesRemoved {

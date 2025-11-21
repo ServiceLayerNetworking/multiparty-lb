@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/debug_15_nodes_Nov17"
+LOG_FOLDER = "logs/debug_15_nodes_Nov21"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -309,12 +309,10 @@ def run_exp_for_cluster_state(
                 print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
                 continue
         
-        return
-        
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [5]:
+        for iteration in [4, 5, 6]:
         
             for distr in ["exponential"]:
                 
