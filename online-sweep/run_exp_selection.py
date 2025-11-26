@@ -8,7 +8,7 @@ import time
 import json
 import sys
 
-from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
+from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips, get_gateway_ip
 
 # Everything in seconds:
 DURATION = 120
@@ -198,7 +198,8 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
         
         assert(req_interval_ms > 0)
         
-        gateway_ip = GATEWAY_IPs[svc_name]
+        # GATEWAY_IPs[svc_name]
+        gateway_ip = get_gateway_ip(svc_name)
         
         if proc_distr == "none" or proc_distr == "uniform":
             url = f"http://{gateway_ip}/?cpu_coreMs={cpu_consumption}"
@@ -297,7 +298,11 @@ def run_exp_for_cluster_state(
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
-        if len(sys.argv) <= 1:
+        # check if there are any command line arguments
+        # if command line argument "-b" is given, skip building wasm plugin and setting up topology
+        # if command line argument "-t" is given, only setup topology
+        
+        if "-b" not in sys.argv:
 
             # build new wasm
             print(f"Building wasm plugin for {lb}...")
@@ -308,11 +313,18 @@ def run_exp_for_cluster_state(
             if not done:
                 print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
                 continue
+            
+        else:
+            print("Skipping building wasm plugin and setting up topology as per command line argument '-b'...")
+        
+        if "-t" in sys.argv:
+            print("Only setting up topology as per command line argument '-t'...")
+            continue
         
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [4, 5, 6]:
+        for iteration in [7, 8, 9]:
         
             for distr in ["exponential"]:
                 
@@ -624,13 +636,13 @@ def main_exp_state_2():
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "only_nodal_leastrequest",
+            "leastrequest_plus_rlpb",
+            "leastrequest_plus",
+            "only_nodal_leastrequest",
             # "nodal_leastrequest",
-            # "leastrequest_plus_rlpb",
-            "nodal_leastrequest_rlpb",
-            # "minimize_diff",
-            # "leastrequest_plus",
-            # "leastrequest_plus_rl",
+            # "nodal_leastrequest_rlpb",
+            "minimize_diff",
+            "leastrequest_plus_rl",
         ])
 
     # state_id = 2
