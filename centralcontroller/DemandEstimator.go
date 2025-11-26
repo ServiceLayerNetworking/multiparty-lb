@@ -213,9 +213,13 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	}
 	headroomPct = clampFloat(headroomPct, 0.0, 50.0)
 
-	de.HeadRoomPct[svcName] = headroomPct
+	updatedHeadroomPct := headroomPct
+
+	de.HeadRoomPct[svcName] = updatedHeadroomPct
 
 	// -------------------------------------------------------------------------
+
+	updatedPerfBasedCap := 0.0
 
 	if USE_CONCURENT_CONNECTIONS_FOR_RATE_LIMITER {
 
@@ -242,9 +246,9 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 
 		// calculate perf based allowed rps
 		// if no rps cap, initialize it to the current arriving rps
-		currentLimit, ok := de.PerfBasedAllowedRPSPct[svcName]
+		currentLimit, ok := de.PerfBasedAllowedRPS[svcName]
 		if !ok {
-			de.PerfBasedAllowedRPSPct[svcName] = INIT_ALLOWED_RIF
+			updatedPerfBasedCap = INIT_ALLOWED_RIF
 		} else {
 			gradient := targetMeanMs / latencyMeanMs
 			gradient = clampFloat(gradient, 0.5, 1.0)
@@ -255,7 +259,8 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 
 			newLimit = clampFloat(newLimit, MIN_ALLOWED_RIF, MAX_ALLOWED_RIF)
 
-			de.PerfBasedAllowedRPS[svcName] = newLimit
+			updatedPerfBasedCap = newLimit
+
 		}
 
 	} else {
@@ -267,7 +272,7 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 		// if no rps cap, initialize it to the current arriving rps
 		rpsCap, ok := de.PerfBasedAllowedRPS[svcName]
 		if !ok {
-			rpsCap = MAX_ALLOWED_RPS
+			updatedPerfBasedCap = MAX_ALLOWED_RPS
 		}
 
 		if errFromTarget > 0 {
@@ -287,13 +292,13 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 			// rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.20)))
 		}
 
-		rpsCap = clampFloat(rpsCap, MIN_ALLOWED_RPS, MAX_ALLOWED_RPS)
-
-		de.PerfBasedAllowedRPS[svcName] = rpsCap
+		updatedPerfBasedCap = clampFloat(rpsCap, MIN_ALLOWED_RPS, MAX_ALLOWED_RPS)
 
 	}
 
-	return de.HeadRoomPct[svcName], de.PerfBasedAllowedRPS[svcName]
+	de.PerfBasedAllowedRPS[svcName] = updatedPerfBasedCap
+
+	return updatedHeadroomPct, updatedPerfBasedCap
 }
 
 func clampFloat(val, minVal, maxVal float64) float64 {
