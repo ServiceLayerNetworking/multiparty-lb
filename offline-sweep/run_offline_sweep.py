@@ -397,8 +397,86 @@ def generate_cluster_states_fast(k: int, seed: int | None = None):
             print("Aborting due to errors.")
             return []
     return sampled_states
+    # Helper to sample a topology and ensure each service has at least one pod overall
 
-def generate_cluster_states_fast_wo_total_cluster_load(k: int, seed: int | None = None, lb: float = LB_SVC_LOAD, ub: float = UB_SVC_LOAD):
+def sample_topology(num_nodes, num_services, num_pods_per_node, rng) -> np.ndarray:
+    topo = np.zeros((num_nodes, num_services), dtype=int)
+    for n in range(num_nodes):
+        alloc = rng.multinomial(num_pods_per_node, [1.0 / num_services] * num_services)
+        topo[n, :] = alloc
+    return topo
+
+def sample_topology_2(num_nodes, num_services, rng, l: float = 2.0) -> np.ndarray:
+    """
+    Strategy 2: Draw from exponential distribution to determine how many nodes a service will have pods on.
+    
+    For each service, draw from an exponential 
+    distribution with mean l (default 2) to get n_svc_nodes, i.e. the number of nodes this service 
+    will have a pod on. Cap this value to the total number of nodes. Place one pod for the 
+    service on n_svc_nodes randomly selected nodes. Note that each service gets at most one pod per node.
+    
+    Note: Increasing l increases the number of nodes each service is present on.
+    
+    Args:
+        l: Mean of exponential distribution for number of nodes per service
+    
+    Returns:
+        Topology array of shape (num_nodes, num_services) with 0/1 values
+    """
+    topo = np.zeros((num_nodes, num_services), dtype=int)
+    
+    for svc in range(num_services):
+        # Draw from exponential distribution and cap to num_nodes
+        n_svc_nodes = int(np.ceil(rng.exponential(scale=l)))
+        n_svc_nodes = min(n_svc_nodes, num_nodes)
+        
+        # Ensure at least one node hosts this service
+        n_svc_nodes = max(n_svc_nodes, 1)
+        
+        # Randomly select n_svc_nodes nodes to host this service
+        selected_nodes = rng.choice(num_nodes, size=n_svc_nodes, replace=False)
+        topo[selected_nodes, svc] = 1
+    
+    return topo
+
+def sample_topology_3(num_nodes, num_services, rng, l: float = 2.0) -> np.ndarray:
+    """
+    Strategy 3: Draw from exponential distribution to determine the total number of pods a service will have.
+    
+    For each service, draw from an exponential distribution with mean l (default 2) to get 
+    n_svc_pods—the total number of pods this service will have. Assign each pod to a random 
+    node (with replacement, allowing multiple pods per node).
+    
+    Note: Increasing l increases the total number of pods each service has.
+    
+    Args:
+        l: Mean of exponential distribution for number of pods per service
+    
+    Returns:
+        Topology array of shape (num_nodes, num_services)
+    """
+    topo = np.zeros((num_nodes, num_services), dtype=int)
+    
+    for svc in range(num_services):
+        # Draw from exponential distribution to get number of pods
+        n_svc_pods = int(np.ceil(rng.exponential(scale=l)))
+        
+        # Ensure at least one pod per service
+        n_svc_pods = max(n_svc_pods, 1)
+        
+        # Assign each pod to a random node (with replacement - allows multiple pods per node)
+        for _ in range(n_svc_pods):
+            node = rng.integers(0, num_nodes)
+            topo[node, svc] += 1
+    
+    return topo
+
+def generate_cluster_states_fast_wo_total_cluster_load(
+    k: int,
+    seed: int | None = None,
+    lb: float = LB_SVC_LOAD,
+    ub: float = UB_SVC_LOAD,
+    topo_sample_strategy: int = 2):
     """
     Generate k random feasible cluster states (fast sampling version).
     Process:
@@ -419,21 +497,31 @@ def generate_cluster_states_fast_wo_total_cluster_load(k: int, seed: int | None 
     cluster_loads_units = [L // au for L in CLUSTER_LOADS]
     rng = np.random.default_rng(seed)
 
-    # Helper to sample a topology and ensure each service has at least one pod overall
-    def sample_topology() -> np.ndarray:
-        topo = np.zeros((num_nodes, num_services), dtype=int)
-        for n in range(num_nodes):
-            alloc = rng.multinomial(num_pods_per_node, [1.0 / num_services] * num_services)
-            topo[n, :] = alloc
-        return topo
-
     sampled_states = []
 
     for _ in range(k):
         
-        topology = sample_topology()
-        caps = np.sum(topology, axis=0) * pod_cap
-        fshares = np.array(caps, dtype=int)
+        topology = None
+        if topo_sample_strategy == 1:
+            topology = sample_topology(num_nodes, num_services, num_pods_per_node, rng)
+        elif topo_sample_strategy == 2:
+            topology = sample_topology_2(num_nodes, num_services, rng, l=10.0)
+        elif topo_sample_strategy == 3:
+            topology = sample_topology_3(num_nodes, num_services, rng, l=10.0)
+        else:
+            raise ValueError(f"Unknown topo_sample_strategy: {topo_sample_strategy}")
+        
+        # Calculate fair share for each service
+        # Fair share = sum across all nodes of (service's fair share on that node)
+        # Fair share on node = (num_pods_of_service_on_node / total_pods_on_node) * node_cap
+        fshares = np.zeros(num_services)
+        for node_id in range(num_nodes):
+            total_pods_on_node = np.sum(topology[node_id, :])
+            if total_pods_on_node > 0:
+                for svc_id in range(num_services):
+                    num_pods_of_svc = topology[node_id, svc_id]
+                    if num_pods_of_svc > 0:
+                        fshares[svc_id] += (num_pods_of_svc / total_pods_on_node) * node_cap
 
         svc_loads = [get_load(fs, lb, ub) for fs in fshares]
 
@@ -597,36 +685,44 @@ def run_offline_sweep():
     
     global LOGFILE
     
-    for ub in np.arange(2.0, 3.0, 0.1):
-        
-        LOGFILE = f"logs/offline_sweep_Nov13_lb_0.00_ub_{ub:.2f}.log"
+    for topo_sample_strategy in [2, 3]:
     
-        # Local knobs for faster experiments; modify as needed.
-        use_fast = True   # Set to False to run exhaustive (slow) path
-        k = 10000           # Number of random states to generate in fast mode
-        # seed = 42         # RNG seed for reproducibility in fast mode
+        for ub in np.arange(1.8, 2.0+0.01, 0.1):
+            
+            LOGFILE = f"logs/offline_sweep_Nov26_lb_0.00_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}_lambda_10.log"
+        
+            # Local knobs for faster experiments; modify as needed.
+            use_fast = True   # Set to False to run exhaustive (slow) path
+            k = 10000           # Number of random states to generate in fast mode
+            # seed = 42         # RNG seed for reproducibility in fast mode
 
-        if use_fast:
-            # states = generate_cluster_states_fast_wo_total_cluster_load(l=l, k=k) #, seed=seed)
-            states = generate_cluster_states_fast_wo_total_cluster_load(k=k, lb=0.0, ub=ub) #, seed=seed)
-        else:
-            # Exhaustive path: original behavior (restrict to elected indices)
-            states = generate_cluster_states()
-        
-        # sample 100 states from all the states
-        states = random.sample(states, 100)
-        
-        # input("Press Enter to start processing states...")
-        
-        for i, state in enumerate(states):
-            if type(state) is tuple:
-                hosts, tenants, workers = state
-                run_offline_exp(state={}, hosts=hosts, tenants=tenants, workers=workers)
+            if use_fast:
+                # states = generate_cluster_states_fast_wo_total_cluster_load(l=l, k=k) #, seed=seed)
+                states = generate_cluster_states_fast_wo_total_cluster_load(
+                    k=k, lb=0.0, ub=ub, topo_sample_strategy=topo_sample_strategy) #, seed=seed)
             else:
-                run_offline_exp(state)
-            print(f"Done with state {i+1}/{len(states)}")
-            # input()
+                # Exhaustive path: original behavior (restrict to elected indices)
+                states = generate_cluster_states()
+            
+            # sample 100 states from all the states
+            states = random.sample(states, 100)
+            
+            # input("Press Enter to start processing states...")
+            
+            for i, state in enumerate(states):
+                if type(state) is tuple:
+                    hosts, tenants, workers = state
+                    run_offline_exp(state={}, hosts=hosts, tenants=tenants, workers=workers)
+                else:
+                    run_offline_exp(state)
+                print(f"Done with state {i+1}/{len(states)}")
+                # input()
 
 if __name__ == "__main__":
     write_config()
     run_offline_sweep()
+    
+    # print(arr := sample_topology_3(15, 15, np.random.default_rng(None), l=10.0))
+    
+    # print("Sum per service:", np.sum(arr, axis=0))
+    # print("Sum per node:", np.sum(arr, axis=1))
