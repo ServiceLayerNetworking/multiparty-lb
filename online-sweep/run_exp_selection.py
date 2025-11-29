@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/debug_15_nodes_Nov21"
+LOG_FOLDER = "logs/debug_15_nodes_Nov28"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -165,7 +165,7 @@ def parse_svc_load(svc_load: float) -> Tuple[int, float]:
     load = svc_load / 100.0
     
     # default duration of each request (only when load > 1 core per unit time)
-    default_duration_ms = 50.0
+    default_duration_ms = 200.0
     
     # max cpu cores per unit time that a request can consume
     max_cpu_per_time = 1
@@ -324,9 +324,9 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [7, 8, 9]:
+        for iteration in [1]:
         
-            for distr in ["exponential"]:
+            for distr in ["none"]:
                 
                 proc_distr = distr
                 
@@ -568,7 +568,7 @@ def main_exp_state_2():
     prep_for_exps()
     
     state_id = 2
-    svc_loads = [200] * 15  # total 15 services
+    svc_loads = [800] * 15  # total 15 services
     svc_to_nodes = {
         "svc0": ["node0"],
         "svc1": ["node0", "node1"],
@@ -636,13 +636,13 @@ def main_exp_state_2():
         svc_to_nodes,
         pod_names,
         lbs=[
-            "leastrequest_plus_rlpb",
-            "leastrequest_plus",
+            # "leastrequest_plus_rlpb",
+            # "leastrequest_plus",
             "only_nodal_leastrequest",
             # "nodal_leastrequest",
             # "nodal_leastrequest_rlpb",
-            "minimize_diff",
-            "leastrequest_plus_rl",
+            # "minimize_diff",
+            # "leastrequest_plus_rl",
         ])
 
     # state_id = 2
@@ -816,7 +816,7 @@ def main_exp_state_4():
     # check latency of svc0. This will be our target rps
     
     state_id = 4
-    svc_loads = [200] + ([0] * 14) # total 15 services
+    svc_loads = [800] + ([0] * 14) # total 15 services
     svc_to_nodes = {
         "svc0": ["node0"],
         "svc1": ["node0", "node1"],
@@ -1060,9 +1060,9 @@ def main():
 if __name__ == "__main__":
     start_time = time.time()
     
-    main_exp_state_2()
+    # main_exp_state_2()
     # main_exp_state_3()
-    # main_exp_state_4()
+    main_exp_state_4()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")

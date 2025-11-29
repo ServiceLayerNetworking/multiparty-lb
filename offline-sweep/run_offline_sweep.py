@@ -487,7 +487,7 @@ def generate_cluster_states_fast_wo_total_cluster_load(
     """
     # Local aliases and RNG
     num_nodes = NUM_NODES
-    num_services = NUM_SERVICES
+    num_services = NUM_SERVICES * 2
     num_pods_per_node = NUM_PODS_PER_NODE
     node_cap = NODE_LOAD_CAP
     node_caps = [node_cap] * num_nodes
@@ -505,9 +505,9 @@ def generate_cluster_states_fast_wo_total_cluster_load(
         if topo_sample_strategy == 1:
             topology = sample_topology(num_nodes, num_services, num_pods_per_node, rng)
         elif topo_sample_strategy == 2:
-            topology = sample_topology_2(num_nodes, num_services, rng, l=10.0)
+            topology = sample_topology_2(num_nodes, num_services, rng, l=2.0)
         elif topo_sample_strategy == 3:
-            topology = sample_topology_3(num_nodes, num_services, rng, l=10.0)
+            topology = sample_topology_3(num_nodes, num_services, rng, l=2.0)
         else:
             raise ValueError(f"Unknown topo_sample_strategy: {topo_sample_strategy}")
         
@@ -685,11 +685,11 @@ def run_offline_sweep():
     
     global LOGFILE
     
-    for topo_sample_strategy in [2, 3]:
+    for topo_sample_strategy in [2]:
     
         for ub in np.arange(1.8, 2.0+0.01, 0.1):
             
-            LOGFILE = f"logs/offline_sweep_Nov26_lb_0.00_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}_lambda_10.log"
+            LOGFILE = f"logs/offline_sweep_Nov26_lb_0.00_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}_lambda_2_n_svc_30.log"
         
             # Local knobs for faster experiments; modify as needed.
             use_fast = True   # Set to False to run exhaustive (slow) path

@@ -7,15 +7,15 @@ echo "Sending file $1"
 
 
 # scp $1 twaheed@clnode079.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode064.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode088.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode025.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode077.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode007.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode039.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode010.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode016.clemson.cloudlab.us:/users/twaheed/
-# scp $1 twaheed@clnode023.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode064.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode088.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode025.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode077.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode007.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode039.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode010.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode016.clemson.cloudlab.us:/users/twaheed/
+scp $1 twaheed@clnode023.clemson.cloudlab.us:/users/twaheed/
 scp $1 twaheed@clnode040.clemson.cloudlab.us:/users/twaheed/
 scp $1 twaheed@clnode019.clemson.cloudlab.us:/users/twaheed/
 scp $1 twaheed@clnode033.clemson.cloudlab.us:/users/twaheed/
