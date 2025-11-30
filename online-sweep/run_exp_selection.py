@@ -16,6 +16,8 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
+REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
+
 LOG_FOLDER = "logs/debug_15_nodes_Nov30"
 
 GATEWAY_IPs = get_curr_gateway_ips()
@@ -165,7 +167,7 @@ def parse_svc_load(svc_load: float) -> Tuple[int, float]:
     load = svc_load / 100.0
     
     # default duration of each request (only when load > 1 core per unit time)
-    default_duration_ms = 80.0
+    default_duration_ms = REQUEST_CPU_CONSUMPTION_MS
     
     # max cpu cores per unit time that a request can consume
     max_cpu_per_time = 1
@@ -324,7 +326,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1, 2, 3, 4, 5]:
+        for iteration in [1]:
         
             for distr in ["exponential"]:
                 
