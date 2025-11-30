@@ -41,6 +41,7 @@ func (s *ServiceLatencyStats) RecordLatency(service string, latencyMs int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now().UnixMilli()
+	fmt.Printf("[ServiceLatencyStats] Recorded latency for service %s: %dms\n", service, latencyMs)
 	s.latencies[service] = append(s.latencies[service], LatencyRecord{TimestampMs: now, LatencyMs: latencyMs})
 }
 

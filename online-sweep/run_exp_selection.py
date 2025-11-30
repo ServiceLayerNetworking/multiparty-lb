@@ -326,7 +326,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1]:
+        for iteration in [10, 11, 12]:
         
             for distr in ["exponential"]:
                 
@@ -638,11 +638,11 @@ def main_exp_state_2():
         svc_to_nodes,
         pod_names,
         lbs=[
-            "leastrequest_plus_rlpb",
             # "leastrequest_plus",
             # "only_nodal_leastrequest",
-            # "nodal_leastrequest",
             "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
+            "leastrequest_plus_rlpb",
             # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
@@ -768,10 +768,10 @@ def main_exp_state_3():
         pod_names,
         lbs=[
             "leastrequest_plus_rlpb",
-            # "leastrequest_plus",
             # "only_nodal_leastrequest",
             # "nodal_leastrequest",
             "nodal_leastrequest_rlpb",
+            "leastrequest_plus",
             # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
@@ -905,7 +905,7 @@ def main_exp_state_4():
             # "leastrequest_plus_rlpb",
             # "nodal_leastrequest_rlpb",
             # "minimize_diff",
-            "leastrequest",
+            "leastrequest_plus",
             # "leastrequest_plus_rl",
         ])
   

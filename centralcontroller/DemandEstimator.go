@@ -196,22 +196,40 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	reqStatsServer *ReqStatsServer) (float64, float64) {
 
 	latencyMeanMs := float64(reqStatsServer.serviceLatencyStats.GetMean(svcName))
-	targetMeanMs := 140.0
-	isPerformanceIdeal := latencyMeanMs < targetMeanMs
+
+	// target is 102ms mean latency calculated by 1 node cluster, with one service sending all load equal to the CPU capacity of the node.
+	// 		Node CPU cap = 8 cores, CPU consumption per request = 80 coreMs
+	targetMeanMs := 102.0
+
+	// isPerformanceIdeal := latencyMeanMs < targetMeanMs
+
 	errFromTarget := latencyMeanMs - targetMeanMs
+
+	INIT_HR := 10.0
+	MIN_HR := 1.0
+	MAX_HR := 50.0
 
 	// calculate headroom pct
 	headroomPct, ok := de.HeadRoomPct[svcName]
 	if !ok {
-		headroomPct = 10.0
+		headroomPct = INIT_HR
 	}
 
-	if isPerformanceIdeal {
-		headroomPct -= 5.0
-	} else {
-		headroomPct += 5.0
-	}
-	headroomPct = clampFloat(headroomPct, 0.0, 50.0)
+	gradient := latencyMeanMs / targetMeanMs
+	gradient = clampFloat(gradient, 0.5, 1.5)
+
+	// gradient is > 1.0 if latencyMeanMs > targetMeanMs,
+	// 		i.e. performance is not ideal -> need more headroom
+	// gradient is < 1.0 if latencyMeanMs < targetMeanMs,
+	// 		i.e. performance is ideal -> should reduce headroom
+	headroomPct *= gradient
+
+	// if isPerformanceIdeal {
+	// 	headroomPct -= 5.0
+	// } else {
+	// 	headroomPct += 5.0
+	// }
+	headroomPct = clampFloat(headroomPct, MIN_HR, MAX_HR)
 
 	updatedHeadroomPct := headroomPct
 
