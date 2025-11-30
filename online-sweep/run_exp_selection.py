@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/debug_15_nodes_Nov28"
+LOG_FOLDER = "logs/debug_15_nodes_Nov30"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -165,13 +165,13 @@ def parse_svc_load(svc_load: float) -> Tuple[int, float]:
     load = svc_load / 100.0
     
     # default duration of each request (only when load > 1 core per unit time)
-    default_duration_ms = 200.0
+    default_duration_ms = 80.0
     
     # max cpu cores per unit time that a request can consume
     max_cpu_per_time = 1
     
     if load == 0:
-        return 0, default_duration_ms * DURATION
+        return 0, default_duration_ms * DURATION + 10
     
     # if load <= 1.0:
     #     # consumption = (load/1) * default_duration
@@ -324,9 +324,9 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1]:
+        for iteration in [1, 2, 3, 4, 5]:
         
-            for distr in ["none"]:
+            for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
@@ -636,11 +636,11 @@ def main_exp_state_2():
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "leastrequest_plus_rlpb",
+            "leastrequest_plus_rlpb",
             # "leastrequest_plus",
-            "only_nodal_leastrequest",
+            # "only_nodal_leastrequest",
             # "nodal_leastrequest",
-            # "nodal_leastrequest_rlpb",
+            "nodal_leastrequest_rlpb",
             # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
@@ -683,7 +683,7 @@ def main_exp_state_3():
     prep_for_exps()
     
     state_id = 3
-    svc_loads = [200] * 15 # total 15 services
+    svc_loads = [800] * 15 # total 15 services
     svc_to_nodes = {
         "svc0": ["node0"],
         "svc1": ["node0", "node1"],
@@ -765,12 +765,12 @@ def main_exp_state_3():
         svc_to_nodes,
         pod_names,
         lbs=[
-            "only_nodal_leastrequest",
-            "nodal_leastrequest",
             "leastrequest_plus_rlpb",
+            # "leastrequest_plus",
+            # "only_nodal_leastrequest",
+            # "nodal_leastrequest",
             "nodal_leastrequest_rlpb",
-            "minimize_diff",
-            "leastrequest_plus",
+            # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
 
@@ -903,10 +903,125 @@ def main_exp_state_4():
             # "leastrequest_plus_rlpb",
             # "nodal_leastrequest_rlpb",
             # "minimize_diff",
-            "leastrequest_plus",
+            "leastrequest",
             # "leastrequest_plus_rl",
         ])
   
+    # state_id = 2
+    # svc_loads = [300, 200, 0]
+    
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "leastrequest_plus",
+    #         # "leastrequest_plus_rl",
+    #         "leastrequest_plus_rlpb",
+    #         "only_nodal_leastrequest",
+    #         "nodal_leastrequest_rlpb",
+    #         "nodal_leastrequest",
+    #         "minimize_diff",
+    #     ])
+
+    # run_exp_for_cluster_state(
+    #     state_id,
+    #     svc_loads,
+    #     svc_to_nodes,
+    #     pod_names,
+    #     lbs=[
+    #         "nodal_leastrequest",
+    #         "leastrequest_plus_rl",
+    #         "minimize_diff"
+    #     ])
+
+def main_exp_state_5():
+    
+    # print(parse_svc_load(300*0.7))
+    # print(parse_svc_load(200*0.7))
+    # return
+    
+    prep_for_exps()
+    
+    state_id = 5
+    svc_loads = [800] + ([800*(1 + 1/15.0)] * 14) # total 15 services
+    svc_to_nodes = {
+        "svc0": ["node0"],
+        "svc1": ["node0", "node1"],
+        "svc2": ["node0", "node2"],
+        "svc3": ["node0", "node3"],
+        "svc4": ["node0", "node4"],
+        "svc5": ["node0", "node5"],
+        "svc6": ["node0", "node6"],
+        "svc7": ["node0", "node7"],
+        "svc8": ["node0", "node8"],
+        "svc9": ["node0", "node9"],
+        "svc10": ["node0", "node10"],
+        "svc11": ["node0", "node11"],
+        "svc12": ["node0", "node12"],
+        "svc13": ["node0", "node13"],
+        "svc14": ["node0", "node14"],
+    }
+    pod_names = [
+        "svc0-node0-0",
+        "svc1-node0-0",
+        "svc1-node1-0",
+        "svc2-node0-0",
+        "svc2-node2-0",
+        "svc3-node0-0",
+        "svc3-node3-0",
+        "svc4-node0-0",
+        "svc4-node4-0",
+        "svc5-node0-0",
+        "svc5-node5-0",
+        "svc6-node0-0",
+        "svc6-node6-0",
+        "svc7-node0-0",
+        "svc7-node7-0",
+        "svc8-node0-0",
+        "svc8-node8-0",
+        "svc9-node0-0",
+        "svc9-node9-0",
+        "svc10-node0-0",
+        "svc10-node10-0",
+        "svc11-node0-0",
+        "svc11-node11-0",
+        "svc12-node0-0",
+        "svc12-node12-0",
+        "svc13-node0-0",
+        "svc13-node13-0",
+        "svc14-node0-0",
+        "svc14-node14-0",
+    ]
+    
+    # svc_to_nodes = {
+    #     "svc0": ["node0", "node1"],
+    #     "svc1": ["node1"],
+    #     "svc2": ["node2"],
+    # }
+    # pod_names = [
+    #     "svc0-node0-0",
+    #     "svc0-node1-0",
+    #     "svc1-node1-0",
+    #     "svc2-node2-0",
+    # ]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
+            "leastrequest_plus_rlpb",
+            # "leastrequest_plus",
+            # "only_nodal_leastrequest",
+            # "nodal_leastrequest",
+            # "nodal_leastrequest_rlpb",
+            # "minimize_diff",
+            # "leastrequest_plus_rl",
+        ])
+
     # state_id = 2
     # svc_loads = [300, 200, 0]
     
@@ -1060,9 +1175,9 @@ def main():
 if __name__ == "__main__":
     start_time = time.time()
     
-    # main_exp_state_2()
+    main_exp_state_2()
     # main_exp_state_3()
-    main_exp_state_4()
+    # main_exp_state_4()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")
