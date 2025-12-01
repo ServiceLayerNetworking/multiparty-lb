@@ -195,19 +195,27 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	svcName string,
 	reqStatsServer *ReqStatsServer) (float64, float64) {
 
-	latencyMeanMs := float64(reqStatsServer.serviceLatencyStats.GetMean(svcName))
+	currLatencyMs := float64(reqStatsServer.serviceLatencyStats.GetMeanUnderPercentile(svcName, 90.0))
+	// we are going to use median instead of mean now, because mean is affected by outliers, therefore if one of the
+	// endpoints is slow, that reduces the latency for every other endpoint too much.
+	// currLatencyMs := float64(reqStatsServer.serviceLatencyStats.GetPercentileLatency(svcName, 50.0))\
+	// turns out median is not stable enough, so going back to mean with 90th percentile filter
 
 	// target is 102ms mean latency calculated by 1 node cluster, with one service sending all load equal to the CPU capacity of the node.
 	// 		Node CPU cap = 8 cores, CPU consumption per request = 80 coreMs
-	targetMeanMs := 102.0
+	targetLatencyMs := 102.0
+	// target is 68 ms median with the above setup
+	// targetLatencyMs := 68.0
 
-	// isPerformanceIdeal := latencyMeanMs < targetMeanMs
+	isPerformanceIdeal := currLatencyMs <= targetLatencyMs
 
-	errFromTarget := latencyMeanMs - targetMeanMs
+	errFromTarget := currLatencyMs - targetLatencyMs
 
 	INIT_HR := 10.0
 	MIN_HR := 1.0
 	MAX_HR := 50.0
+
+	REDUCE_FACTOR := 0.75
 
 	// calculate headroom pct
 	headroomPct, ok := de.HeadRoomPct[svcName]
@@ -215,14 +223,23 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 		headroomPct = INIT_HR
 	}
 
-	gradient := latencyMeanMs / targetMeanMs
-	gradient = clampFloat(gradient, 0.5, 1.5)
-
-	// gradient is > 1.0 if latencyMeanMs > targetMeanMs,
-	// 		i.e. performance is not ideal -> need more headroom
-	// gradient is < 1.0 if latencyMeanMs < targetMeanMs,
+	// gradient is <= 1.0 if currLatencyMs <= targetLatencyMs,
 	// 		i.e. performance is ideal -> should reduce headroom
-	headroomPct *= gradient
+	//		this can't happen through the gradient because currLatencyMs will
+	// 		not fall below targetLatencyMs. Therefore, we need an another explicit
+	//		factor to reduce headroom when performance is ideal. We keep this
+	//		constant for now as REDUCE_FACTOR = 0.75 because we allow increase
+	// 		in headroom factor to be between 1 and 1.5, so we take the middle of
+	// 		that range to reduce headroom.
+	// gradient is > 1.0 if currLatencyMs > targetLatencyMs,
+	// 		i.e. performance is not ideal -> need more headroom
+	if isPerformanceIdeal {
+		headroomPct *= REDUCE_FACTOR
+	} else {
+		gradient := currLatencyMs / targetLatencyMs
+		gradient = clampFloat(gradient, 1.0, 1.5)
+		headroomPct *= gradient
+	}
 
 	// if isPerformanceIdeal {
 	// 	headroomPct -= 5.0
@@ -260,7 +277,7 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 
 		INIT_ALLOWED_RIF := 5.0
 		MIN_ALLOWED_RIF := 1.0
-		MAX_ALLOWED_RIF := 50.0
+		MAX_ALLOWED_RIF := 500.0
 
 		// calculate perf based allowed rps
 		// if no rps cap, initialize it to the current arriving rps
@@ -268,7 +285,7 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 		if !ok {
 			updatedPerfBasedCap = INIT_ALLOWED_RIF
 		} else {
-			gradient := targetMeanMs / latencyMeanMs
+			gradient := targetLatencyMs / currLatencyMs
 			gradient = clampFloat(gradient, 0.5, 1.0)
 
 			queueSize := math.Sqrt(currentLimit)

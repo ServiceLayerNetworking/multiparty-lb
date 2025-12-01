@@ -190,9 +190,9 @@ func (k8sClient *KubernetesClient) GetNodes() []Node {
 	for _, node := range nodes.Items {
 
 		nodeNum := getNodeNum(node)
-		cpuCapacity := node.Status.Capacity[v1.ResourceCPU]
-		cpuMilliCores := int(cpuCapacity.MilliValue())
-		cpuMilliCores = getMilliCoresInNode(nodeNum, cpuMilliCores)
+		// cpuCapacity := node.Status.Capacity[v1.ResourceCPU]
+		// cpuMilliCores := int(cpuCapacity.MilliValue())
+		// cpuMilliCores = getMilliCoresInNode(nodeNum, cpuMilliCores)
 		nodeList = append(nodeList,
 			Node{
 				Num:               nodeNum,
@@ -200,7 +200,7 @@ func (k8sClient *KubernetesClient) GetNodes() []Node {
 				IP:                getNodeInternalIP(node),
 				HostAgentNodePort: k8sClient.getHostAgentNodePort(node),
 				Pods:              nodesToPods[node.Name],
-				MilliCores:        cpuMilliCores,
+				MilliCores:        M_CORES_IN_NODE,
 			})
 	}
 

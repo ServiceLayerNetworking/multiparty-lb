@@ -326,7 +326,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [10, 11, 12]:
+        for iteration in [15, 16]:
         
             for distr in ["exponential"]:
                 
@@ -640,8 +640,8 @@ def main_exp_state_2():
         lbs=[
             # "leastrequest_plus",
             # "only_nodal_leastrequest",
-            "nodal_leastrequest_rlpb",
-            "nodal_leastrequest",
+            # "nodal_leastrequest_rlpb",
+            # "nodal_leastrequest",
             "leastrequest_plus_rlpb",
             # "minimize_diff",
             # "leastrequest_plus_rl",

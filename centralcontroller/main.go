@@ -43,8 +43,7 @@ const (
 	MAXIMUM_HEADROOM_PCT      = 100  // Maximum headroom percentage for each service
 	DELTA_HEADROOM_PCT        = 15.0 // Change in headroom percentage for each service
 
-	NODE_CAP_SCALE_FACTOR = 1
-	M_CPUS_IN_NODE        = 2000 * NODE_CAP_SCALE_FACTOR
+	M_CORES_IN_NODE = 8000
 
 	USE_RPS_INSTEAD_OF_CPU      = true
 	USE_OFFLINE_DEMAND_ESTIMATE = false

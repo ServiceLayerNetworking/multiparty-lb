@@ -19,6 +19,8 @@ import (
 const AGGREGATE_ECHO_MESSAGES = true
 const AGGREGATE_ECHO_MESSAGES_INTERVAL_US = 5000 // microseconds
 
+const LATENCY_STATS_WINDOW_MS = 500
+
 // For latency tracking
 type LatencyRecord struct {
 	TimestampMs int64 // milliseconds
@@ -50,7 +52,7 @@ func (s *ServiceLatencyStats) GetPercentileLatency(service string, percentile fl
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now().UnixMilli()
-	cutoffMs := now - 500 // last 0.5 seconds
+	cutoffMs := now - LATENCY_STATS_WINDOW_MS // last 0.5 seconds
 	records, ok := s.latencies[service]
 	if !ok || len(records) == 0 {
 		return 0
@@ -92,7 +94,7 @@ func (s *ServiceLatencyStats) GetMean(service string) int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now().UnixMilli()
-	cutoffMs := now - 500 // last 0.5 seconds
+	cutoffMs := now - LATENCY_STATS_WINDOW_MS // last 0.5 seconds
 	records, ok := s.latencies[service]
 	if !ok || len(records) == 0 {
 		return 0
@@ -124,6 +126,60 @@ func (s *ServiceLatencyStats) GetMean(service string) int {
 		sum += lat
 	}
 	return sum / len(latencies)
+}
+
+// Get the mean latency (ms) for a service, considering only values below the cutoff percentile
+func (s *ServiceLatencyStats) GetMeanUnderPercentile(service string, cutoffPercentile float64) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UnixMilli()
+	cutoffMs := now - LATENCY_STATS_WINDOW_MS // last 0.5 seconds
+	records, ok := s.latencies[service]
+	if !ok || len(records) == 0 {
+		return 0
+	}
+	// Prune old records
+	i := 0
+	for ; i < len(records); i++ {
+		if records[i].TimestampMs >= cutoffMs {
+			break
+		}
+	}
+	records = records[i:]
+	s.latencies[service] = records
+	if len(records) == 0 {
+		return 0
+	}
+	// Collect latencies
+	latencies := make([]int, len(records))
+	for j, rec := range records {
+		latencies[j] = rec.LatencyMs
+	}
+	// Sort latencies
+	sort.Ints(latencies)
+	if len(latencies) == 0 {
+		return 0
+	}
+	// Calculate cutoff index
+	if cutoffPercentile < 0 {
+		cutoffPercentile = 0
+	}
+	if cutoffPercentile > 100 {
+		cutoffPercentile = 100
+	}
+	cutoffIdx := int(float64(len(latencies)) * cutoffPercentile / 100.0)
+	if cutoffIdx <= 0 {
+		cutoffIdx = 1
+	}
+	if cutoffIdx > len(latencies) {
+		cutoffIdx = len(latencies)
+	}
+	// Calculate mean of values below cutoff
+	sum := 0
+	for j := 0; j < cutoffIdx; j++ {
+		sum += latencies[j]
+	}
+	return sum / cutoffIdx
 }
 
 func getLatencyUsFromData(data []byte) int {
