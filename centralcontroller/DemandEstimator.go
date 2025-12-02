@@ -203,7 +203,7 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 
 	// target is 102ms mean latency calculated by 1 node cluster, with one service sending all load equal to the CPU capacity of the node.
 	// 		Node CPU cap = 8 cores, CPU consumption per request = 80 coreMs
-	targetLatencyMs := 102.0
+	targetLatencyMs := 250.0
 	// target is 68 ms median with the above setup
 	// targetLatencyMs := 68.0
 

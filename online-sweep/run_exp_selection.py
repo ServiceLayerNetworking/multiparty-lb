@@ -326,13 +326,13 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [15, 16]:
+        for iteration in [1, 2]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.7]:
+                for load_scale_factor in [0.8]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -638,11 +638,11 @@ def main_exp_state_2():
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "leastrequest_plus",
-            # "only_nodal_leastrequest",
+            "only_nodal_leastrequest",
             # "nodal_leastrequest_rlpb",
             # "nodal_leastrequest",
-            "leastrequest_plus_rlpb",
+            # "leastrequest_plus_rlpb",
+            "leastrequest_plus",
             # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
@@ -767,10 +767,10 @@ def main_exp_state_3():
         svc_to_nodes,
         pod_names,
         lbs=[
-            "leastrequest_plus_rlpb",
-            # "only_nodal_leastrequest",
-            # "nodal_leastrequest",
             "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
+            "only_nodal_leastrequest",
+            "leastrequest_plus_rlpb",
             "leastrequest_plus",
             # "minimize_diff",
             # "leastrequest_plus_rl",
@@ -1016,10 +1016,10 @@ def main_exp_state_5():
         pod_names,
         lbs=[
             "leastrequest_plus_rlpb",
-            # "leastrequest_plus",
-            # "only_nodal_leastrequest",
-            # "nodal_leastrequest",
-            # "nodal_leastrequest_rlpb",
+            "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
+            "only_nodal_leastrequest",
+            "leastrequest_plus",
             # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
@@ -1177,9 +1177,10 @@ def main():
 if __name__ == "__main__":
     start_time = time.time()
     
-    main_exp_state_2()
     # main_exp_state_3()
     # main_exp_state_4()
+    # main_exp_state_5()
+    main_exp_state_2()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")

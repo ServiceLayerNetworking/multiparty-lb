@@ -17,8 +17,8 @@ import locally_optimal_load_distribution as gs_l
 import gurobi_server as gs_g
 import generate_random_topology as grt
 
-NUM_NODES = 15
-NUM_SERVICES = 30
+NUM_NODES = 3
+NUM_SERVICES = 3
 NUM_PODS_PER_NODE = 10
 NODE_LOAD_CAP = 100
 LOAD_ATOMIC_UNIT = 10 # * NUM_NODES
@@ -439,6 +439,39 @@ def sample_topology_2(num_nodes, num_services, rng, l: float = 2.0) -> np.ndarra
     
     return topo
 
+def sample_topology_2_fixed_l(num_nodes, num_services, rng, l: float = 2.0) -> np.ndarray:
+    """
+    Strategy 2: Draw from exponential distribution to determine how many nodes a service will have pods on.
+    
+    For each service, draw from an exponential 
+    distribution with mean l (default 2) to get n_svc_nodes, i.e. the number of nodes this service 
+    will have a pod on. Cap this value to the total number of nodes. Place one pod for the 
+    service on n_svc_nodes randomly selected nodes. Note that each service gets at most one pod per node.
+    
+    Note: Increasing l increases the number of nodes each service is present on.
+    
+    Args:
+        l: Mean of exponential distribution for number of nodes per service
+    
+    Returns:
+        Topology array of shape (num_nodes, num_services) with 0/1 values
+    """
+    topo = np.zeros((num_nodes, num_services), dtype=int)
+    
+    for svc in range(num_services):
+        # Draw from exponential distribution and cap to num_nodes
+        n_svc_nodes = int(np.ceil(l))
+        n_svc_nodes = min(n_svc_nodes, num_nodes)
+        
+        # Ensure at least one node hosts this service
+        n_svc_nodes = max(n_svc_nodes, 1)
+        
+        # Randomly select n_svc_nodes nodes to host this service
+        selected_nodes = rng.choice(num_nodes, size=n_svc_nodes, replace=False)
+        topo[selected_nodes, svc] = 1
+    
+    return topo
+
 def sample_topology_3(num_nodes, num_services, rng, l: float = 2.0) -> np.ndarray:
     """
     Strategy 3: Draw from exponential distribution to determine the total number of pods a service will have.
@@ -685,11 +718,13 @@ def run_offline_sweep():
     
     global LOGFILE
     
-    for topo_sample_strategy in [2]:
+    for topo_sample_strategy in [3]:
     
-        for ub in np.arange(1.8, 2.0+0.01, 0.1):
+        for lb in np.arange(0.90, 1.10+0.01, 0.10):
             
-            LOGFILE = f"logs/offline_sweep_Nov26_lb_0.00_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}_lambda_2_n_svc_30.log"
+            ub = 1.20
+            
+            LOGFILE = f"logs/offline_sweep_Nov26_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
         
             # Local knobs for faster experiments; modify as needed.
             use_fast = True   # Set to False to run exhaustive (slow) path
@@ -699,13 +734,13 @@ def run_offline_sweep():
             if use_fast:
                 # states = generate_cluster_states_fast_wo_total_cluster_load(l=l, k=k) #, seed=seed)
                 states = generate_cluster_states_fast_wo_total_cluster_load(
-                    k=k, lb=0.0, ub=ub, topo_sample_strategy=topo_sample_strategy) #, seed=seed)
+                    k=k, lb=lb, ub=ub, topo_sample_strategy=topo_sample_strategy) #, seed=seed)
             else:
                 # Exhaustive path: original behavior (restrict to elected indices)
                 states = generate_cluster_states()
             
             # sample 100 states from all the states
-            states = random.sample(states, 100)
+            states = random.sample(states, 1000)
             
             # input("Press Enter to start processing states...")
             
