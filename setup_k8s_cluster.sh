@@ -112,10 +112,10 @@ for d in $(kubectl get deploy -n istio-ingress -o jsonpath='{.items[*].metadata.
 done
 
 echo "Limits have been removed from all deployments in istio-ingress."
-echo "[SCRIPT] Applying taints to three nodes..."
-kubectl taint nodes node1.$CLUSTER_NAME node=node1:NoSchedule --overwrite
-kubectl taint nodes node2.$CLUSTER_NAME node=node2:NoSchedule --overwrite
-kubectl taint nodes node3.$CLUSTER_NAME node=node3:NoSchedule --overwrite
+# echo "[SCRIPT] Applying taints to three nodes..."
+# kubectl taint nodes node1.$CLUSTER_NAME node=node1:NoSchedule --overwrite
+# kubectl taint nodes node2.$CLUSTER_NAME node=node2:NoSchedule --overwrite
+# kubectl taint nodes node3.$CLUSTER_NAME node=node3:NoSchedule --overwrite
 
 # echo "[SCRIPT] Starting the Docker registry..."
 # kubectl apply -f docker-registry/registry.yaml

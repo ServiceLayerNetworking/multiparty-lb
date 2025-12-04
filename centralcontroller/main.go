@@ -126,7 +126,7 @@ func (n *Node) SendMessageAndGetResponse(msg string) string {
 
 	// slog.Info(fmt.Sprintf("conn: %v", n.connection))
 
-	_, err := (*n.connection).Write([]byte(msg))
+	_, err := (*n.connection).Write([]byte(msg + "<END>"))
 	if err != nil {
 		slog.Warn("Error sending:" + err.Error())
 	}

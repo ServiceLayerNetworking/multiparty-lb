@@ -45,6 +45,8 @@ spec:
         - key: "node-role.kubernetes.io/control-plane"
           value: ""
           effect: "NoSchedule"
+        - key: "node.kubernetes.io/disk-pressure"
+          effect: "NoSchedule"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:

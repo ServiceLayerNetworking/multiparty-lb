@@ -18,6 +18,7 @@ SLEEP_TIME_AFTER_EACH_RUN = 5
 
 CORES_PER_NODE = 8
 SCALE_FACTOR = 0.9
+REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
 LOG_FOLDER = "logs/online_sweep_Dec3"
 
@@ -168,13 +169,13 @@ def parse_svc_load(svc_load: float) -> Tuple[int, float]:
     load = svc_load / 100.0
     
     # default duration of each request (only when load > 1 core per unit time)
-    default_duration_ms = 30.0
+    default_duration_ms = REQUEST_CPU_CONSUMPTION_MS
     
     # max cpu cores per unit time that a request can consume
     max_cpu_per_time = 1
     
     if load == 0:
-        return 0, default_duration_ms * DURATION
+        return 0, default_duration_ms * DURATION + 10
     
     # if load <= 1.0:
     #     # consumption = (load/1) * default_duration
@@ -514,25 +515,25 @@ def main():
     
     prep_for_exps()
     
-    # test 10 to 15 states
-    start = 298
-    random_states = list(range(start, start+5))
-    all_states = random_states
-    print(all_states)
+    # # test 10 to 15 states
+    # start = 303
+    # random_states = list(range(start, start+50))
+    # all_states = random_states
+    # print(all_states)
     
-    for random_state in all_states:
-        run_exp_for_cluster_state_id(random_state, lbs=[
-            "nodal_leastrequest",
-            "leastrequest_plus_rlpb",
-            "nodal_leastrequest_rlpb",
-        ])
+    # for random_state in all_states:
+    #     run_exp_for_cluster_state_id(random_state, lbs=[
+    #         "nodal_leastrequest",
+    #         "leastrequest_plus_rlpb",
+    #         "nodal_leastrequest_rlpb",
+    #     ])
         
-    for random_state in all_states:
+    for random_state in [300, 301, 302]:
         run_exp_for_cluster_state_id(random_state, lbs=[
             "minimize_diff",
         ])
         
-    for random_state in all_states:
+    for random_state in [298, 299, 300, 301, 302]:
         run_exp_for_cluster_state_id(random_state, lbs=[
             "leastrequest_plus",
             "only_nodal_leastrequest",

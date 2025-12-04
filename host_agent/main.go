@@ -684,7 +684,8 @@ func sendSuccessOrFailResponse(connection net.Conn, ok bool) {
 func readMsgFromConnection(connection net.Conn) (string, error) {
 	var fullMessage strings.Builder
 	buffer := make([]byte, 64*1024) // 64KB buffer
-	
+	delimiter := "<END>"
+
 	for {
 		mLen, err := connection.Read(buffer)
 		if err != nil {
@@ -693,17 +694,20 @@ func readMsgFromConnection(connection net.Conn) (string, error) {
 			}
 			return "", err
 		}
-		
+
 		fullMessage.Write(buffer[:mLen])
-		
-		// Check if we've received the complete message
-		// (if less than buffer size, likely the end of message)
-		if mLen < len(buffer) {
+
+		// Check if we've received the complete message by looking for delimiter
+		if strings.Contains(fullMessage.String(), delimiter) {
 			break
 		}
 	}
-	
-	return fullMessage.String(), nil
+
+	// Remove the delimiter from the message
+	msg := fullMessage.String()
+	msg = strings.TrimSuffix(msg, delimiter)
+
+	return msg, nil
 }
 
 func sendMsgToConnection(connection net.Conn, msg string) {

@@ -5,7 +5,7 @@ metadata:
   name: mplb-wasm-plugin
   namespace: default
 spec:
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -28,7 +28,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -50,7 +50,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc0
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -72,7 +72,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc1
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -94,7 +94,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc2
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -116,7 +116,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc3
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -138,7 +138,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc4
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -160,7 +160,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc5
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -182,7 +182,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc6
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -204,7 +204,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc7
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -226,7 +226,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc8
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -248,7 +248,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc9
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -270,7 +270,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc10
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -292,7 +292,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc11
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -314,7 +314,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc12
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -336,7 +336,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc13
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:
@@ -358,7 +358,7 @@ spec:
   selector:
     matchLabels:
       istio: ingressgateway-svc14
-  url: oci://ghcr.io/talha-waheed/mplb-plugin:leastrequest_plus
+  url: oci://ghcr.io/talha-waheed/mplb-plugin:minimize_diff
   imagePullPolicy: Always
   vmConfig:
     env:

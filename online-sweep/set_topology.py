@@ -70,7 +70,7 @@ def generate_istio_operator(apps):
     subprocess.run(["istioctl", "install", "-f", "multi-gateways.yaml", "-y"])
 
 # Helper: Apply a manifest dict using the dynamic client
-def apply_manifest(dyn_client, manifest):
+def apply_manifest(dyn_client, manifest, max_retries=10, initial_delay=2):
     kind = manifest["kind"]
     api_version = manifest["apiVersion"]
     namespace = manifest.get("metadata", {}).get("namespace", "default")
@@ -79,21 +79,33 @@ def apply_manifest(dyn_client, manifest):
     if group == "":
         group = "core"
 
-    try:
-        resource = dyn_client.resources.get(api_version=api_version, kind=kind)
-        resource.create(body=manifest, namespace=namespace)
-        print(f"✅ Created {kind}: {manifest['metadata']['name']}")
-        print(manifest)
-        print("-----")
-    except ResourceNotFoundError:
-        print(f"❌ Could not find resource for kind {kind}")
-    except client.exceptions.ApiException as e:
-        if e.status == 409:
-            # Resource exists, replace it
-            resource.patch(name=manifest["metadata"]["name"], namespace=namespace, body=manifest)
-            print(f"🔁 Updated {kind}: {manifest['metadata']['name']}")
-        else:
-            raise
+    for attempt in range(max_retries):
+        try:
+            resource = dyn_client.resources.get(api_version=api_version, kind=kind)
+            resource.create(body=manifest, namespace=namespace)
+            print(f"✅ Created {kind}: {manifest['metadata']['name']}")
+            print(manifest)
+            print("-----")
+            return
+        except ResourceNotFoundError:
+            print(f"❌ Could not find resource for kind {kind}")
+            return
+        except client.exceptions.ApiException as e:
+            if e.status == 409:
+                # Resource exists, replace it
+                resource.patch(name=manifest["metadata"]["name"], namespace=namespace, body=manifest)
+                print(f"🔁 Updated {kind}: {manifest['metadata']['name']}")
+                return
+            elif e.status == 500 and attempt < max_retries - 1:
+                # Retry on 500 Internal Server Error (webhook issues)
+                delay = initial_delay * (2 ** attempt)  # Exponential backoff
+                print(f"⚠️ Webhook error (500) for {kind}: {manifest['metadata']['name']}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+            else:
+                raise
+    
+    # If we've exhausted retries
+    raise Exception(f"Failed to apply {kind}: {manifest['metadata']['name']} after {max_retries} attempts")
 
 # Get all pods in default namespace
 def get_current_app_and_pods() -> Dict[str, List[str]]:
