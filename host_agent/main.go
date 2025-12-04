@@ -682,9 +682,28 @@ func sendSuccessOrFailResponse(connection net.Conn, ok bool) {
 }
 
 func readMsgFromConnection(connection net.Conn) (string, error) {
-	buffer := make([]byte, 4096)
-	mLen, err := connection.Read(buffer)
-	return string(buffer[:mLen]), err
+	var fullMessage strings.Builder
+	buffer := make([]byte, 64*1024) // 64KB buffer
+	
+	for {
+		mLen, err := connection.Read(buffer)
+		if err != nil {
+			if err == io.EOF && fullMessage.Len() > 0 {
+				break
+			}
+			return "", err
+		}
+		
+		fullMessage.Write(buffer[:mLen])
+		
+		// Check if we've received the complete message
+		// (if less than buffer size, likely the end of message)
+		if mLen < len(buffer) {
+			break
+		}
+	}
+	
+	return fullMessage.String(), nil
 }
 
 func sendMsgToConnection(connection net.Conn, msg string) {
