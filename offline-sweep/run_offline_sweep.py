@@ -17,8 +17,8 @@ import locally_optimal_load_distribution as gs_l
 import gurobi_server as gs_g
 import generate_random_topology as grt
 
-NUM_NODES = 3
-NUM_SERVICES = 3
+NUM_NODES = 15
+NUM_SERVICES = 15
 NUM_PODS_PER_NODE = 10
 NODE_LOAD_CAP = 100
 LOAD_ATOMIC_UNIT = 10 # * NUM_NODES
@@ -427,7 +427,7 @@ def sample_topology_2(num_nodes, num_services, rng, l: float = 2.0) -> np.ndarra
     
     for svc in range(num_services):
         # Draw from exponential distribution and cap to num_nodes
-        n_svc_nodes = int(np.ceil(rng.exponential(scale=l)))
+        n_svc_nodes = int(rng.exponential(scale=l))
         n_svc_nodes = min(n_svc_nodes, num_nodes)
         
         # Ensure at least one node hosts this service
@@ -520,7 +520,7 @@ def generate_cluster_states_fast_wo_total_cluster_load(
     """
     # Local aliases and RNG
     num_nodes = NUM_NODES
-    num_services = NUM_SERVICES * 2
+    num_services = NUM_SERVICES
     num_pods_per_node = NUM_PODS_PER_NODE
     node_cap = NODE_LOAD_CAP
     node_caps = [node_cap] * num_nodes
@@ -538,9 +538,9 @@ def generate_cluster_states_fast_wo_total_cluster_load(
         if topo_sample_strategy == 1:
             topology = sample_topology(num_nodes, num_services, num_pods_per_node, rng)
         elif topo_sample_strategy == 2:
-            topology = sample_topology_2(num_nodes, num_services, rng, l=2.0)
+            topology = sample_topology_2(num_nodes, num_services, rng, l=3.0)
         elif topo_sample_strategy == 3:
-            topology = sample_topology_3(num_nodes, num_services, rng, l=2.0)
+            topology = sample_topology_3(num_nodes, num_services, rng, l=3.0)
         else:
             raise ValueError(f"Unknown topo_sample_strategy: {topo_sample_strategy}")
         
@@ -720,11 +720,15 @@ def run_offline_sweep():
     
     for topo_sample_strategy in [3]:
     
-        for lb in np.arange(0.90, 1.10+0.01, 0.10):
+        for ub in np.arange(1.2, 2.0+0.01, 0.10):
             
-            ub = 1.20
-            
+            lb = 0.00
+                        
             LOGFILE = f"logs/offline_sweep_Nov26_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
+            
+            # clear log file
+            with open(LOGFILE, "w") as f:
+                f.write("")
         
             # Local knobs for faster experiments; modify as needed.
             use_fast = True   # Set to False to run exhaustive (slow) path

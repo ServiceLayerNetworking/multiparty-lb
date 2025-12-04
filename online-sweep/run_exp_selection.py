@@ -11,14 +11,14 @@ import sys
 from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips, get_gateway_ip
 
 # Everything in seconds:
-DURATION = 120
+DURATION = 60
 DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
-SLEEP_TIME_AFTER_EACH_RUN = 5
+SLEEP_TIME_AFTER_EACH_RUN = 20
 
 REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
-LOG_FOLDER = "logs/debug_15_nodes_Nov30"
+LOG_FOLDER = "logs/debug_15_nodes_Dec2"
 
 GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -326,13 +326,13 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1, 2]:
+        for iteration in [1, 2, 3]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.8]:
+                for load_scale_factor in [0.7, 0.75, 0.8, 0.85, 0.9]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -638,12 +638,12 @@ def main_exp_state_2():
         svc_to_nodes,
         pod_names,
         lbs=[
+            "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
             "only_nodal_leastrequest",
-            # "nodal_leastrequest_rlpb",
-            # "nodal_leastrequest",
-            # "leastrequest_plus_rlpb",
+            "minimize_diff",
+            "leastrequest_plus_rlpb",
             "leastrequest_plus",
-            # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
 
@@ -770,9 +770,9 @@ def main_exp_state_3():
             "nodal_leastrequest_rlpb",
             "nodal_leastrequest",
             "only_nodal_leastrequest",
+            "minimize_diff",
             "leastrequest_plus_rlpb",
             "leastrequest_plus",
-            # "minimize_diff",
             # "leastrequest_plus_rl",
         ])
 
@@ -1177,10 +1177,10 @@ def main():
 if __name__ == "__main__":
     start_time = time.time()
     
-    # main_exp_state_3()
     # main_exp_state_4()
-    # main_exp_state_5()
     main_exp_state_2()
+    main_exp_state_5()
+    main_exp_state_3()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")

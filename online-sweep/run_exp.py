@@ -8,7 +8,7 @@ import time
 import json
 import sys
 
-from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips
+from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips, get_gateway_ip
 
 # Everything in seconds:
 DURATION = 60
@@ -16,9 +16,12 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
-LOG_FOLDER = "logs/online_sweep_Sep8_2025"
+CORES_PER_NODE = 8
+SCALE_FACTOR = 0.9
 
-GATEWAY_IPs = get_curr_gateway_ips()
+LOG_FOLDER = "logs/online_sweep_Dec3"
+
+# GATEWAY_IPs = get_curr_gateway_ips()
 
 def build_central_controller():
     curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -198,7 +201,8 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
         
         assert(req_interval_ms > 0)
         
-        gateway_ip = GATEWAY_IPs[svc_name]
+        # gateway_ip = GATEWAY_IPs[svc_name]
+        gateway_ip = get_gateway_ip(svc_name)
         
         if proc_distr == "none" or proc_distr == "uniform":
             url = f"http://{gateway_ip}/?cpu_coreMs={cpu_consumption}"
@@ -297,7 +301,7 @@ def run_exp_for_cluster_state(
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
-        if len(sys.argv) <= 1:
+        if "-b" not in sys.argv:
 
             # build new wasm
             print(f"Building wasm plugin for {lb}...")
@@ -308,19 +312,24 @@ def run_exp_for_cluster_state(
             if not done:
                 print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
                 continue
+            
+        else:
+            print("Skipping building wasm plugin and setting up topology as per command line argument '-b'...")
         
-        # return
+        if "-t" in sys.argv:
+            print("Only setting up topology as per command line argument '-t'...")
+            continue
         
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [3, 4, 5]:
+        for iteration in [1, 2, 3]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.8]:
+                for load_scale_factor in [SCALE_FACTOR]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -336,6 +345,12 @@ def run_exp_for_cluster_state(
                     
                     run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{state_id}_{iteration}_{load_scale_factor}", scaled_svc_loads, "LB", distr, proc_distr, append_to_times=to_append)
 
+        message = f"Completed experiments for state {state_id} && lb {LB_NAME[lb]}"
+        os.system(f'curl -d "{message}" ntfy.sh/mplb')
+    
+    message = f"Completed experiments for all lbs for state {state_id}"
+    os.system(f'curl -d "{message}" ntfy.sh/mplb')
+    
     time_taken = time.time() - time_started
     print(f"Time taken for experiment: {time_taken} seconds")
 
@@ -345,10 +360,10 @@ def run_exp_for_cluster_state_id(state_id: int,
                                                    "nodal_leastrequest",
                                                    "only_nodal_leastrequest",
                                                    "minimize_diff"]):
-    data = read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1)
+    data = read_json_line("../offline-sweep/logs/offline_sweep_Nov26_lb_0.00_ub_1.60_topo_sampling_3.log", state_id)
     
     svc_loads = data["State"]["SvcLoads"]
-    svc_loads = [int(svc_load*2) for svc_load in svc_loads]
+    svc_loads = [int(svc_load*CORES_PER_NODE) for svc_load in svc_loads]
 
     svc_to_nodes = {}
     for node_id, n_svcs in enumerate(data["State"]["NodesToSvc"]):
@@ -499,125 +514,28 @@ def main():
     
     prep_for_exps()
     
-    # get 50 random numbers between 0 and 178339
-    random_states = [
-        66752,
-        73572,
-        41100,
-        30527,
-        23740,
-        3278,
-        72380,
-        55628,
-        173166,
-        46194,
-        76518,
-        84192,
-        177161,
-        79906,
-        15354,
-        21677,
-        112326,
-        74759,
-        90158,
-        80022,
-        90122,
-        138139,
-        4610,
-        17080,
-        9296,
-        93335,
-        44944,
-        70096,
-        8619,
-        122890,
-        6872,
-        66915,
-        64422,
-        172969,
-        69903,
-        130484,
-        31901,
-        129050,
-        80250,
-        164440,
-        18239,
-        108637,
-        70217,
-        167605,
-        140196,
-        150379,
-        134551,
-        99668,
-        48415,
-        116683
-    ]
-    new_random_states = [
-        173719,
-        130141,
-        41695,
-        169571,
-        88056,
-        84408,
-        9466,
-        161757,
-        176691,
-        158031,
-        86101,
-        80711,
-        31655,
-        72616,
-        29334,
-        132126,
-        114315,
-        16210,
-        46304,
-        134901,
-        86750,
-        81587,
-        170450,
-        155222,
-        26111,
-        6940,
-        128644,
-        131117,
-        17680,
-        40995,
-        79662,
-        120935,
-        153032,
-        10341,
-        88768,
-        103542,
-        67153,
-        159847,
-        47983,
-        140527,
-        104108,
-        22320,
-        58037,
-        127271,
-        74228,
-        73432,
-        75895,
-        99389,
-        141033,
-        121706
-    ]
-    
-    all_states = random_states[:25] # + new_random_states
-    
-    # all_states = [41100, 69903, 44944, 134551, 93335]
-    
-    # all_states = [81587]
+    # test 10 to 15 states
+    start = 298
+    random_states = list(range(start, start+5))
+    all_states = random_states
+    print(all_states)
     
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
+            "nodal_leastrequest",
             "leastrequest_plus_rlpb",
             "nodal_leastrequest_rlpb",
+        ])
+        
+    for random_state in all_states:
+        run_exp_for_cluster_state_id(random_state, lbs=[
+            "minimize_diff",
+        ])
+        
+    for random_state in all_states:
+        run_exp_for_cluster_state_id(random_state, lbs=[
             "leastrequest_plus",
             "only_nodal_leastrequest",
-            "nodal_leastrequest",
         ])
 
 if __name__ == "__main__":
