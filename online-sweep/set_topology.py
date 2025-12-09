@@ -18,13 +18,23 @@ def get_gateway_ip(svc_name):
     config.load_kube_config()
     v1 = client.CoreV1Api()
 
-    # Get the service object
-    service = v1.read_namespaced_service(name=f"istio-ingressgateway-{svc_name}", namespace="istio-ingress")
-
-    # Get the Cluster IP
-    cluster_ip = service.spec.cluster_ip
-
-    return cluster_ip
+    # Get the service object with retry logic
+    max_retries = 10
+    initial_delay = 2
+    for attempt in range(max_retries):
+        try:
+            service = v1.read_namespaced_service(name=f"istio-ingressgateway-{svc_name}", namespace="istio-ingress")
+            cluster_ip = service.spec.cluster_ip
+            return cluster_ip
+        except client.exceptions.ApiException as e:
+            if e.status == 500 and attempt < max_retries - 1:
+                delay = initial_delay * (2 ** attempt)
+                print(f"⚠️ Webhook error (500) reading service {svc_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                time.sleep(delay)
+            else:
+                raise
+    
+    raise Exception(f"Failed to read service {svc_name} after {max_retries} attempts")
 
 def get_curr_gateway_ips():
     svc_gateway_ips = {}
@@ -338,10 +348,24 @@ def start_new_pods(pod_names: List[str]):
                 ),
             )
 
-            # Print and create the pod
+            # Print and create the pod with retry logic
             print(f"Creating pod: {new_pod_name} on {node_id}")
-            v1.create_namespaced_pod(namespace="default", body=pod)
-            svc_number_of_pods[svc_id] += 1
+            max_retries = 10
+            initial_delay = 2
+            for attempt in range(max_retries):
+                try:
+                    v1.create_namespaced_pod(namespace="default", body=pod)
+                    svc_number_of_pods[svc_id] += 1
+                    break
+                except client.exceptions.ApiException as e:
+                    if e.status == 500 and attempt < max_retries - 1:
+                        delay = initial_delay * (2 ** attempt)
+                        print(f"⚠️ Webhook error (500) creating pod {new_pod_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(delay)
+                    else:
+                        raise
+            else:
+                raise Exception(f"Failed to create pod {new_pod_name} after {max_retries} attempts")
         else:
             print(f"Invalid pod name format: {pod_name}")
 
@@ -361,7 +385,21 @@ def start_new_pods(pod_names: List[str]):
             ),
         )
         print(f"Creating service for app: {svc_name}")
-        v1.create_namespaced_service(namespace="default", body=service)
+        max_retries = 10
+        initial_delay = 2
+        for attempt in range(max_retries):
+            try:
+                v1.create_namespaced_service(namespace="default", body=service)
+                break
+            except client.exceptions.ApiException as e:
+                if e.status == 500 and attempt < max_retries - 1:
+                    delay = initial_delay * (2 ** attempt)
+                    print(f"⚠️ Webhook error (500) creating service {svc_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                else:
+                    raise
+        else:
+            raise Exception(f"Failed to create service {svc_name} after {max_retries} attempts")
         
     print("All pods and services created successfully.")
 

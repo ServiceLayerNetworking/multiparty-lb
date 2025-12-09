@@ -17,10 +17,10 @@ ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 5
 
 CORES_PER_NODE = 8
-SCALE_FACTOR = 0.9
+SCALE_FACTOR = 0.8
 REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
-LOG_FOLDER = "logs/online_sweep_Dec3"
+LOG_FOLDER = "logs/online_sweep_Dec9"
 
 # GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -346,11 +346,11 @@ def run_exp_for_cluster_state(
                     
                     run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{state_id}_{iteration}_{load_scale_factor}", scaled_svc_loads, "LB", distr, proc_distr, append_to_times=to_append)
 
-        message = f"Completed experiments for state {state_id} && lb {LB_NAME[lb]}"
+        message = f"Completed #{state_id} [{LB_NAME[lb]}]"
         os.system(f'curl -d "{message}" ntfy.sh/mplb')
     
-    message = f"Completed experiments for all lbs for state {state_id}"
-    os.system(f'curl -d "{message}" ntfy.sh/mplb')
+    # message = f"Completed #{state_id}"
+    # os.system(f'curl -d "{message}" ntfy.sh/mplb')
     
     time_taken = time.time() - time_started
     print(f"Time taken for experiment: {time_taken} seconds")
@@ -515,29 +515,39 @@ def main():
     
     prep_for_exps()
     
-    # # test 10 to 15 states
-    # start = 303
-    # random_states = list(range(start, start+50))
-    # all_states = random_states
-    # print(all_states)
+    # # # test 10 to 15 states
+    start = 300
+    random_states = list(range(298+25, 298+50))
+    all_states = random_states
+    print(all_states)
+    
+    for random_state in all_states:
+        run_exp_for_cluster_state_id(random_state, lbs=[
+            "leastrequest_plus_rlpb",
+            "nodal_leastrequest_rlpb",
+            "minimize_diff",
+            "nodal_leastrequest",
+        ])
+    
+    # os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
     
     # for random_state in all_states:
     #     run_exp_for_cluster_state_id(random_state, lbs=[
-    #         "nodal_leastrequest",
-    #         "leastrequest_plus_rlpb",
-    #         "nodal_leastrequest_rlpb",
+    #         "minimize_diff",
     #     ])
         
-    for random_state in [300, 301, 302]:
-        run_exp_for_cluster_state_id(random_state, lbs=[
-            "minimize_diff",
-        ])
+    os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
         
-    for random_state in [298, 299, 300, 301, 302]:
+    for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
             "leastrequest_plus",
             "only_nodal_leastrequest",
         ])
+        
+    # # for random_state in [300, 301, 302]:
+    # #     run_exp_for_cluster_state_id(random_state, lbs=[
+    # #         "minimize_diff",
+    # #     ])
 
 if __name__ == "__main__":
     start_time = time.time()

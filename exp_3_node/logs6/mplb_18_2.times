@@ -1,5 +1,0 @@
-{"actual": {"app1-0": "node1.k8s-twaheed.mlnetwork.emulab.net", "app1-1": "node3.k8s-twaheed.mlnetwork.emulab.net", "app2-0": "node3.k8s-twaheed.mlnetwork.emulab.net", "app2-1": "node2.k8s-twaheed.mlnetwork.emulab.net", "app3-0": "node3.k8s-twaheed.mlnetwork.emulab.net"}, "intended": {"app1": ["node1", "node3"], "app2": ["node2", "node3"], "app3": ["node3"]}}
-app1 1727261464.6497226 1727261524.6697013
-app2 1727261464.6499925 1727261524.66464
-app3 1727261464.650263 1727261524.670103
-cc 1727261464.6505387 1727261534.9305196

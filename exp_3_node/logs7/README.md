@@ -1,1 +1,0 @@
-These logs will be a repeteition of select runs of logs6 which had a noticeable increase in .99th application latency under MPLB using an additional objective of decrease the abs distance between previous weights

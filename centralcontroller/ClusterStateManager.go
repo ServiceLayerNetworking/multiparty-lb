@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"net"
 	"net/http"
 	"regexp"
@@ -306,10 +307,24 @@ func getGenericWeightsFromGurobi(
 		if strings.Contains(appName, "hostagent") {
 			continue
 		}
+
+		// Get fair share load
+		fshare := getFShareLoad(nodes, appName)
+
+		// Skip or replace infinity/NaN values
+		if math.IsInf(util, 0) || math.IsNaN(util) {
+			fmt.Printf("Warning: Invalid util for %s: %f, setting to 0.0\n", appName, util)
+			util = 0.0
+		}
+		if math.IsInf(fshare, 0) || math.IsNaN(fshare) {
+			fmt.Printf("Warning: Invalid fshare for %s: %f, setting to 1.0\n", appName, fshare)
+			fshare = 1.0
+		}
+
 		tenants = append(tenants, TenantJSON{
 			Name:       appName,
 			Load:       util,
-			FShareLoad: getFShareLoad(nodes, appName),
+			FShareLoad: fshare,
 		})
 	}
 	tenantsJSON, err := json.Marshal(tenants)

@@ -1,3 +1,0 @@
-{"actual": {"svc0-0": "node1.k8s-mplb.mlnetwork.emulab.net", "svc0-1": "node2.k8s-mplb.mlnetwork.emulab.net", "svc1-0": "node2.k8s-mplb.mlnetwork.emulab.net", "svc1-1": "node3.k8s-mplb.mlnetwork.emulab.net", "svc2-0": "node1.k8s-mplb.mlnetwork.emulab.net"}, "intended": {"svc0": ["node0", "node1"], "svc1": ["node1", "node2"], "svc2": ["node0"]}}
-cc 1744765991.5657105 1744766072.4327023
-hit 1744765996.5718162 1744766058.4410937

@@ -397,7 +397,8 @@ func updateReqStats(
 		case "--":
 			serviceOutstandingRequests.numOutstandingReq[service]--
 			if serviceOutstandingRequests.numOutstandingReq[service] < 0 {
-				slog.Error("Warning: outstanding requests < 0 for service " + service)
+				slog.Error(fmt.Sprintf("Warning: outstanding requests < 0 for service %s [%d]",
+					service, serviceOutstandingRequests.numOutstandingReq[service]))
 			}
 			// Record latency if ServiceLatencyStats is provided
 			if serviceLatencyStats != nil {

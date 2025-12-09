@@ -16,7 +16,7 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 20
 
-REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
+REQUEST_CPU_CONSUMPTION_MS = 250.0 # each request consumes 80 coreMs by default
 
 LOG_FOLDER = "logs/debug_15_nodes_Dec2"
 
