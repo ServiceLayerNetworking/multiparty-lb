@@ -20,7 +20,7 @@ CORES_PER_NODE = 8
 SCALE_FACTOR = 0.8
 REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
-LOG_FOLDER = "logs/online_sweep_Dec9"
+LOG_FOLDER = "logs/online_sweep_Dec10"
 
 # GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -516,17 +516,27 @@ def main():
     prep_for_exps()
     
     # # # test 10 to 15 states
-    start = 300
-    random_states = list(range(298+25, 298+50))
+    start = 298
+    random_states = list(range(start+25, start+50))
+    # all_states = [327, 334, 338]
     all_states = random_states
     print(all_states)
     
+    
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
-            "leastrequest_plus_rlpb",
-            "nodal_leastrequest_rlpb",
-            "minimize_diff",
+            # "leastrequest_plus_rlpb",
+            # "nodal_leastrequest_rlpb",
+            # "minimize_diff",
             "nodal_leastrequest",
+        ])
+        
+    for random_state in all_states:
+        run_exp_for_cluster_state_id(random_state, lbs=[
+            # "leastrequest_plus_rlpb",
+            # "nodal_leastrequest_rlpb",
+            # "minimize_diff",
+            "minimize_diff",
         ])
     
     # os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
@@ -536,13 +546,13 @@ def main():
     #         "minimize_diff",
     #     ])
         
-    os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
+    # os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
         
-    for random_state in all_states:
-        run_exp_for_cluster_state_id(random_state, lbs=[
-            "leastrequest_plus",
-            "only_nodal_leastrequest",
-        ])
+    # for random_state in all_states:
+    #     run_exp_for_cluster_state_id(random_state, lbs=[
+    #         "leastrequest_plus",
+    #         "only_nodal_leastrequest",
+    #     ])
         
     # # for random_state in [300, 301, 302]:
     # #     run_exp_for_cluster_state_id(random_state, lbs=[

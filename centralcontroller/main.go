@@ -45,13 +45,13 @@ const (
 
 	M_CORES_IN_NODE = 8000
 
-	USE_RPS_INSTEAD_OF_CPU      = true
-	USE_OFFLINE_DEMAND_ESTIMATE = false
-	CPU_CONSUMPTION_PER_REQ     = 3.0
-	SVC_CPU_UTIL_HEADROOM       = 0    // deprecated
-	RPS_WINDOW_MS               = 1000 // 500ms window to look for how many requests are sent and base our CPU off of that
-	SVC_UTIL_SCALE_FACTOR       = 1    // by this factor, scale the cpuutil
-	CPU_PER_REQ_SCALE_FACTOR    = 1    // by this factor, scale the cpuconsumptionperreq
+	USE_RPS_INSTEAD_OF_CPU       = true
+	USE_OFFLINE_DEMAND_ESTIMATE  = false
+	INIT_CPU_CONSUMPTION_PER_REQ = 8.0
+	SVC_CPU_UTIL_HEADROOM        = 0    // deprecated
+	RPS_WINDOW_MS                = 1000 // 500ms window to look for how many requests are sent and base our CPU off of that
+	SVC_UTIL_SCALE_FACTOR        = 1    // by this factor, scale the cpuutil
+	CPU_PER_REQ_SCALE_FACTOR     = 1    // by this factor, scale the cpuconsumptionperreq
 
 	USE_CONCURENT_CONNECTIONS_FOR_RATE_LIMITER = true
 
@@ -530,7 +530,7 @@ func ccWithLBEnforcement(
 		currentTime = time.Now()
 		// update the state in the demand estimator and get demand estimates
 		de.UpdateState(getPerAppUtilizations(nodeCPUUtilizations), reqStats)
-		svcCPUConsumptionPerReq, svcPerfBasedAllowedRPS := de.GetDemandEstimates(reqStatsServer)
+		svcCPUConsumptionPerReq, svcHeadroomPerReq, svcPerfBasedAllowedRPS := de.GetDemandEstimates(reqStatsServer)
 		fmt.Printf("---------------- Done Step 2: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
 
 		fmt.Printf("---------------- Step 3: Get Optimal LB Weights\n")
@@ -547,7 +547,7 @@ func ccWithLBEnforcement(
 		currentTime = time.Now()
 		// log the CPU Utilizations and CPU Shares
 		cpuLogFile.Writeln(
-			getLogFileFormatLBEnforcement(nodeCPUUtilizations, lbWeights))
+			getLogFileFormatLBEnforcement(nodeCPUUtilizations, lbWeights, svcHeadroomPerReq))
 		printCPUStatsToConsole(nodeCPUUtilizations, reqStats, podsToLog)
 		fmt.Printf("---------------- Done Step 4: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
 
@@ -875,6 +875,7 @@ func addOverhead(
 
 type LBStat struct {
 	CPUConsumptionPerReq float64            `json:"CPUConsumptionPerReq"`
+	Headroom             float64            `json:"Headroom"`
 	CPUAllocated         float64            `json:"CPUAllocated"`
 	PerfBasedRPSAllowed  float64            `json:"PerfBasedRPSAllowed"`
 	Weights              map[string]float64 `json:"Weights"`
@@ -935,7 +936,8 @@ func getLogFileFormatNoEnforcement(nodeCPUUtilizations []string) string {
 
 func getLogFileFormatLBEnforcement(
 	nodeCPUUtilizations []string,
-	lbWeightsStr string) string {
+	lbWeightsStr string,
+	headroomPerReq map[string]float64) string {
 
 	logFileFormat := LogFileFormat{
 		time.Now().UnixNano(),
@@ -958,7 +960,7 @@ func getLogFileFormatLBEnforcement(
 		}
 	}
 
-	logFileFormat.LBStats = parseLBWeightStr(lbWeightsStr)
+	logFileFormat.LBStats = parseLBWeightStr(lbWeightsStr, headroomPerReq)
 
 	logFileFormatStr, err := json.Marshal(logFileFormat)
 	if err != nil {
@@ -969,7 +971,7 @@ func getLogFileFormatLBEnforcement(
 	return string(logFileFormatStr)
 }
 
-func parseLBWeightStr(lbWeightsStr string) map[string]LBStat {
+func parseLBWeightStr(lbWeightsStr string, headroomPerReq map[string]float64) map[string]LBStat {
 
 	lbWeights := make(map[string]LBStat)
 
@@ -989,6 +991,7 @@ func parseLBWeightStr(lbWeightsStr string) map[string]LBStat {
 		weights := strings.Split(appWeightMap[4], "|")
 		lbWeights[appName] = LBStat{
 			cpuConsumptionPerReq,
+			headroomPerReq[appName],
 			cpuAllocated,
 			perfBasedRPSAllowed,
 			make(map[string]float64),

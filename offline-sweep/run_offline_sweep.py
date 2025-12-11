@@ -610,6 +610,8 @@ def populate_pods_from_topology(topology):
     this function returns a list of pod dictionaries.
     """
     pods = []
+    
+    topology = np.array(topology)
     num_nodes, num_services = topology.shape
 
     for node_id in range(num_nodes):
@@ -682,7 +684,7 @@ def run_offline_exp(state: Dict[str, any], hosts=None, tenants=None, workers=Non
     local_result = gs_l.run_from_json(hosts, tenants, workers)
     
     if "NodesToSvc" in state:
-        state["NodesToSvc"] = state["NodesToSvc"].tolist()
+        state["NodesToSvc"] = np.array(state["NodesToSvc"]).tolist()
     
     output = {
         "State": state,
@@ -757,9 +759,36 @@ def run_offline_sweep():
                 print(f"Done with state {i+1}/{len(states)}")
                 # input()
 
+def replay_offline_sweep(scale_factor: float = 0.8):
+    """
+    Replay the offline sweep from the log file.
+    """
+    
+    file_to_replay = f"logs/offline_sweep_Nov26_lb_0.00_ub_1.60_topo_sampling_3.log"
+    
+    global LOGFILE
+    
+    LOGFILE = f"{file_to_replay}_replay_{scale_factor:.2f}.log"
+    
+    # clear log file
+    with open(LOGFILE, "w") as f:
+        f.write("")
+    
+    with open(file_to_replay, "r") as f:
+        for line in f:
+            output = json.loads(line)
+            state = output["State"]
+            
+            # reduce all loads by scale factor
+            state["SvcLoads"] = [(float(load) * scale_factor) for load in state["SvcLoads"]]
+            
+            run_offline_exp(state)
+
 if __name__ == "__main__":
-    write_config()
-    run_offline_sweep()
+    # write_config()
+    # run_offline_sweep()
+    
+    replay_offline_sweep()
     
     # print(arr := sample_topology_3(15, 15, np.random.default_rng(None), l=10.0))
     

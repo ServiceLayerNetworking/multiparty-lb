@@ -28,7 +28,7 @@ type CPUUtilState struct {
 type DemandEstimator struct {
 	CPUUtilizationTimestamps map[string][]CPUUtilState
 	ProcessedReqTimestamps   map[string][]int64
-	HeadRoomPct              map[string]float64
+	HeadRoomFactor           map[string]float64
 	PerfBasedAllowedRPS      map[string]float64
 	PerfBasedAllowedRPSPct   map[string]float64
 	Counter                  int
@@ -38,7 +38,7 @@ func (de *DemandEstimator) Initialize() {
 	// Initialize the DemandEstimator
 	de.CPUUtilizationTimestamps = make(map[string][]CPUUtilState)
 	de.ProcessedReqTimestamps = make(map[string][]int64)
-	de.HeadRoomPct = make(map[string]float64)
+	de.HeadRoomFactor = make(map[string]float64)
 	de.PerfBasedAllowedRPS = make(map[string]float64)
 	de.PerfBasedAllowedRPSPct = make(map[string]float64)
 	de.Counter = -1
@@ -121,10 +121,11 @@ func (de *DemandEstimator) UpdateState(
 }
 
 func (de *DemandEstimator) GetDemandEstimates(
-	reqStatsServer *ReqStatsServer) (map[string]float64, map[string]float64) {
+	reqStatsServer *ReqStatsServer) (map[string]float64, map[string]float64, map[string]float64) {
 
 	// Get the demand estimates for each service
 	cpuConsumptionsPerReq := make(map[string]float64)
+	headroomPerReq := make(map[string]float64)
 	perfBasedAllowedRPS := make(map[string]float64)
 
 	for svcName := range de.CPUUtilizationTimestamps {
@@ -165,30 +166,33 @@ func (de *DemandEstimator) GetDemandEstimates(
 
 		fmt.Println("CPU Consumption per req for service", svcName, "is", cpuConsumptionCoreMsPerReq, "coreMs with", numReqs, "requests completed")
 		if (numReqs) == 0 {
-			cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+			cpuConsumptionPerReq = INIT_CPU_CONSUMPTION_PER_REQ
 		}
 		if USE_OFFLINE_DEMAND_ESTIMATE {
 			if svcName == "svc0" {
-				cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+				cpuConsumptionPerReq = INIT_CPU_CONSUMPTION_PER_REQ
 			} else if svcName == "svc1" {
-				cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+				cpuConsumptionPerReq = INIT_CPU_CONSUMPTION_PER_REQ
 			} else {
-				cpuConsumptionPerReq = CPU_CONSUMPTION_PER_REQ
+				cpuConsumptionPerReq = INIT_CPU_CONSUMPTION_PER_REQ
 			}
 		}
 
 		cpuConsumptionsPerReq[svcName] = cpuConsumptionPerReq * CPU_PER_REQ_SCALE_FACTOR
 
 		// add in the headroom
-		headroomPct, svcPerfBasedAllowedRPS := de.getHeadRoomPctAndPerfBasedAllowedRPS(svcName, reqStatsServer)
-		cpuConsumptionsPerReq[svcName] += cpuConsumptionsPerReq[svcName] * (headroomPct / 100.0)
+		headroomFactor, svcPerfBasedAllowedRPS := de.getHeadRoomPctAndPerfBasedAllowedRPS(svcName, reqStatsServer)
+		cpuConsumptionsPerReq[svcName] *= headroomFactor
+
+		headroomPerReq[svcName] = headroomFactor
+		fmt.Printf("Headroom factor for service %s is %.2f %%\n", svcName, headroomFactor)
 
 		// add the allowed rps
 		perfBasedAllowedRPS[svcName] = svcPerfBasedAllowedRPS
 
 	}
 
-	return cpuConsumptionsPerReq, perfBasedAllowedRPS
+	return cpuConsumptionsPerReq, headroomPerReq, perfBasedAllowedRPS
 }
 
 func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
@@ -211,16 +215,16 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 
 	errFromTarget := currLatencyMs - targetLatencyMs
 
-	INIT_HR := 10.0
-	MIN_HR := 1.0
-	MAX_HR := 50.0
+	INIT_HR_FACTOR := 1.10 // +10% headroom
+	MIN_HR_FACTOR := 0.50  // allow up to 50% decrease
+	MAX_HR_FACTOR := 1.50  // allow up to 50% increase
 
-	REDUCE_FACTOR := 0.75
+	REDUCE_HR_FACTOR := 0.75
 
 	// calculate headroom pct
-	headroomPct, ok := de.HeadRoomPct[svcName]
+	headroomFactor, ok := de.HeadRoomFactor[svcName]
 	if !ok {
-		headroomPct = INIT_HR
+		headroomFactor = INIT_HR_FACTOR
 	}
 
 	// gradient is <= 1.0 if currLatencyMs <= targetLatencyMs,
@@ -234,23 +238,23 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	// gradient is > 1.0 if currLatencyMs > targetLatencyMs,
 	// 		i.e. performance is not ideal -> need more headroom
 	if isPerformanceIdeal {
-		headroomPct *= REDUCE_FACTOR
+		headroomFactor *= REDUCE_HR_FACTOR
 	} else {
 		gradient := currLatencyMs / targetLatencyMs
 		gradient = clampFloat(gradient, 1.0, 1.5)
-		headroomPct *= gradient
+		headroomFactor *= gradient
 	}
 
 	// if isPerformanceIdeal {
-	// 	headroomPct -= 5.0
+	// 	headroomFactor -= 5.0
 	// } else {
-	// 	headroomPct += 5.0
+	// 	headroomFactor += 5.0
 	// }
-	headroomPct = clampFloat(headroomPct, MIN_HR, MAX_HR)
+	headroomFactor = clampFloat(headroomFactor, MIN_HR_FACTOR, MAX_HR_FACTOR)
 
-	updatedHeadroomPct := headroomPct
+	updatedHeadroomPct := headroomFactor
 
-	de.HeadRoomPct[svcName] = updatedHeadroomPct
+	de.HeadRoomFactor[svcName] = updatedHeadroomPct
 
 	// -------------------------------------------------------------------------
 
