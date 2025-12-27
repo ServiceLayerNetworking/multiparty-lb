@@ -43,7 +43,7 @@ const (
 	// this is the number of requests that are allowed to be sent to the endpoints over the max allowed RPS calculated from the CPU allocated to the service.
 	DEFAULT_MAX_RPS_ALLOWED                            = 105
 	USE_DEFAULT_MAX_RPS_ALLOWED                        = false
-	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 5
+	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 0
 	NUM_OF_LB_REPLICAS                                 = 3
 	USE_CONCURENT_CONNECTIONS_IN_RATE_LIMITER          = true
 

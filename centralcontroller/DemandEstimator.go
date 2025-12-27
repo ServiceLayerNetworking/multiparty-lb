@@ -216,7 +216,7 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 	errFromTarget := currLatencyMs - targetLatencyMs
 
 	INIT_HR_FACTOR := 1.10 // +10% headroom
-	MIN_HR_FACTOR := 0.50  // allow up to 50% decrease
+	MIN_HR_FACTOR := 1.00  // allow up to 0% increase
 	MAX_HR_FACTOR := 1.50  // allow up to 50% increase
 
 	REDUCE_HR_FACTOR := 0.75
