@@ -152,7 +152,7 @@ func getPerAppRpsBasedUtil(
 
 		// svcRPS := float64(sentReqs) / (float64(RPS_WINDOW_MS) / 1000.0)
 		svcRPS := serviceArrivingRPS.GetRPS(svc)
-		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc] // * SVC_UTIL_SCALE_FACTOR
+		svcRPSBasedUtil[svc] = svcRPS * svcCPUConsumptionPerReq[svc] * SVC_UTIL_SCALE_FACTOR
 
 		fmt.Printf("svcRPSBasedUtil |||||| %s: %f rps %d ots-req %f%% util\n",
 			svc, svcRPS, oustandingRequests, svcRPSBasedUtil[svc])

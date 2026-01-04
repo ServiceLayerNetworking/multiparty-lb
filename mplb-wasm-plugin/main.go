@@ -46,6 +46,7 @@ const (
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 0
 	NUM_OF_LB_REPLICAS                                 = 3
 	USE_CONCURENT_CONNECTIONS_IN_RATE_LIMITER          = true
+	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 5000
 
 	// Timeout for removing RIF entries in milliseconds (should correspond to client timeout)
 	RIF_ENTRY_TIMEOUT_MS = 5000 + 500 // adding 500ms buffer to prevent double removals

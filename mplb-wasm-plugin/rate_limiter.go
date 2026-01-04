@@ -57,14 +57,14 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 		// remove timestamps that are older than 1 second
 		truncatingIndex := len(recentlySentReqTimestamps)
 		for i, ts := range recentlySentReqTimestamps {
-			if ts >= currentTimeMs-1000 {
+			if ts >= currentTimeMs-RATE_LIMITER_ENFORCEMENT_INTERVAL_MS {
 				truncatingIndex = i
 				break
 			}
 		}
 		recentlySentReqTimestamps = recentlySentReqTimestamps[truncatingIndex:]
 
-		numReqInPastSec := len(recentlySentReqTimestamps)
+		numReqInPastInterval := len(recentlySentReqTimestamps)
 
 		var toReturn bool
 		var maxRPSAllowed int
@@ -84,16 +84,17 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 		// }
 
 		// if max(numReqInPastSec, numSvcOutstandingReqs) >= maxRPSAllowed {
-		if numReqInPastSec >= maxRPSAllowed {
+		maxReqInPastIntervalAllowed := maxRPSAllowed * (RATE_LIMITER_ENFORCEMENT_INTERVAL_MS / 1000)
+		if numReqInPastInterval >= maxReqInPastIntervalAllowed {
 			proxywasm.LogCriticalf(
-				"Rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
-			// "Rate limiting request to %s: %d requests in the last second with %d outstanding [%d allowed]", dstSvc, numReqInPastSec, numSvcOutstandingReqs, maxRPSAllowed)
+				"Rate limiting request to %s: %d requests in the last %d interval [%d allowed]", dstSvc, numReqInPastInterval, RATE_LIMITER_ENFORCEMENT_INTERVAL_MS, maxReqInPastIntervalAllowed)
+			// "Rate limiting request to %s: %d requests in the last interval with %d outstanding [%d allowed]", dstSvc, numReqInPastSec, numSvcOutstandingReqs, maxRPSAllowed)
 
 			toReturn = true
 		} else {
 			recentlySentReqTimestamps = append(recentlySentReqTimestamps, currentTimeMs)
 			proxywasm.LogCriticalf(
-				"Not rate limiting request to %s: %d requests in the last second [%d allowed]", dstSvc, numReqInPastSec, maxRPSAllowed)
+				"Not rate limiting request to %s: %d requests in the last %d interval [%d allowed]", dstSvc, numReqInPastInterval, RATE_LIMITER_ENFORCEMENT_INTERVAL_MS, maxReqInPastIntervalAllowed)
 			toReturn = false
 		}
 

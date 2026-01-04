@@ -328,13 +328,13 @@ func (s *ServiceArrivingRPS) GetRPS(service string) float64 {
 		return 0.0
 	}
 
-	timeElapsedSinceFirstReqMs := now - ts[0]
-	timeElapsedSinceFirstReq := float64(timeElapsedSinceFirstReqMs) / 1000.0
+	// timeElapsedSinceFirstReqMs := now - ts[0]
+	// timeElapsedSinceFirstReq := float64(timeElapsedSinceFirstReqMs) / 1000.0
 
-	currRPS := float64(numReqsArrived) / timeElapsedSinceFirstReq
+	currRPS := float64(numReqsArrived) / float64(NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS)
 
 	fmt.Printf("[ServiceArrivingRPS] Service: %s | NumReqsArrived in last %.2f seconds: %d | RPS: %.2f\n",
-		service, timeElapsedSinceFirstReq, numReqsArrived,
+		service, float64(NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS), numReqsArrived,
 		currRPS)
 	return currRPS
 }

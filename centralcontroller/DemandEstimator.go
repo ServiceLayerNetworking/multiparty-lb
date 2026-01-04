@@ -213,8 +213,6 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 
 	isPerformanceIdeal := currLatencyMs <= targetLatencyMs
 
-	errFromTarget := currLatencyMs - targetLatencyMs
-
 	INIT_HR_FACTOR := 1.10 // +10% headroom
 	MIN_HR_FACTOR := 1.00  // allow up to 0% increase
 	MAX_HR_FACTOR := 1.50  // allow up to 50% increase
@@ -304,34 +302,27 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 
 	} else {
 
+		INIT_ALLOWED_RPS := 50.0
 		MIN_ALLOWED_RPS := 5.0
-		MAX_ALLOWED_RPS := 1000.0
+		MAX_ALLOWED_RPS := 5000.0
 
 		// calculate perf based allowed rps
 		// if no rps cap, initialize it to the current arriving rps
-		rpsCap, ok := de.PerfBasedAllowedRPS[svcName]
+		currentLimit, ok := de.PerfBasedAllowedRPS[svcName]
 		if !ok {
-			updatedPerfBasedCap = MAX_ALLOWED_RPS
-		}
-
-		if errFromTarget > 0 {
-
-			if rpsCap == MAX_ALLOWED_RPS {
-				currentRPS := reqStatsServer.serviceArrivingRPS.GetRPS(svcName)
-				rpsCap = currentRPS
-			}
-
-			rpsCap *= 1.0 - (5.0 / 100.0)
-
-			// rpsCap = maxFloat(MIN_ALLOWED_RPS, rpsCap*(1.0-clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.50)))
+			updatedPerfBasedCap = INIT_ALLOWED_RPS
 		} else {
+			gradient := targetLatencyMs / currLatencyMs
+			gradient = clampFloat(gradient, 0.5, 1.0)
 
-			rpsCap += 5.0
+			queueSize := math.Sqrt(currentLimit)
 
-			// rpsCap = minFloat(MAX_ALLOWED_RPS, rpsCap*(1.0+clampFloat(absFloat(errFromTarget)/targetLatency95pMs, 0.01, 0.20)))
+			newLimit := currentLimit*gradient + queueSize
+
+			newLimit = clampFloat(newLimit, MIN_ALLOWED_RPS, MAX_ALLOWED_RPS)
+			updatedPerfBasedCap = newLimit
+
 		}
-
-		updatedPerfBasedCap = clampFloat(rpsCap, MIN_ALLOWED_RPS, MAX_ALLOWED_RPS)
 
 	}
 
