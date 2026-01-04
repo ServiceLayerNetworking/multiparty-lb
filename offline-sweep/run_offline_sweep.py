@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 from itertools import product, combinations, chain, combinations_with_replacement
 from math import comb, ceil, floor
 import json
@@ -32,7 +32,7 @@ UB_SVC_LOAD = 1.3
 # app latencies
 # threshhold values and the 
 # plots the threshhold values 
-LOGFILE = "logs/offline_sweep_Nov13.log"
+LOGFILE = "logs/offline_sweep_ٕJan4.log"
 
 def write_config():
     # Ensure log directory exists
@@ -290,7 +290,8 @@ def random_split_with_caps(T, n, U, rng: np.random.Generator):
 
 def get_load(fshare: float, lb: int, ub: int) -> float:
     # return (np.random.exponential(scale=mean_ms_util) / 100.0) * fshare
-    return (random.randint(int(lb*100), int(ub*100)) / 100.0) * fshare
+    # return (random.randint(int(lb*100), int(ub*100)) / 100.0) * fshare
+    return (80.0 / 100.0) * fshare
 
 def generate_cluster_states_fast(k: int, seed: int | None = None):
     """
@@ -674,6 +675,213 @@ def parse_cluster_state_for_gs(
         
     return hosts, list(tenants.values()), workers
 
+def is_load_satisfied(tenants: List[Dict[str, Any]], global_result: Any) -> bool:
+    """
+    check if the load is satisfied in the global result
+    """
+    
+    """
+    "GlobalResult": {
+        "status": 2,
+        "result": {
+            "svc2": {
+                "svc2-node0-0": 0.0,
+                "svc2-node0-1": 99.99999999864023,
+                "svc2-node1-0": 45.28459492205221,
+                "svc2-node3-0": 22.33848423291218,
+                "svc2-node7-0": 19.623148891255752,
+                "svc2-node8-0": 13.727212320016577,
+                "svc2-node11-0": 33.02655963482034
+            }
+        }
+    }
+    """
+    
+    for tenant in tenants:
+        tenant_name = tenant["name"]
+        required_load = tenant["load"]
+        assigned_load = sum(global_result["result"][tenant_name].values())
+        if assigned_load < required_load:
+            return False
+    return True
+
+def get_max_load_for_tenant(tenant_name: str, hosts: List[Dict[str, Any]], workers: List[Dict[str, Any]]) -> float:
+    return 15*NODE_LOAD_CAP
+
+def _solver_feasible(tenants: List[Dict[str, Any]], solver_result: Any) -> bool:
+    """
+    Returns True iff solver_result looks valid and is_load_satisfied(...) holds.
+    Treats any missing/invalid structure as infeasible.
+    """
+    try:
+        # Optional: check a common "status" field if present (Gurobi often uses status==2 for optimal).
+        # We won't require it strictly, but if it's present and not 2, consider infeasible.
+        if isinstance(solver_result, dict) and "status" in solver_result:
+            if solver_result["status"] != 2:
+                return False
+        return is_load_satisfied(tenants, solver_result)
+    except Exception:
+        return False
+
+
+def _binary_search_max_load_for_one_tenant(
+    hosts: List[Dict[str, Any]],
+    tenants: List[Dict[str, Any]],
+    workers: List[Dict[str, Any]],
+    tenant_idx: int,
+    solver_fn,
+    lo: float,
+    hi: float,
+    delta: float = 1.0,
+    max_iters: int = 80,
+) -> Tuple[float, int]:
+    """
+    Binary search maximum feasible load for tenants[tenant_idx]["load"] in [lo, hi].
+    Keeps other tenant loads fixed. Returns (best_feasible, solver_calls).
+
+    IMPORTANT: We REQUIRE that 'lo' is feasible; if not, we raise.
+    """
+    calls = 0
+    t = tenants[tenant_idx]
+    original = t["load"]
+
+    # We will treat lo as the current best feasible candidate.
+    best = lo
+
+    try:
+        # Force starting point to lo and require feasibility
+        t["load"] = float(lo)
+        res = solver_fn(hosts, tenants, workers)
+        calls += 1
+        if not _solver_feasible(tenants, res):
+            raise RuntimeError(
+                f"Binary search precondition failed: lo={lo} infeasible for tenant={t['name']}"
+            )
+
+        # Standard upper-bound binary search
+        for _ in range(max_iters):
+            if (hi - best) <= delta:
+                break
+            mid = (best + hi) / 2.0
+            t["load"] = float(mid)
+            res = solver_fn(hosts, tenants, workers)
+            calls += 1
+            if _solver_feasible(tenants, res):
+                best = mid
+            else:
+                hi = mid
+
+        return float(best), calls
+    finally:
+        # Restore original load
+        t["load"] = original
+
+
+def run_offline_exp_spike(
+    state: Dict[str, any],
+    hosts=None,
+    tenants=None,
+    workers=None,
+    delta: float = 1.0,
+):
+    """
+    Spike experiment:
+      1) For each service: run LOCAL binary search from current load -> max to get max_local.
+      2) For each service: set load=max_local and REQUIRE global feasibility at that seed.
+         If infeasible, RAISE (per your request).
+      3) If feasible, run GLOBAL binary search from max_local -> max to get max_global.
+    Logs SpikeResultsLocal and SpikeResultsGlobal.
+    """
+    if hosts is None or tenants is None or workers is None:
+        hosts, tenants, workers = parse_cluster_state_for_gs(state)
+
+    # Ensure loads are floats (binary search uses floats)
+    for t in tenants:
+        t["load"] = float(t["load"])
+
+    spike_local = {}
+    spike_global = {}
+
+    # LOCAL first (compute base max per-service)
+    for i, t in enumerate(tenants):
+        tenant_name = t["name"]
+        base_load = float(t["load"])
+        max_load = float(get_max_load_for_tenant(tenant_name, hosts, workers))
+
+        best_local, calls_local = _binary_search_max_load_for_one_tenant(
+            hosts=hosts,
+            tenants=tenants,
+            workers=workers,
+            tenant_idx=i,
+            solver_fn=gs_l.run_from_json,
+            lo=base_load,
+            hi=max_load,
+            delta=delta,
+        )
+
+        spike_local[tenant_name] = {
+            "base": base_load,
+            "max": best_local,
+            "ub": max_load,
+            "delta": delta,
+            "solver_calls": calls_local,
+        }
+
+    # GLOBAL seeded by LOCAL (STRICT: raise if seed infeasible)
+    for i, t in enumerate(tenants):
+        tenant_name = t["name"]
+        base_load = float(t["load"])
+        seed = float(spike_local[tenant_name]["max"])
+        max_load = float(get_max_load_for_tenant(tenant_name, hosts, workers))
+
+        # Strict seed feasibility check
+        original = t["load"]
+        t["load"] = seed
+        global_seed_res = gs_g.run_from_json(hosts, tenants, workers)
+        t["load"] = original
+
+        if not _solver_feasible(tenants, global_seed_res):
+            raise RuntimeError(
+                f"Global infeasible at local seed for tenant={tenant_name}: seed={seed}, base={base_load}"
+            )
+
+        best_global, calls_global = _binary_search_max_load_for_one_tenant(
+            hosts=hosts,
+            tenants=tenants,
+            workers=workers,
+            tenant_idx=i,
+            solver_fn=gs_g.run_from_json,
+            lo=seed,
+            hi=max_load,
+            delta=delta,
+        )
+
+        spike_global[tenant_name] = {
+            "base": base_load,
+            "seed_local": seed,
+            "max": best_global,
+            "ub": max_load,
+            "delta": delta,
+            "solver_calls": calls_global,
+        }
+
+    # Preserve your original state serialization behavior
+    if "NodesToSvc" in state:
+        state["NodesToSvc"] = np.array(state["NodesToSvc"]).tolist()
+
+    output = {
+        "State": state,
+        "Hosts": hosts,
+        "Tenants": tenants,
+        "Workers": workers,
+        "SpikeResultsLocal": spike_local,
+        "SpikeResultsGlobal": spike_global,
+    }
+
+    with open(LOGFILE, "a") as f:
+        f.write(json.dumps(output) + "\n")
+
+
 def run_offline_exp(state: Dict[str, any], hosts=None, tenants=None, workers=None):
     
     if hosts is None or tenants is None or workers is None:
@@ -722,7 +930,7 @@ def run_offline_sweep():
     
     for topo_sample_strategy in [3]:
     
-        for ub in np.arange(1.2, 2.0+0.01, 0.10):
+        for ub in [1.60]: #]np.arange(1.2, 2.0+0.01, 0.10):
             
             lb = 0.00
                         
@@ -740,13 +948,13 @@ def run_offline_sweep():
             if use_fast:
                 # states = generate_cluster_states_fast_wo_total_cluster_load(l=l, k=k) #, seed=seed)
                 states = generate_cluster_states_fast_wo_total_cluster_load(
-                    k=k, lb=lb, ub=ub, topo_sample_strategy=topo_sample_strategy) #, seed=seed)
+                    k=k, lb=lb, ub=ub, topo_sample_strategy=topo_sample_strategy, seed=seed)
             else:
                 # Exhaustive path: original behavior (restrict to elected indices)
                 states = generate_cluster_states()
             
             # sample 100 states from all the states
-            states = random.sample(states, 1000)
+            states = random.sample(states, 1000, seed=seed)
             
             # input("Press Enter to start processing states...")
             
@@ -758,6 +966,47 @@ def run_offline_sweep():
                     run_offline_exp(state)
                 print(f"Done with state {i+1}/{len(states)}")
                 # input()
+
+def run_offline_sweep_spike():
+    
+    global LOGFILE
+    
+    for topo_sample_strategy in [3]:
+    
+        for ub in [1.60]:  # np.arange(1.2, 2.0+0.01, 0.10):
+            
+            lb = 0.00
+                        
+            LOGFILE = f"logs/offline_sweep_Jan4_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
+            
+            # clear log file
+            with open(LOGFILE, "w") as f:
+                f.write("")
+        
+            # Local knobs for faster experiments; modify as needed.
+            use_fast = True   # Set to False to run exhaustive (slow) path
+            k = 500         # Number of random states to generate in fast mode
+            seed = 42       # RNG seed for reproducibility in fast mode
+
+            if use_fast:
+                states = generate_cluster_states_fast_wo_total_cluster_load(
+                    k=k, lb=lb, ub=ub, topo_sample_strategy=topo_sample_strategy, seed=seed)
+            else:
+                states = generate_cluster_states()
+            
+            # sample 1000 states from all the states
+            random.seed(42)
+            states = random.sample(states, 1)
+            
+            for i, state in enumerate(states):
+                if type(state) is tuple:
+                    hosts, tenants, workers = state
+                    run_offline_exp_spike(state={}, hosts=hosts, tenants=tenants, workers=workers, delta=1.0)
+                else:
+                    run_offline_exp_spike(state, delta=1.0)
+
+                print(f"Done with state {i+1}/{len(states)}")
+
 
 def replay_offline_sweep(scale_factor: float = 0.8):
     """
@@ -788,7 +1037,7 @@ if __name__ == "__main__":
     # write_config()
     # run_offline_sweep()
     
-    replay_offline_sweep()
+    run_offline_sweep_spike()
     
     # print(arr := sample_topology_3(15, 15, np.random.default_rng(None), l=10.0))
     
