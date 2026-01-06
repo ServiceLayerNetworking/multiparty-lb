@@ -20,7 +20,7 @@ CORES_PER_NODE = 8
 SCALE_FACTOR = 0.8
 REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
-LOG_FOLDER = "logs/online_sweep_Dec27"
+LOG_FOLDER = "logs/online_sweep_Dec29"
 
 # GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -324,7 +324,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1, 2, 3]:
+        for iteration in [110, 111, 112]:
         
             for distr in ["exponential"]:
                 
@@ -526,18 +526,14 @@ def main():
     
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
-            "leastrequest_plus_rlpb",
-            "nodal_leastrequest_rlpb",
-            # "minimize_diff",
             "nodal_leastrequest",
+            "minimize_diff",
         ])
         
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
-            # "leastrequest_plus_rlpb",
-            # "nodal_leastrequest_rlpb",
-            # "minimize_diff",
-            "minimize_diff",
+            "leastrequest_plus_rlpb",
+            "nodal_leastrequest_rlpb",
         ])
     
     # os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")

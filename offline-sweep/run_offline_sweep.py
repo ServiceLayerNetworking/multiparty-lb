@@ -6,6 +6,7 @@ import sys
 import os
 import numpy as np
 import random
+import copy
 
 # Get the absolute path of the target directory
 parent_dir = os.path.abspath("../gurobi_server")
@@ -554,8 +555,7 @@ def generate_cluster_states_fast_wo_total_cluster_load(
             if total_pods_on_node > 0:
                 for svc_id in range(num_services):
                     num_pods_of_svc = topology[node_id, svc_id]
-                    if num_pods_of_svc > 0:
-                        fshares[svc_id] += (num_pods_of_svc / total_pods_on_node) * node_cap
+                    fshares[svc_id] += (num_pods_of_svc / total_pods_on_node) * node_cap
 
         svc_loads = [get_load(fs, lb, ub) for fs in fshares]
 
@@ -701,7 +701,8 @@ def is_load_satisfied(tenants: List[Dict[str, Any]], global_result: Any) -> bool
         tenant_name = tenant["name"]
         required_load = tenant["load"]
         assigned_load = sum(global_result["result"][tenant_name].values())
-        if assigned_load < required_load:
+        if abs(assigned_load - required_load) > 1.00:
+            print(f"Load unsatisfied for {tenant_name}: required {required_load}, assigned: {assigned_load}")
             return False
     return True
 
@@ -718,11 +719,11 @@ def _solver_feasible(tenants: List[Dict[str, Any]], solver_result: Any) -> bool:
         # We won't require it strictly, but if it's present and not 2, consider infeasible.
         if isinstance(solver_result, dict) and "status" in solver_result:
             if solver_result["status"] != 2:
+                print("\n\nSolver status not optimal:", solver_result["status"], "\n\n\n")
                 return False
         return is_load_satisfied(tenants, solver_result)
     except Exception:
         return False
-
 
 def _binary_search_max_load_for_one_tenant(
     hosts: List[Dict[str, Any]],
@@ -737,44 +738,43 @@ def _binary_search_max_load_for_one_tenant(
 ) -> Tuple[float, int]:
     """
     Binary search maximum feasible load for tenants[tenant_idx]["load"] in [lo, hi].
-    Keeps other tenant loads fixed. Returns (best_feasible, solver_calls).
 
-    IMPORTANT: We REQUIRE that 'lo' is feasible; if not, we raise.
+    IMPORTANT:
+    - This function MUST NOT mutate the caller's `tenants`.
+    - We therefore work on a deep copy of tenants.
     """
     calls = 0
-    t = tenants[tenant_idx]
-    original = t["load"]
 
-    # We will treat lo as the current best feasible candidate.
+    # Deep copy tenants to avoid mutating caller state
+    tenants_local = copy.deepcopy(tenants)
+    t = tenants_local[tenant_idx]
+
+    # Require feasibility at lo
+    t["load"] = float(lo)
+    res = solver_fn(hosts, tenants_local, workers)
+    calls += 1
+    if not _solver_feasible(tenants_local, res):
+        raise RuntimeError(
+            f"Binary search precondition failed: lo={lo} infeasible for tenant={t['name']}"
+        )
+
     best = lo
 
-    try:
-        # Force starting point to lo and require feasibility
-        t["load"] = float(lo)
-        res = solver_fn(hosts, tenants, workers)
+    for _ in range(max_iters):
+        if (hi - best) <= delta:
+            break
+
+        mid = (best + hi) / 2.0
+        t["load"] = float(mid)
+        res = solver_fn(hosts, tenants_local, workers)
         calls += 1
-        if not _solver_feasible(tenants, res):
-            raise RuntimeError(
-                f"Binary search precondition failed: lo={lo} infeasible for tenant={t['name']}"
-            )
 
-        # Standard upper-bound binary search
-        for _ in range(max_iters):
-            if (hi - best) <= delta:
-                break
-            mid = (best + hi) / 2.0
-            t["load"] = float(mid)
-            res = solver_fn(hosts, tenants, workers)
-            calls += 1
-            if _solver_feasible(tenants, res):
-                best = mid
-            else:
-                hi = mid
+        if _solver_feasible(tenants_local, res):
+            best = mid
+        else:
+            hi = mid
 
-        return float(best), calls
-    finally:
-        # Restore original load
-        t["load"] = original
+    return float(best), calls
 
 
 def run_offline_exp_spike(
@@ -827,6 +827,9 @@ def run_offline_exp_spike(
             "solver_calls": calls_local,
         }
 
+    print(f"\nSpike Local Results: {json.dumps(spike_local, indent=2)}\n")
+    print("\n Local spike search complete. Proceeding to Global spike search...\n")
+
     # GLOBAL seeded by LOCAL (STRICT: raise if seed infeasible)
     for i, t in enumerate(tenants):
         tenant_name = t["name"]
@@ -835,12 +838,11 @@ def run_offline_exp_spike(
         max_load = float(get_max_load_for_tenant(tenant_name, hosts, workers))
 
         # Strict seed feasibility check
-        original = t["load"]
-        t["load"] = seed
-        global_seed_res = gs_g.run_from_json(hosts, tenants, workers)
-        t["load"] = original
+        tenants_seed = copy.deepcopy(tenants)
+        tenants_seed[i]["load"] = seed
+        global_seed_res = gs_g.run_from_json(hosts, tenants_seed, workers)
 
-        if not _solver_feasible(tenants, global_seed_res):
+        if not _solver_feasible(tenants_seed, global_seed_res):
             raise RuntimeError(
                 f"Global infeasible at local seed for tenant={tenant_name}: seed={seed}, base={base_load}"
             )
@@ -971,7 +973,7 @@ def run_offline_sweep_spike():
     
     global LOGFILE
     
-    for topo_sample_strategy in [3]:
+    for topo_sample_strategy in [2]:
     
         for ub in [1.60]:  # np.arange(1.2, 2.0+0.01, 0.10):
             
@@ -985,8 +987,8 @@ def run_offline_sweep_spike():
         
             # Local knobs for faster experiments; modify as needed.
             use_fast = True   # Set to False to run exhaustive (slow) path
-            k = 500         # Number of random states to generate in fast mode
-            seed = 42       # RNG seed for reproducibility in fast mode
+            k = 10000         # Number of random states to generate in fast mode
+            seed = None       # RNG seed for reproducibility in fast mode
 
             if use_fast:
                 states = generate_cluster_states_fast_wo_total_cluster_load(
@@ -995,8 +997,8 @@ def run_offline_sweep_spike():
                 states = generate_cluster_states()
             
             # sample 1000 states from all the states
-            random.seed(42)
-            states = random.sample(states, 1)
+            # random.seed(42)
+            states = random.sample(states, 1000)
             
             for i, state in enumerate(states):
                 if type(state) is tuple:
