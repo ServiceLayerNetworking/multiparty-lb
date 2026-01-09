@@ -31,8 +31,8 @@ const (
 
 	ECHO_SERVER_PORT = "5656"
 
-	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5
-	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 10 // Number of seconds for rolling average of RPS
+	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5 // deprecated
+	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 2 // Number of seconds for rolling average of RPS
 
 	GUROBI_TIMEOUT_MS            = 5000
 	USE_HARDCODE_GUROBI_RESPONSE = false
@@ -50,7 +50,7 @@ const (
 	INIT_CPU_CONSUMPTION_PER_REQ = 8.0
 	SVC_CPU_UTIL_HEADROOM        = 0    // deprecated
 	RPS_WINDOW_MS                = 1000 // 500ms window to look for how many requests are sent and base our CPU off of that
-	SVC_UTIL_SCALE_FACTOR        = 1.1  // by this factor, scale the cpuutil of each service
+	SVC_UTIL_SCALE_FACTOR        = 1.3  // by this factor, scale the cpuutil of each service
 	CPU_PER_REQ_SCALE_FACTOR     = 1    // by this factor, scale the cpuconsumptionperreq
 
 	USE_CONCURENT_CONNECTIONS_FOR_RATE_LIMITER = true

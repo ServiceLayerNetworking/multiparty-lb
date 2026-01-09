@@ -119,10 +119,10 @@ def get_svc_to_nodes(nodes_to_svc: List[List[int]]) -> Dict[str, List[str]]:
             
     return dict(svc_to_nodes)
 
-def run_cc(q, variation, enforcement):
+def run_cc(q, variation, enforcement, duration):
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={(DURATION + ADDITIONAL_TIME_FOR_CC_TO_RUN + DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC) * 1000}"
+    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={(duration + ADDITIONAL_TIME_FOR_CC_TO_RUN + DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC) * 1000}"
     print(f"Command: {cmd}")
     
     start_time = time.time()
@@ -188,7 +188,51 @@ def parse_svc_load(svc_load: float) -> Tuple[int, float]:
     
     return int(consumption), float(req_interval_ms)
 
-def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
+def get_request_interval_updates(spike_result: Dict) -> Tuple[int, List[Dict]]:
+    
+    """
+    Returns the total duration and a list of request interval updates based on the intended spike.
+    
+    After each 15 seconds, the svc_load is increased by 10 until we reach > 20 + max of the svc_load. The request interval is
+    recalculated accordingly.
+    """
+    """
+    like the following:
+    [{
+                        "atMs": 30000.0,
+                    "reqIntervalMs": req_interval_ms
+                    
+                    }, ...]
+    """
+    
+    max_load = spike_result["max"]
+    base_load = spike_result["base"]
+    
+    request_interval_updates = []
+    
+    curr_load = base_load
+    
+    _cpu_consumption, _ = parse_svc_load(curr_load * CORES_PER_NODE)
+    
+    while curr_load <= max_load + 20:
+        
+        cpu_consumption, req_interval_ms = parse_svc_load(curr_load * CORES_PER_NODE)
+        assert(_cpu_consumption == cpu_consumption)
+        
+        time_at_ms = (len(request_interval_updates) + 1) * 15000.0
+        
+        request_interval_updates.append({
+            "atMs": time_at_ms,
+            "reqIntervalMs": req_interval_ms
+        })
+        
+        curr_load += 10
+    
+    duration = 15 + len(request_interval_updates) * 15
+    
+    return duration, request_interval_updates
+
+def run_hit(q, variation, svc_loads, arr_distr, proc_distr, duration, request_interval_updates, spiking_svc):
 
     curr_dir = os.path.dirname(os.path.abspath(__file__))
     
@@ -210,6 +254,9 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
         else:
             url = f"http://{gateway_ip}/?cpu_coreMs=EXP<{cpu_consumption}>"
         
+        if svc_name == spiking_svc:
+            print(f"+++++++++ Spiking service: {svc_name} ++++++++++")
+        
         configs.append({
             "endpoints": [
                 {
@@ -219,16 +266,11 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
                     "headers": "{\"Host\":\"" + svc_name + ".mplb.com\"}"
                 }
             ],
-            "reqIntervalMs": req_interval_ms * 2,
-            "durationMs": DURATION * 1000,
+            "reqIntervalMs": req_interval_ms,
+            "durationMs": duration * 1000,
             "logFileName": f"{curr_dir}/{LOG_FOLDER}/{variation}_{svc_name}_hit.log",
             "stallTimeMs": 0,
-            "requestIntervalUpdates": [
-                {
-                    "atMs": 30000.0,
-                    "reqIntervalMs": req_interval_ms
-                }
-            ]
+            "requestIntervalUpdates": request_interval_updates if svc_name == spiking_svc else []
         })
         
     with open(f"{curr_dir}/{LOG_FOLDER}/{variation}_hit.json", "w") as f:
@@ -244,21 +286,23 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
     q.put((f"hit", start_time, end_time, 
            f"hit for apps{svc_loads} finished with exit status: {exit_status}"))
 
-def run_exp(variation, svc_loads, enforcement, arr_distr, proc_distr, append_to_times=None):
+def run_exp(variation, svc_loads, enforcement, arr_distr, proc_distr, spike_results, spiking_svc, append_to_times=None):
     
     print(f"|||||||||||||||||||||||||||||||||||||||||||||||||||||")
     print(f"Running experiment with {variation} at {svc_loads} RPS")
     
+    duration, request_interval_updates = get_request_interval_updates(spike_results[spiking_svc])
+    
     queues = []
         
     q = Queue()
-    Thread(target=run_cc, args=(q, variation, enforcement)).start()
+    Thread(target=run_cc, args=(q, variation, enforcement, duration)).start()
     queues.append(q)
     time.sleep(DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC)    
     
     # run the app workloads through a single hit
     q = Queue()
-    Thread(target=run_hit, args=(q, variation, svc_loads, arr_distr, proc_distr)).start()
+    Thread(target=run_hit, args=(q, variation, svc_loads, arr_distr, proc_distr, duration, request_interval_updates, spiking_svc)).start()
     queues.append(q)
     
     times = []
@@ -292,6 +336,7 @@ def run_exp_for_cluster_state(
     svc_loads: List[int],
     svc_to_nodes: Dict[str, List[str]],
     pod_names: List[str],
+    spike_results: Dict = None,
     lbs: List[str] = [
         "leastrequest",
         "leastrequest_plus",
@@ -330,27 +375,29 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [140, 141, 142]:
+        for spiking_svc in ["svc0"]:
         
-            for distr in ["exponential"]:
-                
-                proc_distr = distr
-                
-                for load_scale_factor in [SCALE_FACTOR]:
+            for iteration in [1]:
+            
+                for distr in ["exponential"]:
                     
-                    scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
-                                                    
-                    print(f"Starting iteration {iteration} for run_id {state_id}...")
+                    proc_distr = distr
                     
-                    print(f"Running experiment [iteration {iteration}] w/ state {state_id} && lb {LB_NAME[lb]} && distr {(distr, proc_distr)} i.e. loads={scaled_svc_loads} & podnames={pod_names}")
-                    
-                    intended_topology = svc_to_nodes
-                    print(intended_topology)
-                    
-                    to_append = get_topology_str(intended_topology)
-                    print(to_append)
-                    
-                    run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{state_id}_{iteration}_{load_scale_factor}", scaled_svc_loads, "LB", distr, proc_distr, append_to_times=to_append)
+                    for load_scale_factor in [SCALE_FACTOR]:
+                        
+                        scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
+                                                        
+                        print(f"Starting iteration {iteration} for run_id {state_id}...")
+                        
+                        print(f"Running experiment [iteration {iteration}] w/ state {state_id} && lb {LB_NAME[lb]} && distr {(distr, proc_distr)} i.e. loads={scaled_svc_loads} & podnames={pod_names}")
+                        
+                        intended_topology = svc_to_nodes
+                        print(intended_topology)
+                        
+                        to_append = get_topology_str(intended_topology)
+                        print(to_append)
+                        
+                        run_exp(f"{distr}_{proc_distr}_mplb_{LB_NAME[lb]}_{state_id}_{iteration}_{load_scale_factor}_spike_{spiking_svc}", scaled_svc_loads, "LB", distr, proc_distr, spike_results, spiking_svc, append_to_times=to_append)
 
         message = f"Completed #{state_id} [{LB_NAME[lb]}]"
         os.system(f'curl -d "{message}" ntfy.sh/mplb')
@@ -367,7 +414,7 @@ def run_exp_for_cluster_state_id(state_id: int,
                                                    "nodal_leastrequest",
                                                    "only_nodal_leastrequest",
                                                    "minimize_diff"]):
-    data = read_json_line("../offline-sweep/logs/offline_sweep_Nov26_lb_0.00_ub_1.60_topo_sampling_3.log", state_id)
+    data = read_json_line("../offline-sweep/logs/offline_sweep_spike_Jan4_lb_0.00_ub_1.60_topo_sampling_2.log", state_id)
     
     svc_loads = data["State"]["SvcLoads"]
     svc_loads = [int(svc_load*CORES_PER_NODE) for svc_load in svc_loads]
@@ -389,6 +436,7 @@ def run_exp_for_cluster_state_id(state_id: int,
         svc_loads,
         svc_to_nodes,
         pod_names,
+        spike_results=data["SpikeResultsGlobal"],
         lbs=lbs)
     
 def test():
@@ -457,66 +505,7 @@ def read_json_line(filename, line_number):
                 except json.JSONDecodeError as e:
                     raise ValueError(f"Line {line_number} is not valid JSON: {e}")
         raise IndexError(f"Line {line_number} not found in file.")
-
-def _main():
-    
-    # print(parse_svc_load(300*0.7))
-    # print(parse_svc_load(200*0.7))
-    # return
-    
-    prep_for_exps()
-    
-    state_id = 1
-    svc_loads = [200, 200, 0]
-    svc_to_nodes = {
-        "svc0": ["node0", "node0", "node1"],
-        "svc1": ["node1"],
-        "svc2": ["node2"],
-    }
-    pod_names = [
-        "svc0-node0-0",
-        "svc0-node1-0",
-        "svc1-node1-0",
-        "svc2-node2-0",
-    ]
-    
-    run_exp_for_cluster_state(
-        state_id,
-        svc_loads,
-        svc_to_nodes,
-        pod_names,
-        lbs=[
-            "leastrequest_plus",
-            "only_nodal_leastrequest",
-            "nodal_leastrequest",
-        ])
-
-    state_id = 2
-    svc_loads = [300, 200, 0]
-    
-    run_exp_for_cluster_state(
-        state_id,
-        svc_loads,
-        svc_to_nodes,
-        pod_names,
-        lbs=[
-            "leastrequest_plus",
-            "leastrequest_plus_rl",
-            "only_nodal_leastrequest",
-            "nodal_leastrequest",
-        ])
-
-    # run_exp_for_cluster_state(
-    #     state_id,
-    #     svc_loads,
-    #     svc_to_nodes,
-    #     pod_names,
-    #     lbs=[
-    #         "nodal_leastrequest",
-    #         "leastrequest_plus_rl",
-    #         "minimize_diff"
-    #     ])
-    
+ 
 def main():
     
     prep_for_exps()

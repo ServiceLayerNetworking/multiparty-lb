@@ -18,9 +18,9 @@ import locally_optimal_load_distribution as gs_l
 import gurobi_server as gs_g
 import generate_random_topology as grt
 
-NUM_NODES = 15
-NUM_SERVICES = 15
-NUM_PODS_PER_NODE = 10
+NUM_NODES = 3
+NUM_SERVICES = 3
+NUM_PODS_PER_NODE = 5
 NODE_LOAD_CAP = 100
 LOAD_ATOMIC_UNIT = 10 # * NUM_NODES
 cluster_cap = NODE_LOAD_CAP * NUM_NODES
@@ -979,7 +979,7 @@ def run_offline_sweep_spike():
             
             lb = 0.00
                         
-            LOGFILE = f"logs/offline_sweep_Jan4_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
+            LOGFILE = f"logs/offline_sweep_spike_Jan7_3node_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
             
             # clear log file
             with open(LOGFILE, "w") as f:
@@ -987,7 +987,7 @@ def run_offline_sweep_spike():
         
             # Local knobs for faster experiments; modify as needed.
             use_fast = True   # Set to False to run exhaustive (slow) path
-            k = 10000         # Number of random states to generate in fast mode
+            k = 500         # Number of random states to generate in fast mode
             seed = None       # RNG seed for reproducibility in fast mode
 
             if use_fast:
@@ -998,7 +998,7 @@ def run_offline_sweep_spike():
             
             # sample 1000 states from all the states
             # random.seed(42)
-            states = random.sample(states, 1000)
+            states = random.sample(states, 2)
             
             for i, state in enumerate(states):
                 if type(state) is tuple:

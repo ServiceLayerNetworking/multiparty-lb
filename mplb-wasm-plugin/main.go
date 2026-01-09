@@ -46,7 +46,7 @@ const (
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 0
 	NUM_OF_LB_REPLICAS                                 = 3
 	USE_CONCURENT_CONNECTIONS_IN_RATE_LIMITER          = true
-	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 5000
+	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 1000
 
 	// Timeout for removing RIF entries in milliseconds (should correspond to client timeout)
 	RIF_ENTRY_TIMEOUT_MS = 5000 + 500 // adding 500ms buffer to prevent double removals
@@ -58,7 +58,7 @@ const (
 
 	// load balancing strategy
 	// [leastrequest_plus_rlpb|leastrequest_plus_rl|leastrequest_rl|nodal_leastrequest_rlpb|only_nodal_leastrequest|leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOAD_BALANCING_STRATEGY = "leastrequest"
+	LOAD_BALANCING_STRATEGY = "nodal_leastrequest_rlpb"
 )
 
 var (
