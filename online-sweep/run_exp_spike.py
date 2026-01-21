@@ -20,7 +20,7 @@ CORES_PER_NODE = 8
 SCALE_FACTOR = 0.8
 REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
-LOG_FOLDER = "logs/online_sweep_Jan7"
+LOG_FOLDER = "logs/online_sweep_Jan18"
 
 # GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -219,7 +219,7 @@ def get_request_interval_updates(spike_result: Dict) -> Tuple[int, List[Dict]]:
         cpu_consumption, req_interval_ms = parse_svc_load(curr_load * CORES_PER_NODE)
         assert(_cpu_consumption == cpu_consumption)
         
-        time_at_ms = (len(request_interval_updates) + 1) * 15000.0
+        time_at_ms = (len(request_interval_updates) + 1) * 15000
         
         request_interval_updates.append({
             "atMs": time_at_ms,
@@ -261,8 +261,8 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr, duration, request_in
             "endpoints": [
                 {
                     "url": url,
-                    "node": str(1),
-                    "app": str(svc_name),
+                    "node": 1,
+                    "app": int(svc_name[3:]),
                     "headers": "{\"Host\":\"" + svc_name + ".mplb.com\"}"
                 }
             ],
@@ -353,33 +353,33 @@ def run_exp_for_cluster_state(
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
-        if "-b" not in sys.argv:
+        for distr in ["none", "exponential"]:
 
-            # build new wasm
-            print(f"Building wasm plugin for {lb}...")
-            modify_wasm_plugin(lb)
+            if "-b" not in sys.argv:
+
+                # build new wasm
+                print(f"Building wasm plugin for {lb}...")
+                modify_wasm_plugin(lb)
+                
+                print(f"Setting up the topology...")
+                done = setup_clutser_with_new_pods(pod_names)
+                if not done:
+                    print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
+                    continue
+                
+            else:
+                print("Skipping building wasm plugin and setting up topology as per command line argument '-b'...")
             
-            print(f"Setting up the topology...")
-            done = setup_clutser_with_new_pods(pod_names)
-            if not done:
-                print("!!!!!!!\n!!!!!!! Failed to set up the cluster with new pods.\n\n\n\n")
+            if "-t" in sys.argv:
+                print("Only setting up topology as per command line argument '-t'...")
                 continue
             
-        else:
-            print("Skipping building wasm plugin and setting up topology as per command line argument '-b'...")
+            print("Seting the correct objective in the optimizer...")
+            set_correct_objective(lb)
         
-        if "-t" in sys.argv:
-            print("Only setting up topology as per command line argument '-t'...")
-            continue
-        
-        print("Seting the correct objective in the optimizer...")
-        set_correct_objective(lb)
-    
-        for spiking_svc in ["svc0"]:
-        
-            for iteration in [1]:
+            for spiking_svc in ["svc0"]:
             
-                for distr in ["exponential"]:
+                for iteration in [3]:
                     
                     proc_distr = distr
                     
@@ -515,9 +515,8 @@ def main():
     random_states = list(range(start+25, start+50))
     all_states = random_states
     # all_states = [327, 334, 338]
-    all_states = [339]
+    all_states = [0]
     print(all_states)
-    
     
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
@@ -529,8 +528,8 @@ def main():
     
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
-            "leastrequest_plus_rlpb",
             "nodal_leastrequest_rlpb",
+            "leastrequest_plus_rlpb",
         ])
     
     # for random_state in all_states:

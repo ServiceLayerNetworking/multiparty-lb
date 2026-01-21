@@ -31,7 +31,7 @@ const (
 
 	ECHO_SERVER_PORT = "5656"
 
-	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5 // deprecated
+	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5  // deprecated
 	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 2 // Number of seconds for rolling average of RPS
 
 	GUROBI_TIMEOUT_MS            = 5000
@@ -484,7 +484,7 @@ func getCPUUtilAndReqStatsFromCluster(nodes []Node) ([]string, []ReqStat, []ReqS
 		nodeStats := <-cpuUtilizationCh
 		nodeCPUUtilizations[nodeStats.Node] = nodeStats.CPUUtilizations
 		reqStats = append(reqStats, parseReqStats(nodeStats.ReqStats)...)
-		// reqSentStats = append(reqSentStats, parseReqStats(nodeStats.ReqSentStats)...)
+		reqSentStats = append(reqSentStats, parseReqStats(nodeStats.ReqSentStats)...)
 		slog.Info(fmt.Sprintf("CPU Utilizations [Node %d]: %s",
 			nodeStats.Node, nodeStats.CPUUtilizations))
 		fmt.Printf("Received CPU utils from node %d after %f ms\n", nodeStats.Node, float64(time.Since(startTime).Microseconds())/1000.0)
@@ -519,7 +519,7 @@ func ccWithLBEnforcement(
 		fmt.Printf("---------------- Step 1: Get CPU utils from all nodes\n")
 		currentTime := time.Now()
 		// Get CPU Utilizations and Request Stats from host agents
-		nodeCPUUtilizations, reqStats, _ := getCPUUtilAndReqStatsFromCluster(nodes)
+		nodeCPUUtilizations, reqStats, reqSentStats := getCPUUtilAndReqStatsFromCluster(nodes)
 		fmt.Printf("---------------- Done Step 1: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
 
 		// // log to info the node CPU utils, reqStats, reqSentStats
@@ -550,6 +550,10 @@ func ccWithLBEnforcement(
 			getLogFileFormatLBEnforcement(nodeCPUUtilizations, lbWeights, svcHeadroomPerReq))
 		printCPUStatsToConsole(nodeCPUUtilizations, reqStats, podsToLog)
 		fmt.Printf("---------------- Done Step 4: Time taken: %.2f ms\n", float64(time.Since(currentTime).Microseconds())/1000.0)
+
+		// log the sent request stats
+		cpuLogFile.Writeln(
+			fmt.Sprintf("ReqSentStats: %s", getReqStatsJSON(reqSentStats)))
 
 		// log the request stats
 		cpuLogFile.Writeln(

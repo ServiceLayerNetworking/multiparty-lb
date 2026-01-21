@@ -44,7 +44,7 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 	}
 
 	if (LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" || LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb") &&
-		USE_CONCURENT_CONNECTIONS_IN_RATE_LIMITER {
+		USE_CONCURRENT_CONNECTIONS_IN_RATE_LIMITER {
 		// if we are using performance based rate liming and concurrent connections in rate limit
 
 		toDrop, err := shouldDropRequestConcurrencyBased(dstSvc)

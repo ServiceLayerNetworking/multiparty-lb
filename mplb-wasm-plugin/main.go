@@ -44,8 +44,8 @@ const (
 	DEFAULT_MAX_RPS_ALLOWED                            = 105
 	USE_DEFAULT_MAX_RPS_ALLOWED                        = false
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 0
-	NUM_OF_LB_REPLICAS                                 = 3
-	USE_CONCURENT_CONNECTIONS_IN_RATE_LIMITER          = true
+	NUM_OF_LB_REPLICAS                                 = 1
+	USE_CONCURRENT_CONNECTIONS_IN_RATE_LIMITER         = false
 	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 1000
 
 	// Timeout for removing RIF entries in milliseconds (should correspond to client timeout)

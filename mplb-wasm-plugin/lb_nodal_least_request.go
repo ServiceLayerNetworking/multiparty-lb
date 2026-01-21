@@ -195,6 +195,11 @@ func updateOutstandingReqs(dst string, selectedEndpoint int, op string) {
 		} else {
 			(*outstandingReqs)[selectedEndpoint]--
 		}
+	} else if op == "DR" {
+		// information that a request is dropped, do nothing
+		proxywasm.LogCriticalf(
+			"CC informed us that request has been dropped at %s %d %s",
+			dst, selectedEndpoint, op)
 	} else {
 		proxywasm.LogCriticalf("Invalid operation %s", op)
 	}
