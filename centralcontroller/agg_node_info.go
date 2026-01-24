@@ -19,7 +19,7 @@ import (
 const AGGREGATE_ECHO_MESSAGES = true
 const AGGREGATE_ECHO_MESSAGES_INTERVAL_US = 5000 // microseconds
 
-const LATENCY_STATS_WINDOW_MS = 500
+const LATENCY_STATS_WINDOW_MS = 250
 
 // For latency tracking
 type LatencyRecord struct {

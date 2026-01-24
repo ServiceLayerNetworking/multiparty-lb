@@ -11,6 +11,8 @@ import (
 	"github.com/tetratelabs/proxy-wasm-go-sdk/proxywasm/types"
 )
 
+const CPU_DEMAND_VS_ALLOCATED_TOLERANCE = 5.0
+
 // called in OnHttpRequestHeaders
 func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 
@@ -227,8 +229,25 @@ func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 		return math.MaxInt
 	}
 
+	buf, _, err = proxywasm.GetSharedData(svcCPUDemandKey(dstSvc))
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get CPU Demand for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+	cpuDemand, err := strconv.ParseFloat(string(buf), 64)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't parse CPU Demand for %s: %v", dstSvc, err)
+		return math.MaxInt
+	}
+
 	if cpuConsumption == -1.0 {
 		proxywasm.LogCriticalf("CPU consumption per request not set for %s", dstSvc)
+		return math.MaxInt
+	}
+
+	// if cpuAllocated >= cpuDemand, don't do rate limiting
+	if cpuAllocated > cpuDemand || math.Abs(cpuDemand-cpuAllocated) <= CPU_DEMAND_VS_ALLOCATED_TOLERANCE {
+		proxywasm.LogCriticalf("CPU demand (%f) is close to CPU allocated (%f) for %s, not rate limiting", cpuDemand, cpuAllocated, dstSvc)
 		return math.MaxInt
 	}
 

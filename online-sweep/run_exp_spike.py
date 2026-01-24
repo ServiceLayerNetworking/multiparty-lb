@@ -214,12 +214,12 @@ def get_request_interval_updates(spike_result: Dict) -> Tuple[int, List[Dict]]:
     
     _cpu_consumption, _ = parse_svc_load(curr_load * CORES_PER_NODE)
     
-    while curr_load <= max_load + 20:
+    while curr_load <= max_load + 15:
         
         cpu_consumption, req_interval_ms = parse_svc_load(curr_load * CORES_PER_NODE)
         assert(_cpu_consumption == cpu_consumption)
         
-        time_at_ms = (len(request_interval_updates) + 1) * 15000
+        time_at_ms = (len(request_interval_updates) + 1) * 10000
         
         request_interval_updates.append({
             "atMs": time_at_ms,
@@ -228,7 +228,7 @@ def get_request_interval_updates(spike_result: Dict) -> Tuple[int, List[Dict]]:
         
         curr_load += 10
     
-    duration = 15 + len(request_interval_updates) * 15
+    duration = 10 + len(request_interval_updates) * 10
     
     return duration, request_interval_updates
 
@@ -353,7 +353,7 @@ def run_exp_for_cluster_state(
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
-        for distr in ["none", "exponential"]:
+        for distr in ["none"]: #, "exponential"]:
 
             if "-b" not in sys.argv:
 
@@ -379,7 +379,7 @@ def run_exp_for_cluster_state(
         
             for spiking_svc in ["svc0"]:
             
-                for iteration in [3]:
+                for iteration in [9]:
                     
                     proc_distr = distr
                     
@@ -505,7 +505,7 @@ def read_json_line(filename, line_number):
                 except json.JSONDecodeError as e:
                     raise ValueError(f"Line {line_number} is not valid JSON: {e}")
         raise IndexError(f"Line {line_number} not found in file.")
- 
+
 def main():
     
     prep_for_exps()
@@ -523,15 +523,15 @@ def main():
             "nodal_leastrequest",
             "minimize_diff",
         ])
-        
-    os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
     
+    os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")   
+        
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
             "nodal_leastrequest_rlpb",
             "leastrequest_plus_rlpb",
         ])
-    
+
     # for random_state in all_states:
     #     run_exp_for_cluster_state_id(random_state, lbs=[
     #         "minimize_diff",
@@ -557,3 +557,9 @@ if __name__ == "__main__":
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")
+    
+    # a, b = parse_svc_load(47.529296875 * CORES_PER_NODE)
+    # print(a, 1000.0/b)
+    # a, b = parse_svc_load(100.73319911956787 * CORES_PER_NODE)
+    # print(a, 1000.0/b)
+    

@@ -76,7 +76,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	svcCPUConsumptionPerReq map[string]float64,
 	svcPerfBasedAllowedRPS map[string]float64) string {
 
-	var gurobiInput map[string]float64
+	var svcCpuDemand map[string]float64
 
 	if USE_RPS_INSTEAD_OF_CPU {
 
@@ -90,7 +90,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 		slog.Info(fmt.Sprintf("Current App Utils: %v\n", currentAppUtils))
 
 		// get weights from gurobi
-		gurobiInput = currentAppUtils
+		svcCpuDemand = currentAppUtils
 
 	} else {
 		currentAppUtils := getPerAppUtilizations(nodeCPUUtilizations)
@@ -112,11 +112,11 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 			appUtilsForGurobi[appNum] = float64(int(util))
 		}
 
-		gurobiInput = appUtilsForGurobi
+		svcCpuDemand = appUtilsForGurobi
 	}
 
 	// get weights from gurobi
-	gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, gurobiInput)
+	gurobiResponse := getGenericWeightsFromGurobi(c.Nodes, svcCpuDemand)
 
 	// print Gurobi weights:
 	fmt.Printf("Gurobi Response: %s\n", gurobiResponse)
@@ -124,6 +124,7 @@ func (c *ClusterStateManager) GetOptimalLBWeights(
 	lbWeights := parseGurobiResponse(
 		gurobiResponse,
 		svcCPUConsumptionPerReq,
+		svcCpuDemand,
 		svcPerfBasedAllowedRPS,
 		c.Nodes)
 	return lbWeights
@@ -458,6 +459,7 @@ func setInitialGurobiWeights(nodes []Node, appNames []string) {
 func parseGurobiResponse(
 	gurobiResponse string,
 	svcCPUConsumptionPerReq map[string]float64,
+	svcCpuDemand map[string]float64,
 	svcPerfBasedAllowedRPS map[string]float64,
 	nodes []Node) string {
 	// example gurobi response:
@@ -508,10 +510,11 @@ func parseGurobiResponse(
 		}
 
 		// output in the format: "app1:45.0:100.0:45.0|55.0:1|2"
-		lbWeights += fmt.Sprintf("%s:%f:%f:%f:%s:%s ",
+		lbWeights += fmt.Sprintf("%s:%f:%f:%f:%f:%s:%s ",
 			appName,
 			svcCPUConsumptionPerReq[appName],
 			cpuAlloc,
+			svcCpuDemand[appName],
 			svcPerfBasedAllowedRPS[appName],
 			strings.Join(strSortedWeights, "|"),
 			strings.Join(strNodeNums, "|"))

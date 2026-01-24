@@ -31,17 +31,17 @@ const (
 
 	ECHO_SERVER_PORT = "5656"
 
-	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5  // deprecated
+	ROUNDS_FOR_ROLLING_AVG_OF_CPU_UTILS = 5 // deprecated
 	NUM_OF_SEC_FOR_ROLLING_AVG_OF_RPS   = 2 // Number of seconds for rolling average of RPS
 
 	GUROBI_TIMEOUT_MS            = 5000
 	USE_HARDCODE_GUROBI_RESPONSE = false
 
-	NUM_OF_SECS_FOR_REQ_STATS = 5    // Number of seconds of past request stats to consider
-	INIT_HEADROOM_PCT         = 10.0 // Initial headroom percentage for each service
-	MINIMUM_HEADROOM_PCT      = 0.0  // Minimum headroom percentage for each service
-	MAXIMUM_HEADROOM_PCT      = 100  // Maximum headroom percentage for each service
-	DELTA_HEADROOM_PCT        = 15.0 // Change in headroom percentage for each service
+	// NUM_OF_SECS_FOR_REQ_STATS = 5    // Number of seconds of past request stats to consider
+	// INIT_HEADROOM_PCT         = 10.0 // Initial headroom percentage for each service
+	// MINIMUM_HEADROOM_PCT      = 0.0  // Minimum headroom percentage for each service
+	// MAXIMUM_HEADROOM_PCT      = 100  // Maximum headroom percentage for each service
+	// DELTA_HEADROOM_PCT        = 15.0 // Change in headroom percentage for each service
 
 	M_CORES_IN_NODE = 8000
 
@@ -49,8 +49,8 @@ const (
 	USE_OFFLINE_DEMAND_ESTIMATE  = false
 	INIT_CPU_CONSUMPTION_PER_REQ = 8.0
 	SVC_CPU_UTIL_HEADROOM        = 0    // deprecated
-	RPS_WINDOW_MS                = 1000 // 500ms window to look for how many requests are sent and base our CPU off of that
-	SVC_UTIL_SCALE_FACTOR        = 1.3  // by this factor, scale the cpuutil of each service
+	RPS_WINDOW_MS                = 1000 // 500ms window to look for how many requests are sent and base our CPU off of that // deprecated
+	SVC_UTIL_SCALE_FACTOR        = 1    // by this factor, scale the cpuutil of each service
 	CPU_PER_REQ_SCALE_FACTOR     = 1    // by this factor, scale the cpuconsumptionperreq
 
 	USE_CONCURENT_CONNECTIONS_FOR_RATE_LIMITER = true
@@ -881,6 +881,7 @@ type LBStat struct {
 	CPUConsumptionPerReq float64            `json:"CPUConsumptionPerReq"`
 	Headroom             float64            `json:"Headroom"`
 	CPUAllocated         float64            `json:"CPUAllocated"`
+	CPUDemand            float64            `json:"CPUDemand"`
 	PerfBasedRPSAllowed  float64            `json:"PerfBasedRPSAllowed"`
 	Weights              map[string]float64 `json:"Weights"`
 }
@@ -985,18 +986,20 @@ func parseLBWeightStr(lbWeightsStr string, headroomPerReq map[string]float64) ma
 	appWeights := strings.Split(lbWeightsStr, " ")
 	for _, appWeight := range appWeights {
 		appWeightMap := strings.Split(appWeight, ":")
-		if len(appWeightMap) != 6 {
+		if len(appWeightMap) != 7 {
 			panic("Invalid lbWeightsStr: " + lbWeightsStr)
 		}
 		appName := appWeightMap[0]
 		cpuConsumptionPerReq := stringToFloat(appWeightMap[1])
 		cpuAllocated := stringToFloat(appWeightMap[2])
-		perfBasedRPSAllowed := stringToFloat(appWeightMap[3])
-		weights := strings.Split(appWeightMap[4], "|")
+		cpuDemand := stringToFloat(appWeightMap[3])
+		perfBasedRPSAllowed := stringToFloat(appWeightMap[4])
+		weights := strings.Split(appWeightMap[5], "|")
 		lbWeights[appName] = LBStat{
 			cpuConsumptionPerReq,
 			headroomPerReq[appName],
 			cpuAllocated,
+			cpuDemand,
 			perfBasedRPSAllowed,
 			make(map[string]float64),
 		}

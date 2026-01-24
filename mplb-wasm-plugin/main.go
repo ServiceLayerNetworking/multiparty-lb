@@ -45,7 +45,7 @@ const (
 	USE_DEFAULT_MAX_RPS_ALLOWED                        = false
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 0
 	NUM_OF_LB_REPLICAS                                 = 1
-	USE_CONCURRENT_CONNECTIONS_IN_RATE_LIMITER         = false
+	USE_CONCURRENT_CONNECTIONS_IN_RATE_LIMITER         = true
 	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 1000
 
 	// Timeout for removing RIF entries in milliseconds (should correspond to client timeout)
@@ -58,7 +58,7 @@ const (
 
 	// load balancing strategy
 	// [leastrequest_plus_rlpb|leastrequest_plus_rl|leastrequest_rl|nodal_leastrequest_rlpb|only_nodal_leastrequest|leastrequest_plus|tmp_nodal_leastrequest|nodal_leastrequest|minimize_diff|locality_aware_weighted_random|leastrequest|weighted_random|weighted_roundrobin|weighted_leastrequest]
-	LOAD_BALANCING_STRATEGY = "nodal_leastrequest_rlpb"
+	LOAD_BALANCING_STRATEGY = "leastrequest_plus_rlpb"
 )
 
 var (
@@ -774,13 +774,14 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			if err := proxywasm.SetSharedData(svcName, []byte(svcWeights), 0); err != nil {
 				proxywasm.LogCriticalf("unable to set shared data for endpoint distribution %v: %v", svcName, err)
 			}
-		} else if len(svcInfoSplit) == 6 {
+		} else if len(svcInfoSplit) == 7 {
 			svcName := svcInfoSplit[0]
 			svcCPUConsumptionPerReq := svcInfoSplit[1]
 			svcCPUAllocated := svcInfoSplit[2]
-			svcPerfBasedAllowedRPS := svcInfoSplit[3]
-			svcWeights := svcInfoSplit[4] + "/" + svcInfoSplit[5]
-			topo[svcName] = getSvcNodes(svcInfoSplit[5])
+			svcCPUDemand := svcInfoSplit[3]
+			svcPerfBasedAllowedRPS := svcInfoSplit[4]
+			svcWeights := svcInfoSplit[5] + "/" + svcInfoSplit[6]
+			topo[svcName] = getSvcNodes(svcInfoSplit[6])
 			proxywasm.LogCriticalf(
 				"setting outbound request weights %v: %v, and svcCPUConsumptionPerReq:%s",
 				svcName, svcWeights, svcCPUConsumptionPerReq)
@@ -789,6 +790,9 @@ func OnTickHttpCallResponse(numHeaders, bodySize, numTrailers int) {
 			}
 			if err := proxywasm.SetSharedData(svcCPUAllocatedKey(svcName), []byte(svcCPUAllocated), 0); err != nil {
 				proxywasm.LogCriticalf("unable to set svcCPUAllocated for endpoint distribution %v: %v", svcName, err)
+			}
+			if err := proxywasm.SetSharedData(svcCPUDemandKey(svcName), []byte(svcCPUDemand), 0); err != nil {
+				proxywasm.LogCriticalf("unable to set svcCPUDemand for endpoint distribution %v: %v", svcName, err)
 			}
 			if err := proxywasm.SetSharedData(svcPerfBasedAllowedRPSKey(svcName), []byte(svcPerfBasedAllowedRPS), 0); err != nil {
 				proxywasm.LogCriticalf("unable to set svcPerfBasedAllowedRPS for endpoint distribution %v: %v", svcName, err)
@@ -1161,6 +1165,10 @@ func svcCPUConsumptionPerReqKey(svc string) string {
 
 func svcCPUAllocatedKey(svc string) string {
 	return svc + "-cpu-alloc"
+}
+
+func svcCPUDemandKey(svc string) string {
+	return svc + "-cpu-demand"
 }
 
 func svcPerfBasedAllowedRPSKey(svc string) string {

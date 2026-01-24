@@ -6,7 +6,7 @@ set -e
 # Define the list of load balancing strategies
 # LB_VALUES=("leastrequest_plus_rl" "leastrequest_rl" "leastrequest_plus" "nodal_leastrequest" "only_nodal_leastrequest" "tmp_nodal_leastrequest" "minimize_diff" "locality_aware_weighted_random" "leastrequest" "weighted_random" "weighted_roundrobin" "weighted_leastrequest")
 # LB_VALUES=("nodal_leastrequest_rlpb" "leastrequest_plus_rlpb" "leastrequest_plus_rl" "nodal_leastrequest" "leastrequest_rl" "leastrequest_plus" "nodal_leastrequest" "only_nodal_leastrequest" "minimize_diff" "leastrequest")
-LB_VALUES=("nodal_leastrequest" "minimize_diff" "leastrequest_plus_rlpb" "nodal_leastrequest_rlpb")
+LB_VALUES=("leastrequest_plus_rlpb" "nodal_leastrequest_rlpb" "nodal_leastrequest" "minimize_diff" )
 # LB_VALUES=("locality_aware_weighted_random" "tmp_nodal_leastrequest")
 
 # Path to TinyGo binary (adjust if necessary)
@@ -16,7 +16,9 @@ TINYGO_BIN="/usr/local/bin/tinygo"
 for LB in "${LB_VALUES[@]}"; do
     echo "Building for Load Balancing Strategy: $LB"
 
+    # Update the load balancing strategy in main.go
     sed -i 's/\(\s*LOAD_BALANCING_STRATEGY = \).*/\1'"\"$LB\""'/' main.go
+    echo "Set LOAD_BALANCING_STRATEGY = $LB in main.go"
 
     # Compile with TinyGo
     GOARCH=wasm GOOS=js $TINYGO_BIN build -o wasm-out/slate_plugin.wasm -gc=custom -tags="custommalloc nottinygc_envoy" \
