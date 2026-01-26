@@ -247,7 +247,7 @@ func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 
 	// if cpuAllocated >= cpuDemand, don't do rate limiting
 	if cpuAllocated > cpuDemand || math.Abs(cpuDemand-cpuAllocated) <= CPU_DEMAND_VS_ALLOCATED_TOLERANCE {
-		proxywasm.LogCriticalf("CPU demand (%f) is close to CPU allocated (%f) for %s, not rate limiting", cpuDemand, cpuAllocated, dstSvc)
+		proxywasm.LogCriticalf("CPU demand (%f) >= CPU allocated (%f) for %s, not rate limiting", cpuDemand, cpuAllocated, dstSvc)
 		return math.MaxInt
 	}
 

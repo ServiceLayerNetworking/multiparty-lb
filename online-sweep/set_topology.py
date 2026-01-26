@@ -10,31 +10,57 @@ import json
 import yaml
 import os
 
-def get_gateway_ip(svc_name):
+def get_gateway_ip(svc_name, use_pod_ip=False):
     """
     Get the Cluster IP address of the Istio ingress gateway for a specific service.
+    If use_pod_ip is True, returns the pod IP with :8080 instead.
     """
     # Load Kubernetes config
     config.load_kube_config()
     v1 = client.CoreV1Api()
 
-    # Get the service object with retry logic
-    max_retries = 10
-    initial_delay = 2
-    for attempt in range(max_retries):
-        try:
-            service = v1.read_namespaced_service(name=f"istio-ingressgateway-{svc_name}", namespace="istio-ingress")
-            cluster_ip = service.spec.cluster_ip
-            return cluster_ip
-        except client.exceptions.ApiException as e:
-            if e.status == 500 and attempt < max_retries - 1:
-                delay = initial_delay * (2 ** attempt)
-                print(f"⚠️ Webhook error (500) reading service {svc_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
-                time.sleep(delay)
-            else:
-                raise
-    
-    raise Exception(f"Failed to read service {svc_name} after {max_retries} attempts")
+    if use_pod_ip:
+        # Get the pod IP instead of cluster IP
+        max_retries = 10
+        initial_delay = 2
+        for attempt in range(max_retries):
+            try:
+                # List pods with the matching label selector
+                pods = v1.list_namespaced_pod(
+                    namespace="istio-ingress",
+                    label_selector=f"istio=ingressgateway-{svc_name}"
+                )
+                if pods.items:
+                    pod_ip = pods.items[0].status.pod_ip
+                    return f"{pod_ip}:8080"
+                else:
+                    raise Exception(f"No pods found for istio-ingressgateway-{svc_name}")
+            except client.exceptions.ApiException as e:
+                if e.status == 500 and attempt < max_retries - 1:
+                    delay = initial_delay * (2 ** attempt)
+                    print(f"⚠️ Webhook error (500) reading pods for {svc_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                else:
+                    raise
+        raise Exception(f"Failed to read pods for {svc_name} after {max_retries} attempts")
+    else:
+        # Get the service object with retry logic
+        max_retries = 10
+        initial_delay = 2
+        for attempt in range(max_retries):
+            try:
+                service = v1.read_namespaced_service(name=f"istio-ingressgateway-{svc_name}", namespace="istio-ingress")
+                cluster_ip = service.spec.cluster_ip
+                return cluster_ip
+            except client.exceptions.ApiException as e:
+                if e.status == 500 and attempt < max_retries - 1:
+                    delay = initial_delay * (2 ** attempt)
+                    print(f"⚠️ Webhook error (500) reading service {svc_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                else:
+                    raise
+        
+        raise Exception(f"Failed to read service {svc_name} after {max_retries} attempts")
 
 def get_curr_gateway_ips():
     svc_gateway_ips = {}
@@ -541,27 +567,30 @@ def test():
     
 if __name__ == "__main__":
     
-    os.system("kubectl delete destinationrules.networking.istio.io --all -n default")
-    os.system("kubectl delete virtualservices.networking.istio.io --all -n default")
-    os.system("kubectl delete gateways.networking.istio.io --all -n default")
+    for i in range(15):
+        print(f"svc{i}", "\t", get_gateway_ip(f"svc{i}", use_pod_ip=True))
     
-    # print("All pods, services, statefulsets, deployments, " + 
-    #       "destinationrules, virtualservices, and gateways " + 
-    #       "deleted from the default namespace.")
+    # os.system("kubectl delete destinationrules.networking.istio.io --all -n default")
+    # os.system("kubectl delete virtualservices.networking.istio.io --all -n default")
+    # os.system("kubectl delete gateways.networking.istio.io --all -n default")
     
-    os.system("kubectl delete destinationrules.networking.istio.io --all -n istio-ingress")
-    os.system("kubectl delete virtualservices.networking.istio.io --all -n istio-ingress")
-    os.system("kubectl delete gateways.networking.istio.io --all -n istio-ingress")
+    # # print("All pods, services, statefulsets, deployments, " + 
+    # #       "destinationrules, virtualservices, and gateways " + 
+    # #       "deleted from the default namespace.")
     
-    # get current apps and pods
-    print("Getting current apps and pods...")
-    curr_app_to_pods = get_current_app_and_pods()
+    # os.system("kubectl delete destinationrules.networking.istio.io --all -n istio-ingress")
+    # os.system("kubectl delete virtualservices.networking.istio.io --all -n istio-ingress")
+    # os.system("kubectl delete gateways.networking.istio.io --all -n istio-ingress")
     
-    print("Current apps and pods:", curr_app_to_pods)
+    # # get current apps and pods
+    # print("Getting current apps and pods...")
+    # curr_app_to_pods = get_current_app_and_pods()
     
-    # set routing rules
-    print("Setting Istio gateway, destination rules, and virtual services...")
-    set_istio_routing_rules(curr_app_to_pods)
+    # print("Current apps and pods:", curr_app_to_pods)
+    
+    # # set routing rules
+    # print("Setting Istio gateway, destination rules, and virtual services...")
+    # set_istio_routing_rules(curr_app_to_pods)
     
     # pod_names = [
     #     "svc0-node0-0",

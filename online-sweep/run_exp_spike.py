@@ -214,12 +214,12 @@ def get_request_interval_updates(spike_result: Dict) -> Tuple[int, List[Dict]]:
     
     _cpu_consumption, _ = parse_svc_load(curr_load * CORES_PER_NODE)
     
-    while curr_load <= max_load + 15:
+    while curr_load <= max_load + 20:
         
         cpu_consumption, req_interval_ms = parse_svc_load(curr_load * CORES_PER_NODE)
         assert(_cpu_consumption == cpu_consumption)
         
-        time_at_ms = (len(request_interval_updates) + 1) * 10000
+        time_at_ms = (len(request_interval_updates) + 1) * 15000
         
         request_interval_updates.append({
             "atMs": time_at_ms,
@@ -228,7 +228,7 @@ def get_request_interval_updates(spike_result: Dict) -> Tuple[int, List[Dict]]:
         
         curr_load += 10
     
-    duration = 10 + len(request_interval_updates) * 10
+    duration = 15 + len(request_interval_updates) * 15
     
     return duration, request_interval_updates
 
@@ -247,7 +247,7 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr, duration, request_in
         assert(req_interval_ms > 0)
         
         # gateway_ip = GATEWAY_IPs[svc_name]
-        gateway_ip = get_gateway_ip(svc_name)
+        gateway_ip = get_gateway_ip(svc_name, use_pod_ip=True)
         
         if proc_distr == "none" or proc_distr == "uniform":
             url = f"http://{gateway_ip}/?cpu_coreMs={cpu_consumption}"
@@ -353,7 +353,7 @@ def run_exp_for_cluster_state(
 
         print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} i.e. loads={svc_loads} & podnames={pod_names}")
 
-        for distr in ["none"]: #, "exponential"]:
+        for distr in ["exponential"]: #, "exponential"]:
 
             if "-b" not in sys.argv:
 
@@ -379,7 +379,7 @@ def run_exp_for_cluster_state(
         
             for spiking_svc in ["svc0"]:
             
-                for iteration in [9]:
+                for iteration in [112, 113, 114]:
                     
                     proc_distr = distr
                     
@@ -520,17 +520,19 @@ def main():
     
     for random_state in all_states:
         run_exp_for_cluster_state_id(random_state, lbs=[
+            "nodal_leastrequest_rlpb",
+            "leastrequest_plus_rlpb",
+        ])
+    
+    
+    # os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")   
+        
+    for random_state in all_states:
+        run_exp_for_cluster_state_id(random_state, lbs=[
             "nodal_leastrequest",
             "minimize_diff",
         ])
     
-    os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")   
-        
-    for random_state in all_states:
-        run_exp_for_cluster_state_id(random_state, lbs=[
-            "nodal_leastrequest_rlpb",
-            "leastrequest_plus_rlpb",
-        ])
 
     # for random_state in all_states:
     #     run_exp_for_cluster_state_id(random_state, lbs=[
