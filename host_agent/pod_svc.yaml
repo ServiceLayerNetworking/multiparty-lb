@@ -40,6 +40,9 @@ spec:
         - key: "node"
           value: "node0"
           effect: "NoSchedule"
+        - key: "worker-pod"
+          value: "true"
+          effect: "NoSchedule"
       volumes:
       - name: host-filesystem
         hostPath:

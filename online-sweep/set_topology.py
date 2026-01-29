@@ -352,7 +352,8 @@ def start_new_pods(pod_names: List[str]):
                         )
                     ],
                     tolerations=[
-                        client.V1Toleration(key="node", value=node_name, effect="NoSchedule")
+                        client.V1Toleration(key="node", value=node_name, effect="NoSchedule"),
+                        client.V1Toleration(key="worker-pod", value="true", effect="NoSchedule")
                     ],
                     affinity=client.V1Affinity(
                         node_affinity=client.V1NodeAffinity(

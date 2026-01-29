@@ -18,6 +18,7 @@ ALL_NODES=20
 CP_NODES=1
 # number of worker nodes
 NODES=19
+
 # number of worker nodes to be used as load balancer nodes
 LB_NODES=4
 # number of services
@@ -81,11 +82,32 @@ if [ "$NODES" -le 3 ]; then
   kubectl taint nodes node0.$CLUSTER_NAME node-role.kubernetes.io/control-plane:NoSchedule-
 fi
 
+# Taint worker nodes (excluding lb-nodes) with worker-pod=true:NoSchedule
+# This allows scheduling only for pods that tolerate the worker-pod taint
+# Only apply this when there are more than 5 worker nodes
+if [ "$NODES" -gt 5 ]; then
+  WORKER_NODES_END=$((NODES - LB_NODES))
+  for i in $(seq 1 $WORKER_NODES_END); do
+    kubectl taint nodes node$i.$CLUSTER_NAME worker-pod=true:NoSchedule --overwrite
+  done
+fi
+
 python3 generate_istio_gateways.py $N_SVCS > dst-rules_virtual-svcs/istio-multi-gateways.yaml
 
 istioctl install -y -f ~/multiparty-lb/dst-rules_virtual-svcs/istio-multi-gateways.yaml
 kubectl label namespace default istio-injection=enabled --overwrite
 kubectl rollout restart statefulset
+
+echo "[SCRIPT] Removing resource limits from istiod deployment..."
+kubectl patch deployment istiod -n istio-system \
+    --type='json' \
+    -p='[
+        {
+            "op": "remove",
+            "path": "/spec/template/spec/containers/0/resources/limits"
+        }
+    ]' || true
+echo "Limits removed from istiod deployment (if they existed)."
 
 echo "[SCRIPT] Applying jaeger..."
 kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.22/samples/addons/jaeger.yaml
@@ -112,6 +134,55 @@ for d in $(kubectl get deploy -n istio-ingress -o jsonpath='{.items[*].metadata.
 done
 
 echo "Limits have been removed from all deployments in istio-ingress."
+
+echo "[SCRIPT] Scaling istiod to 5 replicas..."
+kubectl patch hpa istiod -n istio-system -p '{"spec":{"minReplicas":5,"maxReplicas":5}}'
+
+echo "[SCRIPT] Restarting deployments in istio-system and istio-ingress to enforce taint-based scheduling..."
+kubectl rollout restart deployment -n istio-system
+# kubectl rollout restart deployment -n istio-ingress
+kubectl rollout restart deployment -n calico-apiserver
+kubectl rollout restart deployment -n calico-system
+kubectl rollout restart deployment -n kube-system
+kubectl rollout restart deployment -n tigera-operator
+
+echo "[SCRIPT] Constraining tigera-operator to control-plane and lb-nodes..."
+kubectl patch deployment tigera-operator -n tigera-operator \
+    --type='json' \
+    -p='[
+        {
+            "op": "add",
+            "path": "/spec/template/spec/affinity",
+            "value": {
+                "nodeAffinity": {
+                    "requiredDuringSchedulingIgnoredDuringExecution": {
+                        "nodeSelectorTerms": [
+                            {
+                                "matchExpressions": [
+                                    {
+                                        "key": "node-role.kubernetes.io/control-plane",
+                                        "operator": "Exists"
+                                    }
+                                ]
+                            },
+                            {
+                                "matchExpressions": [
+                                    {
+                                        "key": "mplb/lb-node",
+                                        "operator": "Exists"
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    ]' || true
+
+echo "[SCRIPT] Waiting for deployments to stabilize..."
+sleep 10
+
 # echo "[SCRIPT] Applying taints to three nodes..."
 # kubectl taint nodes node1.$CLUSTER_NAME node=node1:NoSchedule --overwrite
 # kubectl taint nodes node2.$CLUSTER_NAME node=node2:NoSchedule --overwrite

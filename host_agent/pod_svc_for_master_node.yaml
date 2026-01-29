@@ -47,6 +47,9 @@ spec:
           effect: "NoSchedule"
         - key: "node.kubernetes.io/disk-pressure"
           effect: "NoSchedule"
+        - key: "worker-pod"
+          value: "true"
+          effect: "NoSchedule"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
