@@ -176,7 +176,7 @@ func processEchoBody(body string) {
 
 func updateOutstandingReqs(dst string, selectedEndpoint int, op string) {
 	// get the outstanding requests for all endpoints of the dst
-	outstandingReqs, cas, err := getOutstandingRequests(dst, -1)
+	outstandingReqs, cas, err := getOutstandingRequests(dst, selectedEndpoint+1)
 	if err != nil {
 		proxywasm.LogCriticalf(
 			"Couldn't get outstanding requests for endpoint %s: %v", dst, err)
