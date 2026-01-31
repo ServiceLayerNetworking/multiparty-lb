@@ -64,7 +64,7 @@ const (
 var (
 	ALL_KEYS = []string{KEY_INFLIGHT_REQ_COUNT, KEY_REQUEST_COUNT, KEY_LAST_RESET, KEY_RPS_THRESHOLDS, KEY_HASH_MOD, AGGREGATE_REQUEST_LATENCY,
 		KEY_TRACED_REQUESTS, KEY_MATCH_DISTRIBUTION, KEY_INFLIGHT_ENDPOINT_LIST, KEY_ENDPOINT_RPS_LIST, KEY_RPS_SHARED_QUEUE, KEY_RPS_SHARED_QUEUE_SIZE,
-		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE}
+		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE, RIF_SHARED_QUEUE}
 	cur_idx      int
 	latency_list []int64
 	ts_list      []int64
@@ -115,15 +115,6 @@ func (*vmContext) OnVMStart(vmConfigurationSize int) types.OnVMStartStatus {
 		if err := proxywasm.SetSharedData(key, make([]byte, 8), 0); err != nil {
 			proxywasm.LogCriticalf("unable to set shared data: %v", err)
 		}
-	}
-	// set rif key
-	emptyRIF := map[string]RIFEntry{}
-	emptyRIFBytes, err := json.Marshal(emptyRIF)
-	if err != nil {
-		proxywasm.LogCriticalf("unable to marshal empty RIF: %v", err)
-	}
-	if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, emptyRIFBytes, 0); err != nil {
-		proxywasm.LogCriticalf("unable to set shared data: %v", err)
 	}
 	// set default hash mod
 	buf := make([]byte, 8)
@@ -272,9 +263,8 @@ func (p *pluginContext) OnTick() {
 		proxywasm.LogCriticalf("dispatch httpcall failed: %v", err)
 	}
 
-	// check if there is a rif left in the shared queue that may be timed out by the client
-	// remove that
-	removeTimedOutRIFEntries()
+	// Process RIF events: handle timeouts and re-queue pending entries
+	processRIFEvents()
 }
 
 // Override types.DefaultPluginContext.
@@ -909,174 +899,126 @@ func appendSentReqStats(currentTime, dstSvc, dstPod string) {
 
 }
 
-type RIFEntry struct {
-	DstSvc    string `json:"DstSvc"`
-	DstPod    string `json:"DstPod"`
-	Timestamp int64  `json:"Timestamp"`
-}
-
+// addToRIF - appends a start event to RIF_SHARED_QUEUE
+// Event format: "\nS|reqId|dstPod|timestamp"
 func addToRIF(reqId, dstSvc, dstPod string, currentTime int64) {
-
-	isAddSuccessful := false
-
-	for !isAddSuccessful {
-
-		// get the current array of timestamps
-		rifBytes, cas, err := proxywasm.GetSharedData(RIF_SHARED_QUEUE)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't get shared data for RIF_SHARED_QUEUE: %v", err)
-			// this should never happen
-			return
-		}
-
-		// unmarshal rifBytes to a map[string]string
-		currentRif := map[string]RIFEntry{}
-		err = json.Unmarshal(rifBytes, &currentRif)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't unmarshal rifBytes: %v", err)
-			// this should never happen
-			return
-		}
-
-		currentRif[reqId] = RIFEntry{
-			DstSvc:    dstSvc,
-			DstPod:    dstPod,
-			Timestamp: currentTime,
-		}
-
-		// marshal the map back to bytes
-		updatedRIFBytes, err := json.Marshal(currentRif)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't marshal updatedRIFBytes: %v", err)
-			// this should never happen
-			return
-		}
-
-		// set the new list
-		if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, updatedRIFBytes, cas); err != nil {
-			proxywasm.LogCriticalf("unable to set shared data for RIF_SHARED_QUEUE: %v", err)
-			if errors.Is(err, types.ErrorStatusCasMismatch) {
-				proxywasm.LogCriticalf("CAS Mismatch on RIF_SHARED_QUEUE, failing: %v", err)
-			}
-		} else {
-			proxywasm.LogCriticalf("added entry to RIF shared data")
-			isAddSuccessful = true
-		}
-	}
-
+	event := fmt.Sprintf("\nS|%s|%s|%d", reqId, dstPod, currentTime)
+	appendToRIFQueue(event)
+	proxywasm.LogCriticalf("added start event to RIF: %s", reqId)
 }
 
+// removeFromRIF - appends a finish event to RIF_SHARED_QUEUE
+// Event format: "\nF|reqId"
 func removeFromRIF(reqId string) {
+	event := fmt.Sprintf("\nF|%s", reqId)
+	appendToRIFQueue(event)
+	proxywasm.LogCriticalf("added finish event to RIF: %s", reqId)
+}
 
-	isRemoveSuccessful := false
-
-	for !isRemoveSuccessful {
-
-		// get the current array of timestamps
-		rifBytes, cas, err := proxywasm.GetSharedData(RIF_SHARED_QUEUE)
+// appendToRIFQueue - appends an event to the RIF queue with CAS retry
+func appendToRIFQueue(event string) {
+	for {
+		data, cas, err := proxywasm.GetSharedData(RIF_SHARED_QUEUE)
 		if err != nil {
-			proxywasm.LogCriticalf("Couldn't get shared data for RIF_SHARED_QUEUE: %v", err)
-			// this should never happen
+			proxywasm.LogCriticalf("Couldn't get RIF_SHARED_QUEUE: %v", err)
 			return
 		}
 
-		// unmarshal rifBytes to a map[string]string
-		currentRif := map[string]RIFEntry{}
-		err = json.Unmarshal(rifBytes, &currentRif)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't unmarshal rifBytes: %v", err)
-			// this should never happen
-			return
-		}
+		newData := append(data, []byte(event)...)
 
-		delete(currentRif, reqId)
-
-		// marshal the map back to bytes
-		updatedRIFBytes, err := json.Marshal(currentRif)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't marshal updatedRIFBytes: %v", err)
-			// this should never happen
-			return
-		}
-
-		// set the new list
-		if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, updatedRIFBytes, cas); err != nil {
-			proxywasm.LogCriticalf("unable to set shared data for RIF_SHARED_QUEUE: %v", err)
+		if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, newData, cas); err != nil {
 			if errors.Is(err, types.ErrorStatusCasMismatch) {
-				proxywasm.LogCriticalf("CAS Mismatch on RIF_SHARED_QUEUE, failing: %v", err)
+				continue // retry
 			}
-		} else {
-			proxywasm.LogCriticalf("removed entry from RIF shared data")
-			isRemoveSuccessful = true
+			proxywasm.LogCriticalf("unable to append to RIF_SHARED_QUEUE: %v", err)
+			return
 		}
+		return
 	}
 }
 
-func removeTimedOutRIFEntries() {
-
+// processRIFEvents - processes RIF events, handles timeouts, and re-queues pending entries
+func processRIFEvents() {
 	currentTimeMs := time.Now().UnixMilli()
 
-	isTimedOutRemovalSuccessful := false
+	// Get and reset RIF queue (same pattern as TIMESTAMPS_SHARED_QUEUE)
+	rifData, err := getAndSetSharedData(RIF_SHARED_QUEUE, make([]byte, 8))
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get RIF_SHARED_QUEUE: %v", err)
+		return
+	}
 
-	entriesRemoved := []RIFEntry{}
+	rifStr := strings.TrimLeft(string(rifData), "\x00")
+	if rifStr == "" {
+		return
+	}
 
-	for !isTimedOutRemovalSuccessful {
+	// Parse events into started map and finished set
+	type startedEntry struct {
+		dstPod    string
+		timestamp int64
+	}
+	started := make(map[string]startedEntry)
+	finished := make(map[string]bool)
 
-		// get the current array of timestamps
-		rifBytes, cas, err := proxywasm.GetSharedData(RIF_SHARED_QUEUE)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't get shared data for RIF_SHARED_QUEUE: %v", err)
-			// this should never happen
-			return
+	lines := strings.Split(rifStr, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
 		}
 
-		// unmarshal rifBytes to a map[string]string
-		currentRif := map[string]RIFEntry{}
-		err = json.Unmarshal(rifBytes, &currentRif)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't unmarshal rifBytes: %v", err)
-			// this should never happen
-			return
+		parts := strings.Split(line, "|")
+		if len(parts) < 2 {
+			continue
 		}
 
-		// log the current time and current RIF
-		proxywasm.LogCriticalf("removeTimedOutRIFEntries: currentTimeMs: %d, currentRif: %v", currentTimeMs, currentRif)
+		eventType := parts[0]
+		reqId := parts[1]
 
-		// remove timed out entries
-		entriesRemoved = []RIFEntry{}
-		for reqId, entry := range currentRif {
-			if currentTimeMs-entry.Timestamp > RIF_ENTRY_TIMEOUT_MS {
-				entriesRemoved = append(entriesRemoved, entry)
-				delete(currentRif, reqId)
+		if eventType == "S" && len(parts) >= 4 {
+			timestamp, err := strconv.ParseInt(parts[3], 10, 64)
+			if err != nil {
+				continue
 			}
-		}
-
-		// marshal the map back to bytes
-		updatedRIFBytes, err := json.Marshal(currentRif)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't marshal updatedRIFBytes: %v", err)
-			// this should never happen
-			return
-		}
-
-		// set the new rif queue
-		if err := proxywasm.SetSharedData(RIF_SHARED_QUEUE, updatedRIFBytes, cas); err != nil {
-			proxywasm.LogCriticalf("unable to set shared data for RIF_SHARED_QUEUE: %v", err)
-			if errors.Is(err, types.ErrorStatusCasMismatch) {
-				proxywasm.LogCriticalf("CAS Mismatch on RIF_SHARED_QUEUE, failing: %v", err)
+			started[reqId] = startedEntry{
+				dstPod:    parts[2],
+				timestamp: timestamp,
 			}
-		} else {
-			// proxywasm.LogCriticalf("removed timed out entries from RIF shared data")
-			isTimedOutRemovalSuccessful = true
+		} else if eventType == "F" {
+			finished[reqId] = true
 		}
 	}
 
-	// log the entries removed
-	proxywasm.LogCriticalf("removeTimedOutRIFEntries: entriesRemoved: %v", entriesRemoved)
+	// Process: find timed-out and still-pending
+	var stillPending []string
+	var timedOutEntries []startedEntry
 
-	// notify LB of removed entries
-	for _, entry := range entriesRemoved {
-		notifyRequestCompletedToLB(entry.DstPod, RIF_ENTRY_TIMEOUT_MS)
+	for reqId, entry := range started {
+		if finished[reqId] {
+			// Completed normally, discard
+			continue
+		}
+
+		if currentTimeMs-entry.timestamp > RIF_ENTRY_TIMEOUT_MS {
+			// Timed out
+			proxywasm.LogCriticalf("RIF timeout for reqId %s, dstPod %s", reqId, entry.dstPod)
+			timedOutEntries = append(timedOutEntries, entry)
+		} else {
+			// Still in flight - re-queue
+			stillPending = append(stillPending, fmt.Sprintf("S|%s|%s|%d", reqId, entry.dstPod, entry.timestamp))
+		}
+	}
+
+	// Notify LB of timed-out entries
+	for _, entry := range timedOutEntries {
+		notifyRequestCompletedToLB(entry.dstPod, RIF_ENTRY_TIMEOUT_MS)
+	}
+
+	// Re-queue pending entries
+	if len(stillPending) > 0 {
+		pendingStr := "\n" + strings.Join(stillPending, "\n")
+		appendToRIFQueue(pendingStr)
 	}
 }
 

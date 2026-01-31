@@ -41,9 +41,9 @@ func setOutstandingReqs(
 }
 
 func getOutstandingRequests(
-	dst string, numEndpoints int) (*[]int, uint32, error) {
+	dst string, minNumEndpoints int) (*[]int, uint32, error) {
 
-	isNumEndpointsValid := numEndpoints != -1
+	isNumEndpointsValid := minNumEndpoints != -1
 
 	// get outstanding requests for all endpoints of the dst
 	valBytes, cas, err := proxywasm.GetSharedData(outstandingReqsKey(dst))
@@ -58,7 +58,7 @@ func getOutstandingRequests(
 			return nil, 0, errors.New("OR not yet initialized for " + dst)
 		}
 		// we know the number of endpoints, so we can initialize
-		outstandingReqs := make([]int, numEndpoints)
+		outstandingReqs := make([]int, minNumEndpoints)
 		err = setOutstandingReqs(cas, dst, &outstandingReqs)
 		if err != nil {
 			proxywasm.LogCriticalf(
@@ -66,7 +66,7 @@ func getOutstandingRequests(
 		}
 
 		// try again
-		return getOutstandingRequests(dst, numEndpoints)
+		return getOutstandingRequests(dst, minNumEndpoints)
 	}
 
 	outstandingReqs := []int{}
@@ -77,13 +77,13 @@ func getOutstandingRequests(
 	}
 
 	// if numofEndpoints have increased, add state for new endpoints
-	if isNumEndpointsValid && numEndpoints > len(outstandingReqs) {
+	if isNumEndpointsValid && minNumEndpoints > len(outstandingReqs) {
 
 		// add state for new endpoints
 		proxywasm.LogCriticalf(
 			"Adding outstanding request state for new endpoints of %s", dst)
 		outstandingReqs = append(outstandingReqs,
-			make([]int, numEndpoints-len(outstandingReqs))...)
+			make([]int, minNumEndpoints-len(outstandingReqs))...)
 		err = setOutstandingReqs(cas, dst, &outstandingReqs)
 		if err != nil {
 			proxywasm.LogCriticalf(
@@ -91,7 +91,7 @@ func getOutstandingRequests(
 		}
 
 		// restart function to get the updated value
-		return getOutstandingRequests(dst, numEndpoints)
+		return getOutstandingRequests(dst, minNumEndpoints)
 	}
 
 	return &outstandingReqs, cas, nil
