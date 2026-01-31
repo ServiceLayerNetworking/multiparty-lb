@@ -380,12 +380,12 @@ func updateReqStats(
 	serviceOutstandingRequests *ServiceOutstandingRequests,
 	serviceArrivingRPS *ServiceArrivingRPS,
 	serviceLatencyStats *ServiceLatencyStats,
-	reqBody []byte) {
+	reqBodyStr string) {
 
 	// reqBody := b"1745477992498147000|svc0|0|--|32"
 	// or
 	// reqBody := b"1745477992498147000|svc0|0|++|-1"
-	reqBodyStr := string(reqBody)
+
 	parts := strings.Split(reqBodyStr, "|")
 	if len(parts) >= 5 {
 		service := parts[1] // svc0
@@ -428,6 +428,7 @@ func updateReqStats(
 	} else {
 		fmt.Println("Invalid input format", reqBodyStr)
 	}
+
 }
 
 func echoServer(
@@ -473,12 +474,22 @@ func echoServer(
 		// fmt.Printf("++ECHO++ Received request to echo at %d: %s\n", time.Now().UnixNano(), body)
 		fmt.Printf("++ECHO++ Latency from LB to CC: %.2fms\n", float64(getLatencyUsFromData(body))/1000)
 
-		// Update request stats immediately (don't wait)
-		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, serviceLatencyStats, body)
+		reqBodyStr := string(body)
 
+		// Update request stats immediately (don't wait)
+		updateReqStats(serviceOutstandingRequests, serviceArrivingRPS, serviceLatencyStats, reqBodyStr)
+
+		// if "DR" in the body, don't echo back
+		if strings.Contains(reqBodyStr, "|DR|") {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Dropped request acknowledged"))
+			return
+		}
+
+		// else, echo back the request body
 		if AGGREGATE_ECHO_MESSAGES {
 			// Add message to aggregator (will be sent later in batch)
-			messageAggregator.AddMessage(string(body))
+			messageAggregator.AddMessage(reqBodyStr)
 		} else {
 			// Send immediately (old behavior)
 			for _, ingressGatewayURL := range ingressGatewayURLs {
@@ -486,7 +497,7 @@ func echoServer(
 			}
 		}
 
-		defer r.Body.Close()
+		// defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)
 		w.Write(body) // Echo back request body
 	})

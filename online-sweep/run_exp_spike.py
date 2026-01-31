@@ -9,7 +9,7 @@ import time
 import json
 import sys
 
-from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips, get_gateway_ip
+from set_topology import get_gateway_ips, setup_clutser_with_new_pods, get_curr_gateway_ips, get_gateway_ip
 
 # Everything in seconds:
 DURATION = 60
@@ -251,25 +251,26 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr, duration, request_in
         assert(req_interval_ms > 0)
         
         # gateway_ip = GATEWAY_IPs[svc_name]
-        gateway_ip = get_gateway_ip(svc_name, use_pod_ip=True)
+        gateway_ips = get_gateway_ips(svc_name, use_pod_ip=True)
         
-        if proc_distr == "none" or proc_distr == "uniform":
-            url = f"http://{gateway_ip}/?cpu_coreMs={cpu_consumption}"
-        else:
-            url = f"http://{gateway_ip}/?cpu_coreMs=EXP<{cpu_consumption}>"
+        endpoints = []
+        for gateway_ip in gateway_ips:
+            if proc_distr == "none" or proc_distr == "uniform":
+                url = f"http://{gateway_ip}/?cpu_coreMs={cpu_consumption}"
+            else:
+                url = f"http://{gateway_ip}/?cpu_coreMs=EXP<{cpu_consumption}>"
+            endpoints.append({
+                    "url": url,
+                    "node": 1,
+                    "app": int(svc_name[3:]),
+                    "headers": "{\"Host\":\"" + svc_name + ".mplb.com\"}"
+                })
         
         if svc_name == spiking_svc:
             print(f"+++++++++ Spiking service: {svc_name} ++++++++++")
         
         configs.append({
-            "endpoints": [
-                {
-                    "url": url,
-                    "node": 1,
-                    "app": int(svc_name[3:]),
-                    "headers": "{\"Host\":\"" + svc_name + ".mplb.com\"}"
-                }
-            ],
+            "endpoints": endpoints,
             "reqIntervalMs": req_interval_ms,
             "durationMs": duration * 1000,
             "logFileName": f"{curr_dir}/{LOG_FOLDER}/{variation}_{svc_name}_hit.log",
@@ -360,7 +361,7 @@ def run_spike_exp_for_cluster_state(
     
     for lb in lbs: # [leastrequest|leastrequest_plus|nodal_leastrequest|only_nodal_leastrequest|minimize_diff]
         
-        for iteration in [200, 201, 202]:
+        for iteration in [300, 301, 302]:
         
             print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} [{spiking_svc}] [{iteration}] i.e. loads={svc_loads} & podnames={pod_names}")
 

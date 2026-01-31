@@ -62,6 +62,58 @@ def get_gateway_ip(svc_name, use_pod_ip=False):
         
         raise Exception(f"Failed to read service {svc_name} after {max_retries} attempts")
 
+def get_gateway_ips(svc_name: str, use_pod_ip: bool = False) -> List[str]:
+    """
+    Get the Cluster IP address of the Istio ingress gateways for a specific service.
+    If use_pod_ip is True, returns the pod IPs with :8080 instead.
+    """
+    # Load Kubernetes config
+    config.load_kube_config()
+    v1 = client.CoreV1Api()
+
+    if use_pod_ip:
+        # Get the pod IP instead of cluster IP
+        max_retries = 10
+        initial_delay = 2
+        for attempt in range(max_retries):
+            try:
+                # List pods with the matching label selector
+                pods = v1.list_namespaced_pod(
+                    namespace="istio-ingress",
+                    label_selector=f"istio=ingressgateway-{svc_name}"
+                )
+                if pods.items:
+                    pod_ips = [pod.status.pod_ip for pod in pods.items]
+                    return [f"{ip}:8080" for ip in pod_ips]
+                else:
+                    raise Exception(f"No pods found for istio-ingressgateway-{svc_name}")
+            except client.exceptions.ApiException as e:
+                if e.status == 500 and attempt < max_retries - 1:
+                    delay = initial_delay * (2 ** attempt)
+                    print(f"⚠️ Webhook error (500) reading pods for {svc_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                else:
+                    raise
+        raise Exception(f"Failed to read pods for {svc_name} after {max_retries} attempts")
+    else:
+        # Get the service object with retry logic
+        max_retries = 10
+        initial_delay = 2
+        for attempt in range(max_retries):
+            try:
+                service = v1.read_namespaced_service(name=f"istio-ingressgateway-{svc_name}", namespace="istio-ingress")
+                cluster_ip = service.spec.cluster_ip
+                return [cluster_ip]
+            except client.exceptions.ApiException as e:
+                if e.status == 500 and attempt < max_retries - 1:
+                    delay = initial_delay * (2 ** attempt)
+                    print(f"⚠️ Webhook error (500) reading service {svc_name}. Retrying in {delay}s... (attempt {attempt + 1}/{max_retries})")
+                    time.sleep(delay)
+                else:
+                    raise
+        
+        raise Exception(f"Failed to read service {svc_name} after {max_retries} attempts")
+
 def get_curr_gateway_ips():
     svc_gateway_ips = {}
     for app in get_current_app_and_pods():
