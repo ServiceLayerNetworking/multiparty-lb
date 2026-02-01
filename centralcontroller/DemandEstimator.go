@@ -277,7 +277,7 @@ func (de *DemandEstimator) getHeadRoomPctAndPerfBasedAllowedRPS(
 		// 			the limit. We acheive this instead by taking the mean over an interval
 		//			instead of the per request rtt observed.
 
-		INIT_ALLOWED_RIF := 5.0
+		INIT_ALLOWED_RIF := 50.0
 		MIN_ALLOWED_RIF := 1.0
 		MAX_ALLOWED_RIF := 500.0
 

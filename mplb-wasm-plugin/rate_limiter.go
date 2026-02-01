@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
-	"time"
+	"strings"
 
 	"github.com/tetratelabs/proxy-wasm-go-sdk/proxywasm"
 	"github.com/tetratelabs/proxy-wasm-go-sdk/proxywasm/types"
@@ -54,60 +54,29 @@ func shouldDropRequest(currentTimeMs int64, dstSvc string) (bool, error) {
 
 	} else {
 
-		recentlySentReqTimestamps, cas := getRecentlySentRequestTimeStamps(dstSvc)
-
-		// remove timestamps that are older than 1 second
-		truncatingIndex := len(recentlySentReqTimestamps)
-		for i, ts := range recentlySentReqTimestamps {
-			if ts >= currentTimeMs-RATE_LIMITER_ENFORCEMENT_INTERVAL_MS {
-				truncatingIndex = i
-				break
-			}
-		}
-		recentlySentReqTimestamps = recentlySentReqTimestamps[truncatingIndex:]
-
-		numReqInPastInterval := len(recentlySentReqTimestamps)
-
 		var toReturn bool
 		var maxRPSAllowed int
-
 		if LOAD_BALANCING_STRATEGY == "leastrequest_plus_rlpb" ||
 			LOAD_BALANCING_STRATEGY == "nodal_leastrequest_rlpb" {
 			maxRPSAllowed = getPerfBasedAllowedRPS(dstSvc)
 		} else {
 			maxRPSAllowed = getMaxRPSGivenTheCPUAllocated(dstSvc)
 		}
-		// svcOutstandingReqs, _, err := getOutstandingRequests(dstSvc, -1)
-		// numSvcOutstandingReqs := 0
-		// if err == nil {
-		// 	for _, numOutstandingReqs := range *svcOutstandingReqs {
-		// 		numSvcOutstandingReqs += numOutstandingReqs
-		// 	}
-		// }
 
-		// if max(numReqInPastSec, numSvcOutstandingReqs) >= maxRPSAllowed {
-		maxReqInPastIntervalAllowed := maxRPSAllowed * (RATE_LIMITER_ENFORCEMENT_INTERVAL_MS / 1000)
+		// Count timestamps within the enforcement interval (read-only, no modification)
+		numReqInPastInterval := getRecentlySentRequestTimeStampsReadOnly(currentTimeMs)
+
+		maxReqInPastIntervalAllowed := int(math.Ceil(float64(maxRPSAllowed) * (float64(RATE_LIMITER_ENFORCEMENT_INTERVAL_MS) / 1000.0)))
+		// maxReqInPastIntervalAllowed := maxRPSAllowed * (RATE_LIMITER_ENFORCEMENT_INTERVAL_MS / 1000)
+		// maxReqInPastIntervalAllowed := (maxRPSAllowed*RATE_LIMITER_ENFORCEMENT_INTERVAL_MS + 999) / 1000
 		if numReqInPastInterval >= maxReqInPastIntervalAllowed {
 			proxywasm.LogCriticalf(
-				"Rate limiting request to %s: %d requests in the last %d interval [%d allowed]", dstSvc, numReqInPastInterval, RATE_LIMITER_ENFORCEMENT_INTERVAL_MS, maxReqInPastIntervalAllowed)
-			// "Rate limiting request to %s: %d requests in the last interval with %d outstanding [%d allowed]", dstSvc, numReqInPastSec, numSvcOutstandingReqs, maxRPSAllowed)
-
+				"Rate limiting request to %s: %d requests in the last %d interval [%d {%d} allowed]", dstSvc, numReqInPastInterval, RATE_LIMITER_ENFORCEMENT_INTERVAL_MS, maxReqInPastIntervalAllowed, maxRPSAllowed)
 			toReturn = true
 		} else {
-			recentlySentReqTimestamps = append(recentlySentReqTimestamps, currentTimeMs)
 			proxywasm.LogCriticalf(
-				"Not rate limiting request to %s: %d requests in the last %d interval [%d allowed]", dstSvc, numReqInPastInterval, RATE_LIMITER_ENFORCEMENT_INTERVAL_MS, maxReqInPastIntervalAllowed)
+				"Not rate limiting request to %s: %d requests in the last %d interval [%d {%d} allowed]", dstSvc, numReqInPastInterval, RATE_LIMITER_ENFORCEMENT_INTERVAL_MS, maxReqInPastIntervalAllowed, maxRPSAllowed)
 			toReturn = false
-		}
-
-		err := setRecentlySentRequestTimeStamps(cas, dstSvc, recentlySentReqTimestamps)
-		if err != nil {
-			proxywasm.LogCriticalf("Couldn't set recently sent requests: %v", err)
-			if errors.Is(err, types.ErrorStatusCasMismatch) {
-				// try again, another thread has changed the list since we last read it
-				return shouldDropRequest(time.Now().UnixMilli(), dstSvc)
-			}
-			return false, err
 		}
 
 		return toReturn, nil
@@ -254,56 +223,120 @@ func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 	return (int(cpuAllocated/cpuConsumption) + RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED) / NUM_OF_LB_REPLICAS
 }
 
-func getRecentlySentRequestTimeStamps(dstSvc string) ([]int64, uint32) {
-	// get the list
-	// if it doesn't exist, create it
-	// if it can't be created, return error
-	// return the list
-
-	val, cas, err := proxywasm.GetSharedData(recentlySentRequestsKey(dstSvc))
+// getRecentlySentRequestTimeStampsReadOnly returns the count of timestamps within the enforcement interval
+// Format: "\n<ts1>\n<ts2>\n<ts3>..."
+func getRecentlySentRequestTimeStampsReadOnly(currentTimeMs int64) int {
+	val, _, err := proxywasm.GetSharedData(RATE_LIMITER_TIMESTAMPS_QUEUE)
 	if err != nil {
+		return 0
+	}
 
-		// initialize the list
-		proxywasm.LogCriticalf("Initializing recently sent requests list for %s", dstSvc)
-		err = setRecentlySentRequestTimeStamps(cas, dstSvc, []int64{})
+	// Trim null bytes from initialization
+	dataStr := strings.TrimLeft(string(val), "\x00")
+	if dataStr == "" {
+		return 0
+	}
+
+	// Count timestamps within the enforcement interval
+	count := 0
+	lines := strings.Split(dataStr, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		ts, err := strconv.ParseInt(line, 10, 64)
 		if err != nil {
-			// this could be CASMismatch or some other error, in any case, we have to retry
-			proxywasm.LogCriticalf(
-				"Couldn't initialize recently sent requests list: %v", err)
+			continue
+		}
+		if ts >= currentTimeMs-RATE_LIMITER_ENFORCEMENT_INTERVAL_MS {
+			count++
+		}
+	}
+
+	return count
+}
+
+// appendRateLimiterTimestamp appends a timestamp to the rate limiter list with CAS retry
+// Format: "\n<timestamp>"
+func appendRateLimiterTimestamp(timestampMs int64) {
+	tsStr := fmt.Sprintf("\n%d", timestampMs)
+
+	for {
+		data, cas, err := proxywasm.GetSharedData(RATE_LIMITER_TIMESTAMPS_QUEUE)
+		if err != nil {
+			// Key doesn't exist, initialize with empty
+			data = make([]byte, 0)
+			cas = 0
 		}
 
-		// restart function to get the updated value
-		return getRecentlySentRequestTimeStamps(dstSvc)
-	}
+		newData := append(data, []byte(tsStr)...)
 
-	var timestamps []int64
-	err = json.Unmarshal(val, &timestamps)
-	if err != nil {
-		proxywasm.LogCriticalf("Couldn't unmarshal timestamps: %v", err)
-		panic(err)
+		err = proxywasm.SetSharedData(RATE_LIMITER_TIMESTAMPS_QUEUE, newData, cas)
+		if err != nil {
+			if errors.Is(err, types.ErrorStatusCasMismatch) {
+				continue
+			}
+			proxywasm.LogCriticalf("Couldn't append rate limiter timestamp: %v", err)
+			return
+		}
+		return
 	}
-
-	return timestamps, cas
 }
 
-func setRecentlySentRequestTimeStamps(cas uint32, dstSvc string, timestamps []int64) error {
-	// marshal the list
-	// set the list
-	// if it can't be set, return error
-	// if the error is CASMismatch, call setRecentlySentRequestTimeStamps again with updated cas
+// cleanupRateLimiterTimestamps removes old timestamps (called from OnTick)
+func cleanupRateLimiterTimestamps(currentTimeMs int64) {
+	for {
+		val, cas, err := proxywasm.GetSharedData(RATE_LIMITER_TIMESTAMPS_QUEUE)
+		if err != nil {
+			return
+		}
 
-	buf, err := json.Marshal(timestamps)
-	if err != nil {
-		proxywasm.LogCriticalf("Couldn't marshal timestamps: %v", err)
-		panic(err)
+		// Trim null bytes from initialization
+		dataStr := strings.TrimLeft(string(val), "\x00")
+		if dataStr == "" {
+			return
+		}
+
+		// Keep only timestamps within the enforcement interval
+		var kept []string
+		lines := strings.Split(dataStr, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			ts, err := strconv.ParseInt(line, 10, 64)
+			if err != nil {
+				continue
+			}
+			if ts >= currentTimeMs-RATE_LIMITER_ENFORCEMENT_INTERVAL_MS {
+				kept = append(kept, line)
+			}
+		}
+
+		// If nothing was removed, no need to update
+		if len(kept) == len(lines)-1 { // -1 for potential leading empty string from split
+			return
+		}
+
+		var newData []byte
+		if len(kept) > 0 {
+			newData = []byte("\n" + strings.Join(kept, "\n"))
+		} else {
+			newData = make([]byte, 0)
+		}
+
+		err = proxywasm.SetSharedData(RATE_LIMITER_TIMESTAMPS_QUEUE, newData, cas)
+		if err != nil {
+			if errors.Is(err, types.ErrorStatusCasMismatch) {
+				continue
+			}
+			proxywasm.LogCriticalf("Couldn't cleanup rate limiter timestamps: %v", err)
+			return
+		}
+		return
 	}
-
-	err = proxywasm.SetSharedData(recentlySentRequestsKey(dstSvc), buf, cas)
-	return err
-}
-
-func recentlySentRequestsKey(dstSvc string) string {
-	return "rs-req-" + dstSvc
 }
 
 func max(a, b int) int {

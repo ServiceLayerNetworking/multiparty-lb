@@ -21,7 +21,7 @@ CORES_PER_NODE = 8
 SCALE_FACTOR = 0.8
 REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
-LOG_FOLDER = "logs/online_sweep_Jan28"
+LOG_FOLDER = "logs/online_sweep_Feb1"
 
 # GATEWAY_IPs = get_curr_gateway_ips()
 
@@ -361,7 +361,7 @@ def run_spike_exp_for_cluster_state(
     
     for lb in lbs: # [leastrequest|leastrequest_plus|nodal_leastrequest|only_nodal_leastrequest|minimize_diff]
         
-        for iteration in [300, 301, 302]:
+        for iteration in [700, 701, 702]:
         
             print(f"Running experiment w/ state {state_id} && lb {LB_NAME[lb]} [{spiking_svc}] [{iteration}] i.e. loads={svc_loads} & podnames={pod_names}")
 
@@ -1013,6 +1013,15 @@ def main():
     
     prep_for_exps()
     
+    for random_state, spiking_svc in [(652,   'svc4')]:
+        run_spike_exp_for_cluster_state_id(random_state, spiking_svc, lbs=[
+            "nodal_leastrequest",
+            # "leastrequest_plus_rlpb",
+        ])
+        
+    os.system("curl -d 'EXPERIMENT FINITO' ntfy.sh/mplb")
+    return
+    
     # # # test 10 to 15 states
     # start = 298
     # random_states = list(range(start+25, start+50))
@@ -1022,33 +1031,33 @@ def main():
     # random_states = random.sample(range(1000), k=25)
     # print(all_states)
     
-    # _random_states = [
-    #     (935,   'svc10'),
-    #     (124,   'svc14'),
-    #     (525,   'svc1'),
-    #     (105,   'svc9'),
-    #     (170,   'svc2'),
-    #     (166,   'svc11'),
-    #     (446,   'svc6'),
-    #     (279,   'svc6'),
-    #     (273,   'svc8'),
-    #     (412,   'svc10'),
-    #     (214,   'svc1'),
-    #     (145,   'svc11'),
-    #     (111,   'svc3'),
-    #     (775,   'svc0'),
-    #     (307,   'svc13'),
-    #     (869,   'svc1'),
-    #     (878,   'svc8'),
-    #     (304,   'svc8'),
-    #     (63,    'svc6'),
-    #     (464,   'svc1'),
-    #     (286,   'svc1'),
-    #     (976,   'svc7'),
-    #     (811,   'svc9'),
-    #     (98,    'svc3'),
-    #     (652,   'svc4')
-    # ]
+    _random_states = [
+        (935,   'svc10'),
+        (124,   'svc14'),
+        (525,   'svc1'),
+        (105,   'svc9'),
+        (170,   'svc2'),
+        # (166,   'svc11'),
+        (446,   'svc6'),
+        (279,   'svc6'),
+        (273,   'svc8'),
+        (412,   'svc10'),
+        (214,   'svc1'),
+        (145,   'svc11'),
+        (111,   'svc3'),
+        (775,   'svc0'),
+        (307,   'svc13'),
+        (869,   'svc1'),
+        (878,   'svc8'),
+        (304,   'svc8'),
+        # (63,    'svc6'),
+        (464,   'svc1'),
+        (286,   'svc1'),
+        (976,   'svc7'),
+        (811,   'svc9'),
+        (98,    'svc3'),
+        # (652,   'svc4')
+    ]
     
     random_states = [
         (9, 'svc3'),
@@ -1060,15 +1069,15 @@ def main():
         (176, 'svc2'),
         (703, 'svc8'),
         (522, 'svc7'),
-        (960, 'svc5'),
-        (186, 'svc11'),
+        # (960, 'svc5'),
+        # (186, 'svc11'),
         (608, 'svc3'),
         (9, 'svc5'),
         (620, 'svc12'),
-        (49, 'svc6'),
-        (314, 'svc3'),
+        # (49, 'svc6'),
+        # (314, 'svc3'),
         (431, 'svc12'),
-        (223, 'svc7'),
+        # (223, 'svc7'),
         (673, 'svc8'),
         (468, 'svc4'),
         (569, 'svc3'),
@@ -1078,19 +1087,42 @@ def main():
         (749, 'svc9')
     ]
     
-    for random_state, spiking_svc in [(652,   'svc4')]:
+    problematic_states = [
+        (166,   'svc11'),
+        (63,    'svc6'),
+        (652,   'svc4'),
+        (960, 'svc5'),
+        (186, 'svc11'),
+        (49, 'svc6'),
+        (314, 'svc3'),
+        (223, 'svc7'),
+    ]
+    
+    for random_state, spiking_svc in problematic_states:
         run_spike_exp_for_cluster_state_id(random_state, spiking_svc, lbs=[
-            # "nodal_leastrequest",
-            # "leastrequest_plus_rlpb",
-            "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
+            "leastrequest_plus_rlpb",
+        ])
+    
+    os.system("curl -d 'EXPERIMENT ALMOST FINITO [1]' ntfy.sh/mplb")
+    
+    all_states = _random_states + random_states
+    
+    for random_state, spiking_svc in all_states:
+        run_spike_exp_for_cluster_state_id(random_state, spiking_svc, lbs=[
+            "nodal_leastrequest",
+            "leastrequest_plus_rlpb",
         ])
         
-    # os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
+    os.system("curl -d 'EXPERIMENT ALMOST FINITO [2]' ntfy.sh/mplb")
+    
+    all_states = problematic_states + _random_states + random_states
         
-    # for random_state, spiking_svc in random_states:
-    #     run_spike_exp_for_cluster_state_id(random_state, spiking_svc, lbs=[
-    #         "minimize_diff",
-    #     ])
+    for random_state, spiking_svc in all_states:
+        run_spike_exp_for_cluster_state_id(random_state, spiking_svc, lbs=[
+            "nodal_leastrequest_rlpb",
+            "minimize_diff",
+        ])
 
     os.system("curl -d 'EXPERIMENT FINITO' ntfy.sh/mplb")
     

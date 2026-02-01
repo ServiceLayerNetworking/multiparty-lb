@@ -132,7 +132,7 @@ func OnEchoServerResponse(numHeaders, bodySize, numTrailers int) {
 	// processEchoBody(string(body))
 }
 
-func processEchoBody(body string) {
+func processEchoBody(body string, selfSvcName string) {
 
 	// parse the response body
 	respBody := strings.TrimSpace(string(body))
@@ -169,12 +169,12 @@ func processEchoBody(body string) {
 
 	currTime = getCurrUnixTimeNs()
 	// perform the operation
-	updateOutstandingReqs(dst, selectedEndpoint, op)
+	updateOutstandingReqs(dst, selectedEndpoint, op, selfSvcName)
 	timeTaken := getCurrUnixTimeNs() - currTime
 	proxywasm.LogCriticalf("Time taken to update outstanding requests: %dus", timeTaken/1e3)
 }
 
-func updateOutstandingReqs(dst string, selectedEndpoint int, op string) {
+func updateOutstandingReqs(dst string, selectedEndpoint int, op string, selfSvcName string) {
 	// get the outstanding requests for all endpoints of the dst
 	outstandingReqs, cas, err := getOutstandingRequests(dst, selectedEndpoint+1)
 	if err != nil {
@@ -186,6 +186,10 @@ func updateOutstandingReqs(dst string, selectedEndpoint int, op string) {
 	if op == "++" {
 		proxywasm.LogCriticalf("Incrementing outstanding requests for %s: %v", dst, *outstandingReqs)
 		(*outstandingReqs)[selectedEndpoint]++
+		// Append timestamp for rate limiter tracking only for this service's incoming requests
+		if strings.HasSuffix(selfSvcName, dst) {
+			appendRateLimiterTimestamp(time.Now().UnixMilli())
+		}
 	} else if op == "--" {
 		proxywasm.LogCriticalf("Decrementing outstanding requests for %s: %v", dst, *outstandingReqs)
 		if (*outstandingReqs)[selectedEndpoint] <= 0 {
@@ -212,7 +216,7 @@ func updateOutstandingReqs(dst string, selectedEndpoint int, op string) {
 
 		// try again, another thread has changed outstanding requests since
 		// 	we last read them
-		updateOutstandingReqs(dst, selectedEndpoint, op)
+		updateOutstandingReqs(dst, selectedEndpoint, op, selfSvcName)
 	} else {
 		proxywasm.LogCriticalf("Updated outstanding requests for %s: %v", dst, *outstandingReqs)
 	}

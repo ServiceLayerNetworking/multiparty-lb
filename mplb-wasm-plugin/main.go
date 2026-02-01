@@ -33,9 +33,10 @@ const (
 	KEY_RPS_SHARED_QUEUE      = "slate_rps_shared_queue"
 	KEY_RPS_SHARED_QUEUE_SIZE = "slate_rps_shared_queue_size"
 
-	TIMESTAMPS_SHARED_QUEUE = "mplb_timestamps_shared_queue"
-	SENT_REQ_SHARED_QUEUE   = "mplb_sent_req_shared_queue"
-	RIF_SHARED_QUEUE        = "mplb_rif_shared_queue"
+	TIMESTAMPS_SHARED_QUEUE       = "mplb_timestamps_shared_queue"
+	SENT_REQ_SHARED_QUEUE         = "mplb_sent_req_shared_queue"
+	RIF_SHARED_QUEUE              = "mplb_rif_shared_queue"
+	RATE_LIMITER_TIMESTAMPS_QUEUE = "mplb_rate_limiter_timestamps_queue"
 
 	// this is the reporting period in millis
 	TICK_PERIOD = 500
@@ -46,7 +47,7 @@ const (
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 0
 	NUM_OF_LB_REPLICAS                                 = 1
 	USE_CONCURRENT_CONNECTIONS_IN_RATE_LIMITER         = true
-	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 1000
+	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 3000
 
 	// Timeout for removing RIF entries in milliseconds (should correspond to client timeout)
 	RIF_ENTRY_TIMEOUT_MS = 5000 + 500 // adding 500ms buffer to prevent double removals
@@ -64,7 +65,7 @@ const (
 var (
 	ALL_KEYS = []string{KEY_INFLIGHT_REQ_COUNT, KEY_REQUEST_COUNT, KEY_LAST_RESET, KEY_RPS_THRESHOLDS, KEY_HASH_MOD, AGGREGATE_REQUEST_LATENCY,
 		KEY_TRACED_REQUESTS, KEY_MATCH_DISTRIBUTION, KEY_INFLIGHT_ENDPOINT_LIST, KEY_ENDPOINT_RPS_LIST, KEY_RPS_SHARED_QUEUE, KEY_RPS_SHARED_QUEUE_SIZE,
-		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE, RIF_SHARED_QUEUE}
+		TIMESTAMPS_SHARED_QUEUE, SENT_REQ_SHARED_QUEUE, RIF_SHARED_QUEUE, RATE_LIMITER_TIMESTAMPS_QUEUE}
 	cur_idx      int
 	latency_list []int64
 	ts_list      []int64
@@ -265,6 +266,9 @@ func (p *pluginContext) OnTick() {
 
 	// Process RIF events: handle timeouts and re-queue pending entries
 	processRIFEvents()
+
+	// Cleanup old rate limiter timestamps
+	cleanupRateLimiterTimestamps(time.Now().UnixMilli())
 }
 
 // Override types.DefaultPluginContext.
@@ -399,13 +403,13 @@ func (ctx *httpContext) OnHttpRequestHeaders(int, bool) types.Action {
 					proxywasm.LogCriticalf("Processing %d aggregated messages from CC-States header", len(messages))
 					// Process each message
 					for _, message := range messages {
-						processEchoBody(message)
+						processEchoBody(message, ctx.pluginContext.serviceName)
 					}
 				}
 			}
 		} else {
 			// Handle single message (old behavior)
-			processEchoBody(ccState)
+			processEchoBody(ccState, ctx.pluginContext.serviceName)
 		}
 		proxywasm.SendHttpResponse(
 			200,
