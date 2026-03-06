@@ -84,7 +84,7 @@ def run_with_timeout(ms_df_0, mean_ms_util, variation_from_mean):
     hosts, tenants, workers = get_state(ms_df_0, mean_ms_util, variation_from_mean)
     return hosts, tenants, workers, gs_g.run_from_json(hosts, tenants, workers)
 
-def run_for_mean(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_from_mean: int = 50):
+def run_for_mean_convulated(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_from_mean: int = 50):
     timeout_seconds = 300000  # 5 minutes
 
     while True:
@@ -125,6 +125,42 @@ def run_for_mean(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_from_mean: i
     
     global_demand_meet_percentage = (len(alibaba_ms_df[(alibaba_ms_df["demand"] - alibaba_ms_df["global_util"]) < 0.01]) / len(alibaba_ms_df) * 100)
     local_demand_meet_percentage = (len(alibaba_ms_df[(alibaba_ms_df["demand"] - alibaba_ms_df["local_util"]) < 0.01]) / len(alibaba_ms_df) * 100)
+    
+    return cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage
+
+def get_results_stats(tenants, results):
+    tenants_results = results["result"]
+    cluster_util = 0.0
+    n_tenants_demand_met = 0
+    for tenant_name, tenant_result in tenants_results.items():
+        tenant_load = tenants[tenant_name]["load"]
+        tenant_util = sum(tenant_result.values())
+        cluster_util += tenant_util
+        if abs(tenant_load - tenant_util) < 0.01:
+            n_tenants_demand_met += 1
+            
+    return cluster_util, n_tenants_demand_met
+                    
+def run_for_mean(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_from_mean: int = 50):
+    timeout_seconds = 300000  # 5 minutes
+
+    while True:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(run_with_timeout, ms_df_0, mean_ms_util, variation_from_mean)
+            try:
+                hosts, tenants, workers, global_result = future.result(timeout=timeout_seconds)
+                break  # success, exit loop
+            except concurrent.futures.TimeoutError:
+                print("Timed out. Retrying...")
+                
+    local_result = gs_l.run_from_json(hosts, tenants, workers)
+    
+    local_cluster_util, local_n_tenants_demand_met = get_results_stats(tenants, local_result)
+    global_cluster_util, global_n_tenants_demand_met = get_results_stats(tenants, global_result)
+    
+    cluster_imprv = (global_cluster_util - local_cluster_util) / local_cluster_util * 100 if local_cluster_util > 0 else 0
+    global_demand_meet_percentage = (global_n_tenants_demand_met / len(tenants)) * 100
+    local_demand_meet_percentage = (local_n_tenants_demand_met / len(tenants)) * 100
     
     return cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage
 

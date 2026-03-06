@@ -173,7 +173,7 @@ def get_locally_optimal_load_distribution(
     for worker in workers:
         worker.processing_rate = 1.0
             
-    max_iterations = 10
+    max_iterations = 10_000
             
     # Repeat the following steps until convergence (i.e. no worker's processing rate changes in a step):
     for i in range(max_iterations):
@@ -233,15 +233,17 @@ def get_locally_optimal_load_distribution(
         
     return to_return
     
-def get_locally_optimal_load_distribution_fast(
+def get_locally_optimal_load_distribution_fast_processing_rate_based(
     hosts: List[g.Host],
     tenants: List[g.Tenant],
-    workers: List[g.Worker]) -> Dict[str, Dict[str, float]]:
+    workers: List[g.Worker],
+    epsilon: float = 1e-6) -> Dict[str, Dict[str, float]]:
     
     for worker in workers:
         worker.processing_rate = 1.0
+        worker.processed = 0.0
 
-    max_iterations = 10
+    max_iterations = 10_000
 
     # Pre-group workers by tenant and host for faster access
     tenant_to_workers = defaultdict(list)
@@ -275,11 +277,74 @@ def get_locally_optimal_load_distribution_fast(
                 new_rate = processed / time if time > 0 else 1.0
                 worker = workers_on_host[name]
                 worker.processed = processed
-                if worker.processing_rate != new_rate:
+                if abs(worker.processing_rate - new_rate) > epsilon:
                     worker.processing_rate = new_rate
                     is_worker_processing_rate_changed = True
 
         if not is_worker_processing_rate_changed:
+            break
+
+    # Step 3: Collect results
+    results = defaultdict(dict)
+    for worker in workers:
+        results[worker.tenant][worker.name] = worker.processed
+
+    final_output = {
+        "status": GRB.OPTIMAL,
+        "result": dict(results)
+    }
+
+    # print(final_output)
+    return final_output
+
+def get_locally_optimal_load_distribution_fast(
+    hosts: List[g.Host],
+    tenants: List[g.Tenant],
+    workers: List[g.Worker],
+    epsilon: float = 1e-6,
+    max_iterations: int = 10_000) -> Dict[str, Dict[str, float]]:
+    
+    for worker in workers:
+        worker.processing_rate = 1.0
+        worker.processed = 0.0
+
+    # Pre-group workers by tenant and host for faster access
+    tenant_to_workers = defaultdict(list)
+    host_to_workers = defaultdict(dict)
+    for worker in workers:
+        tenant_to_workers[worker.tenant].append(worker)
+        host_to_workers[worker.host][worker.name] = worker
+
+    for _ in range(max_iterations):
+        is_worker_processed_changed = False
+
+        # Step 1: Distribute load among tenant's workers proportionally
+        for tenant in tenants:
+            tenant_workers = tenant_to_workers[tenant.name]
+            total_processing = sum(w.processed for w in tenant_workers)
+            if total_processing > 0:
+                for worker in tenant_workers:
+                    worker.load = tenant.load * (worker.processed / total_processing)
+            else:
+                equal_load = tenant.load / len(tenant_workers)
+                for worker in tenant_workers:
+                    worker.load = equal_load
+
+        # Step 2: Max-min fair share processing rate update
+        for host in hosts:
+            workers_on_host = host_to_workers[host.name]
+            worker_loads = {name: worker.load for name, worker in workers_on_host.items()}
+            fair_shares = get_max_min_processing_times(host.cap, worker_loads)
+            
+            for name, (processed, time) in fair_shares.items():
+                new_rate = processed / time if time > 0 else 1.0
+                worker = workers_on_host[name]
+                new_processed = processed
+                if abs(worker.processed - new_processed) > epsilon:
+                    is_worker_processed_changed = True
+                worker.processed = new_processed
+
+        if not is_worker_processed_changed:
             break
 
     # Step 3: Collect results
@@ -336,3 +401,4 @@ if __name__ == '__main__':
             print("Invalid argument, use -f to run sample json")
     else:
         print("No argument provided, use -f to run sample json")
+        
