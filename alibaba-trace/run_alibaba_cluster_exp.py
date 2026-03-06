@@ -132,8 +132,10 @@ def get_results_stats(tenants, results):
     tenants_results = results["result"]
     cluster_util = 0.0
     n_tenants_demand_met = 0
-    for tenant_name, tenant_result in tenants_results.items():
-        tenant_load = tenants[tenant_name]["load"]
+    for tenant in tenants:
+        tenant_name = tenant["name"]
+        tenant_result = tenants_results[tenant_name]
+        tenant_load = tenant["load"]
         tenant_util = sum(tenant_result.values())
         cluster_util += tenant_util
         if abs(tenant_load - tenant_util) < 0.01:
@@ -154,6 +156,7 @@ def run_for_mean(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_from_mean: i
                 print("Timed out. Retrying...")
                 
     local_result = gs_l.run_from_json(hosts, tenants, workers)
+    # global_result = local_result
     
     local_cluster_util, local_n_tenants_demand_met = get_results_stats(tenants, local_result)
     global_cluster_util, global_n_tenants_demand_met = get_results_stats(tenants, global_result)
@@ -170,9 +173,9 @@ def main():
     
     data = []
     
-    means = [100]
+    means = [50]
     print(means)
-    input()
+    # input()
     
     for mean_ms_util in means:
         cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage = run_for_mean(ms_df_0, mean_ms_util, variation_from_mean=50)

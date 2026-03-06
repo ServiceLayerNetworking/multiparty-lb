@@ -315,8 +315,10 @@ def get_locally_optimal_load_distribution_fast(
         tenant_to_workers[worker.tenant].append(worker)
         host_to_workers[worker.host][worker.name] = worker
 
-    for _ in range(max_iterations):
+    for i_iteration in range(max_iterations):
         is_worker_processed_changed = False
+        
+        print(f"Iteration #{i_iteration}")
 
         # Step 1: Distribute load among tenant's workers proportionally
         for tenant in tenants:
