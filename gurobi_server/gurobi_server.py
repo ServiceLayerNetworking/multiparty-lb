@@ -1198,6 +1198,158 @@ def run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(
         
         return to_return, m, t_min, t_load, optimization_time
 
+def run_objective_simplified_maxmin(
+    _hosts: List[Host],
+    _tenants: List[Tenant],
+    _workers: List[Worker]) -> Tuple[any, gp.Model, Tenant_Min, Tenant_Load]:
+
+    global previous_w
+
+    print("|||||||||||||||||||| Setting up max-min fairness")
+
+    start_time = time()
+
+    # ============================ Precomputation ============================
+
+    host_workers = defaultdict(list)
+    tenant_workers = defaultdict(list)
+    for worker in _workers:
+        host_workers[worker.host].append(worker.name)
+        tenant_workers[worker.tenant].append(worker.name)
+
+    cap_values = {h.name: h.cap for h in _hosts}
+    load_values = {t.name: t.load for t in _tenants}
+    weight_values = {t.name: t.fshareload for t in _tenants}
+
+    active_tenants = set(t.name for t in _tenants)
+    fixed_values = {}  # tenant_name -> fixed x value
+
+    TOLERANCE = 1e-6
+    last_model = None
+    last_w = None
+
+    # ======================== Lexicographic LP Loop =========================
+
+    while active_tenants:
+        m = gp.Model("maxmin_fairness")
+
+        # Decision variables
+        w = m.addVars([wr.name for wr in _workers], lb=0.0, vtype=GRB.CONTINUOUS, name="w")
+        x = m.addVars([t.name for t in _tenants], lb=0.0, vtype=GRB.CONTINUOUS, name="x")
+        z = m.addVar(lb=0.0, vtype=GRB.CONTINUOUS, name="z")
+
+        # Objective: maximize z
+        m.setObjective(z, GRB.MAXIMIZE)
+
+        # Constraint 1: x[t] = sum of worker loads for tenant t
+        for t in _tenants:
+            m.addConstr(
+                x[t.name] == gp.quicksum(w[wn] for wn in tenant_workers[t.name]),
+                name=f"x_def_{t.name}"
+            )
+
+        # Constraint 2: x[t] >= weight[t] * z for active tenants only
+        for t_name in active_tenants:
+            m.addConstr(
+                x[t_name] >= weight_values[t_name] * z,
+                name=f"fairness_{t_name}"
+            )
+
+        # Constraint 3: x[t] = fixed_value for fixed tenants
+        for t_name, fv in fixed_values.items():
+            m.addConstr(
+                x[t_name] == fv,
+                name=f"fixed_{t_name}"
+            )
+
+        # Constraint 4: host capacity
+        for h in _hosts:
+            m.addConstr(
+                gp.quicksum(w[wn] for wn in host_workers[h.name]) <= cap_values[h.name],
+                name=f"host_cap_{h.name}"
+            )
+
+        # Constraint 5: tenant demand upper bound
+        for t in _tenants:
+            m.addConstr(
+                x[t.name] <= load_values[t.name],
+                name=f"demand_ub_{t.name}"
+            )
+
+        # Solve
+        m.optimize()
+
+        if m.Status != GRB.OPTIMAL:
+            break
+
+        last_model = m
+        last_w = w
+
+        # Identify tight tenants
+        z_val = z.x
+        newly_fixed = set()
+        for t_name in list(active_tenants):
+            x_val = x[t_name].x
+            weighted_z = weight_values[t_name] * z_val
+            if abs(x_val - weighted_z) < TOLERANCE:
+                fixed_values[t_name] = x_val
+                newly_fixed.add(t_name)
+
+        active_tenants -= newly_fixed
+
+        # Safety valve: if no progress, exit the loop
+        if not newly_fixed:
+            break
+
+    # =========================== Build Return Value ===========================
+
+    optimization_time = (time() - start_time) * 1000
+
+    if last_model is not None and last_model.Status == GRB.OPTIMAL:
+        m = last_model
+
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+            results[worker.tenant][worker.name] = last_w[worker.name].x
+
+        to_return = {
+            "status": m.Status,
+            "result": results
+        }
+
+        t_load_ret = {t.name: fixed_values.get(t.name, 0.0) for t in _tenants}
+        t_min_ret = {t.name: weight_values[t.name] for t in _tenants}
+
+        previous_w = {worker.name: last_w[worker.name].x for worker in _workers}
+        print("New previous weights:", previous_w)
+
+        return to_return, m, t_min_ret, t_load_ret, optimization_time
+
+    else:
+        for _ in range(5):
+            print("///////////////////////////////////////////////")
+        print("\nOptimization failed\n")
+        for _ in range(5):
+            print("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\")
+
+        results = {}
+        for worker in _workers:
+            if worker.tenant not in results:
+                results[worker.tenant] = {}
+            results[worker.tenant][worker.name] = 0.0
+
+        to_return = {
+            "status": m.Status if last_model is not None else GRB.INFEASIBLE,
+            "result": results
+        }
+
+        t_load_ret = {t.name: 0.0 for t in _tenants}
+        t_min_ret = {t.name: weight_values[t.name] for t in _tenants}
+
+        return to_return, m if last_model is not None else None, t_min_ret, t_load_ret, optimization_time
+
 
 # run generic model from json input (from cc)
 def run_from_json(hosts, tenants, workers):
@@ -1209,7 +1361,8 @@ def run_from_json(hosts, tenants, workers):
     # previous_w = {'app1-node1': 105.6, 'app1-node2': 95.4, 'app2-node1': 95.4, 'app2-node2': 105.6}
     
     if is_objective_simple:
-        to_return = run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(hosts, tenants, workers)[0]
+        # to_return = run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(hosts, tenants, workers)[0]
+        to_return = run_objective_simplified_maxmin(hosts, tenants, workers)[0]
     else:
         to_return = run_generic_linear_single_objective_model_nov15_abs_diff(hosts, tenants, workers)[0]
     
