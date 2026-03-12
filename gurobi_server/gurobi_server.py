@@ -1297,9 +1297,11 @@ def run_objective_simplified_maxmin(
 
         active_tenants -= newly_fixed
 
-        # Safety valve: if no progress, exit the loop
+        # Safety valve: if no progress, fix all remaining
         if not newly_fixed:
-            break
+            for t_name in list(active_tenants):
+                fixed_values[t_name] = x[t_name].x
+            active_tenants.clear()
 
     # =========================== Build Return Value ===========================
 
