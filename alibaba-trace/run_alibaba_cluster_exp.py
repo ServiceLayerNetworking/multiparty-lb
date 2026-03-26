@@ -175,7 +175,7 @@ def main():
     data = []
     output_file = "alibaba_cluster_exp_results1.csv"
 
-    means = [120, 130, 140, 150]
+    means = [100, 110]
     print(means)
     # input()
 
