@@ -155,41 +155,45 @@ def run_for_mean(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_from_mean: i
             except concurrent.futures.TimeoutError:
                 print("Timed out. Retrying...")
                 
-    local_result = gs_l.run_from_json(hosts, tenants, workers)
-    # global_result = local_result
-    
-    local_cluster_util, local_n_tenants_demand_met = get_results_stats(tenants, local_result)
     global_cluster_util, global_n_tenants_demand_met = get_results_stats(tenants, global_result)
-    
-    cluster_imprv = (global_cluster_util - local_cluster_util) / local_cluster_util * 100 if local_cluster_util > 0 else 0
     global_demand_meet_percentage = (global_n_tenants_demand_met / len(tenants)) * 100
+    print(f"Global - Cluster Util: {global_cluster_util:.2f}, Tenants Demand Met: {global_n_tenants_demand_met}/{len(tenants)} ({global_demand_meet_percentage:.2f}%)")
+    
+    local_result = gs_l.run_from_json(hosts, tenants, workers)
+    local_cluster_util, local_n_tenants_demand_met = get_results_stats(tenants, local_result)
     local_demand_meet_percentage = (local_n_tenants_demand_met / len(tenants)) * 100
+    print(f"Local - Cluster Util: {local_cluster_util:.2f}, Tenants Demand Met: {local_n_tenants_demand_met}/{len(tenants)} ({local_demand_meet_percentage:.2f}%)")
+
+    cluster_imprv = (global_cluster_util - local_cluster_util) / local_cluster_util * 100 if local_cluster_util > 0 else 0
     
     return cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage
 
 def main():
-    
+
     ms_df_0 = pd.read_csv('ms_df_timestamp_0.csv')
-    
+
     data = []
-    
-    means = [50]
+    output_file = "alibaba_cluster_exp_results1.csv"
+
+    means = [120, 130, 140, 150]
     print(means)
     # input()
-    
+
     for mean_ms_util in means:
+        print(f"Running for mean_ms_util={mean_ms_util} with variation_from_mean={50}...")
         cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage = run_for_mean(ms_df_0, mean_ms_util, variation_from_mean=50)
         print(f"Mean MS Util: {mean_ms_util}, Cluster Improvement: {cluster_imprv:.2f}%, Global Demand Meet Percentage: {global_demand_meet_percentage:.2f}%, Local Demand Meet Percentage: {local_demand_meet_percentage:.2f}%")
-        
-        data.append({
+
+        row = {
             "mean_ms_util": mean_ms_util,
             "variation_from_mean": 50,
             "cluster_imprv": cluster_imprv,
             "global_demand_meet_percentage": global_demand_meet_percentage,
             "local_demand_meet_percentage": local_demand_meet_percentage
-        })
-    
-    df = pd.DataFrame(data)
-    df.to_csv("alibaba_cluster_exp_results1.csv", index=False)
+        }
+        data.append(row)
+
+        write_header = not os.path.exists(output_file)
+        pd.DataFrame([row]).to_csv(output_file, mode='a', header=write_header, index=False)
     
 main()
