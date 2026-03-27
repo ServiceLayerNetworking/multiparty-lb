@@ -620,8 +620,8 @@ def test():
     
 if __name__ == "__main__":
     
-    for i in range(15):
-        print(f"svc{i}", "\t", get_gateway_ip(f"svc{i}", use_pod_ip=True))
+    # for i in range(15):
+    #     print(f"svc{i}", "\t", get_gateway_ip(f"svc{i}", use_pod_ip=True))
     
     # os.system("kubectl delete destinationrules.networking.istio.io --all -n default")
     # os.system("kubectl delete virtualservices.networking.istio.io --all -n default")
@@ -688,3 +688,12 @@ if __name__ == "__main__":
     #     print("❌ Timeout waiting for gateway pods to get ready.")
     # else:
     #     print("All pods are ready.")
+    
+    pod_names = [
+        "svc0-node0-0",
+        "svc0-node1-0",
+        "svc1-node1-0",
+        "svc2-node2-0",
+    ]
+    
+    setup_clutser_with_new_pods(pod_names)
