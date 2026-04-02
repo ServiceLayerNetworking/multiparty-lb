@@ -78,11 +78,11 @@ def get_state(ms_df_: pd.DataFrame, mean_ms_util: int, variation_from_mean: int 
 
     print("Done fshareload")
 
-    return hosts, list(tenants.values()), workers
+    return hosts, list(tenants.values()), workers, node_caps
 
 def run_with_timeout(ms_df_0, mean_ms_util, variation_from_mean):
-    hosts, tenants, workers = get_state(ms_df_0, mean_ms_util, variation_from_mean)
-    return hosts, tenants, workers, gs_g.run_from_json(hosts, tenants, workers)
+    hosts, tenants, workers, node_caps = get_state(ms_df_0, mean_ms_util, variation_from_mean)
+    return hosts, tenants, workers, node_caps, gs_g.run_from_json(hosts, tenants, workers)
 
 def run_for_mean_convulated(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_from_mean: int = 50):
     timeout_seconds = 300000  # 5 minutes
@@ -91,7 +91,7 @@ def run_for_mean_convulated(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_f
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(run_with_timeout, ms_df_0, mean_ms_util, variation_from_mean)
             try:
-                hosts, tenants, workers, global_result = future.result(timeout=timeout_seconds)
+                hosts, tenants, workers, node_caps, global_result = future.result(timeout=timeout_seconds)
                 break  # success, exit loop
             except concurrent.futures.TimeoutError:
                 print("Timed out. Retrying...")
@@ -99,6 +99,8 @@ def run_for_mean_convulated(ms_df_0:pd.DataFrame, mean_ms_util: int, variation_f
     local_result = gs_l.run_from_json(hosts, tenants, workers)
     
     alibaba_topo = ms_df_0.drop_duplicates(subset="msinstanceid").copy()
+    
+    cluster_cap = sum(node_caps.values())
     
     global_result_ms_instance_utils = {msinstance: util for ms, msinstanceutils in global_result["result"].items() for msinstance, util in msinstanceutils.items()}
     alibaba_topo['global_util'] = alibaba_topo['msinstanceid'].apply(lambda msinstance: global_result_ms_instance_utils[msinstance])

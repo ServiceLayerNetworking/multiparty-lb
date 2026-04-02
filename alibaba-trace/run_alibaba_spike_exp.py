@@ -28,7 +28,7 @@ import locally_optimal_load_distribution as gs_l
 import gurobi_server as gs_g
 
 
-def get_state(ms_df_: pd.DataFrame, pct_of_svc_spiking: int) -> tuple[list[dict], list[dict], list[dict]]:
+def get_state(ms_df_: pd.DataFrame, pct_of_svc_spiking: int, default_load_pct: float = 80.0) -> tuple[list[dict], list[dict], list[dict]]:
 
     unique_instances = ms_df_.drop_duplicates(subset="msinstanceid").copy()
     node_msinstance_count = unique_instances.groupby("nodeid").count()["msinstanceid"].to_dict()
@@ -69,7 +69,7 @@ def get_state(ms_df_: pd.DataFrame, pct_of_svc_spiking: int) -> tuple[list[dict]
     # First pass: assign baseline load of 80% of fair share to all tenants
     for tenant_name, fshare in fshare_per_tenant.items():
         tenants[tenant_name]["fshareload"] = fshare
-        tenants[tenant_name]["load"] = 0.80 * fshare
+        tenants[tenant_name]["load"] = (default_load_pct / 100.0) * fshare
 
     # Second pass: randomly select num_spiking tenants and set their load to 1000% of fair share
     all_tenant_names = list(tenants.keys())
@@ -81,12 +81,12 @@ def get_state(ms_df_: pd.DataFrame, pct_of_svc_spiking: int) -> tuple[list[dict]
 
     print(f"Done fshareload. Spiking tenants: {num_spiking_actual}/{len(all_tenant_names)}")
 
-    return hosts, list(tenants.values()), workers
+    return hosts, list(tenants.values()), workers, node_caps
 
 
-def run_with_timeout(ms_df_0, pct_of_svc_spiking):
-    hosts, tenants, workers = get_state(ms_df_0, pct_of_svc_spiking)
-    return hosts, tenants, workers, gs_g.run_from_json(hosts, tenants, workers)
+def run_with_timeout(ms_df_0, pct_of_svc_spiking, default_load_pct):
+    hosts, tenants, workers, node_caps = get_state(ms_df_0, pct_of_svc_spiking, default_load_pct=default_load_pct)
+    return hosts, tenants, workers, node_caps, gs_g.run_from_json(hosts, tenants, workers)
 
 
 def get_results_stats(tenants, results):
@@ -105,17 +105,19 @@ def get_results_stats(tenants, results):
     return cluster_util, n_tenants_demand_met
 
 
-def run_for_spike_count(ms_df_0: pd.DataFrame, pct_of_svc_spiking: int):
+def run_for_spike_count(ms_df_0: pd.DataFrame, pct_of_svc_spiking: int, default_load_pct: float = 80.0):
     timeout_seconds = 300000  # 5 minutes
 
     while True:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(run_with_timeout, ms_df_0, pct_of_svc_spiking)
+            future = executor.submit(run_with_timeout, ms_df_0, pct_of_svc_spiking, default_load_pct)
             try:
-                hosts, tenants, workers, global_result = future.result(timeout=timeout_seconds)
+                hosts, tenants, workers, node_caps, global_result = future.result(timeout=timeout_seconds)
                 break  # success, exit loop
             except concurrent.futures.TimeoutError:
                 print("Timed out. Retrying...")
+
+    cluster_cap = sum(node_caps.values())
 
     global_cluster_util, global_n_tenants_demand_met = get_results_stats(tenants, global_result)
     global_demand_meet_percentage = (global_n_tenants_demand_met / len(tenants)) * 100
@@ -128,7 +130,7 @@ def run_for_spike_count(ms_df_0: pd.DataFrame, pct_of_svc_spiking: int):
 
     cluster_imprv = (global_cluster_util - local_cluster_util) / local_cluster_util * 100 if local_cluster_util > 0 else 0
 
-    return cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage
+    return cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage, global_cluster_util, local_cluster_util, cluster_cap
 
 
 def main():
@@ -136,22 +138,28 @@ def main():
     ms_df_0 = pd.read_csv('ms_df_timestamp_0.csv')
 
     data = []
-    output_file = "alibaba_cluster_exp_spike_results.csv"
+    output_file = "alibaba_cluster_exp_spike_results_comprehensive.csv"
 
     # spike_counts = [0, 0.01, 0.1, 0.2, 0.5]
-    spike_counts = [2, 3, 4]
+    spike_counts = [0.1, 0.5, 0.75, 1, 2, 3, 10, 20, 50, 100]
     print(spike_counts)
+
+    default_load_pct = 25.0
 
     for pct_of_svc_spiking in spike_counts:
         print(f"Running for pct_of_svc_spiking={pct_of_svc_spiking}...")
-        cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage = run_for_spike_count(ms_df_0, pct_of_svc_spiking)
+        cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage, global_cluster_util, local_cluster_util, cluster_cap = run_for_spike_count(ms_df_0, pct_of_svc_spiking, default_load_pct)
         print(f"Spiking Services: {pct_of_svc_spiking}, Cluster Improvement: {cluster_imprv:.2f}%, Global Demand Meet: {global_demand_meet_percentage:.2f}%, Local Demand Meet: {local_demand_meet_percentage:.2f}%")
 
         row = {
+            "default_load_pct": default_load_pct,
             "pct_of_svc_spiking": pct_of_svc_spiking,
             "cluster_imprv": cluster_imprv,
             "global_demand_meet_percentage": global_demand_meet_percentage,
-            "local_demand_meet_percentage": local_demand_meet_percentage
+            "local_demand_meet_percentage": local_demand_meet_percentage,
+            "global_cluster_util": global_cluster_util,
+            "local_cluster_util": local_cluster_util,
+            "cluster_cap": cluster_cap
         }
         data.append(row)
 
