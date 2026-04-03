@@ -93,16 +93,18 @@ def get_results_stats(tenants, results):
     tenants_results = results["result"]
     cluster_util = 0.0
     n_tenants_demand_met = 0
+    tenants_row_data = []
     for tenant in tenants:
         tenant_name = tenant["name"]
         tenant_result = tenants_results[tenant_name]
         tenant_load = tenant["load"]
         tenant_util = sum(tenant_result.values())
+        tenants_row_data.append((tenant_name, tenant_load, tenant_util))
         cluster_util += tenant_util
         if abs(tenant_load - tenant_util) < 0.01:
             n_tenants_demand_met += 1
 
-    return cluster_util, n_tenants_demand_met
+    return cluster_util, n_tenants_demand_met, tenants_row_data
 
 
 def run_for_spike_count(ms_df_0: pd.DataFrame, pct_of_svc_spiking: int, default_load_pct: float = 80.0):
@@ -119,18 +121,18 @@ def run_for_spike_count(ms_df_0: pd.DataFrame, pct_of_svc_spiking: int, default_
 
     cluster_cap = sum(node_caps.values())
 
-    global_cluster_util, global_n_tenants_demand_met = get_results_stats(tenants, global_result)
+    global_cluster_util, global_n_tenants_demand_met, global_tenants_row_data = get_results_stats(tenants, global_result)
     global_demand_meet_percentage = (global_n_tenants_demand_met / len(tenants)) * 100
     print(f"Global - Cluster Util: {global_cluster_util:.2f}, Tenants Demand Met: {global_n_tenants_demand_met}/{len(tenants)} ({global_demand_meet_percentage:.2f}%)")
 
     local_result = gs_l.run_from_json(hosts, tenants, workers)
-    local_cluster_util, local_n_tenants_demand_met = get_results_stats(tenants, local_result)
+    local_cluster_util, local_n_tenants_demand_met, local_tenants_row_data = get_results_stats(tenants, local_result)
     local_demand_meet_percentage = (local_n_tenants_demand_met / len(tenants)) * 100
     print(f"Local - Cluster Util: {local_cluster_util:.2f}, Tenants Demand Met: {local_n_tenants_demand_met}/{len(tenants)} ({local_demand_meet_percentage:.2f}%)")
 
     cluster_imprv = (global_cluster_util - local_cluster_util) / local_cluster_util * 100 if local_cluster_util > 0 else 0
 
-    return cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage, global_cluster_util, local_cluster_util, cluster_cap
+    return cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage, global_cluster_util, local_cluster_util, cluster_cap, global_tenants_row_data, local_tenants_row_data
 
 
 def main():
@@ -138,17 +140,21 @@ def main():
     ms_df_0 = pd.read_csv('ms_df_timestamp_0.csv')
 
     data = []
-    output_file = "alibaba_cluster_exp_spike_results_comprehensive.csv"
+    output_file_name = "alibaba_cluster_exp_spike_results_comprehensive_old_obj"
+    output_file = f"{output_file_name}.csv"
+    tenant_output_file = f"{output_file_name}_tenants.csv"
 
     # spike_counts = [0, 0.01, 0.1, 0.2, 0.5]
+    # spike_counts = [0.1, 0.5, 0.75, 1, 2, 3, 10, 20, 50, 100]
     spike_counts = [0.1, 0.5, 0.75, 1, 2, 3, 10, 20, 50, 100]
     print(spike_counts)
 
-    default_load_pct = 25.0
+    default_load_pct = 80.0
 
-    for pct_of_svc_spiking in spike_counts:
+    for n_spike, pct_of_svc_spiking in enumerate(spike_counts):
         print(f"Running for pct_of_svc_spiking={pct_of_svc_spiking}...")
-        cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage, global_cluster_util, local_cluster_util, cluster_cap = run_for_spike_count(ms_df_0, pct_of_svc_spiking, default_load_pct)
+        cluster_imprv, global_demand_meet_percentage, local_demand_meet_percentage, global_cluster_util, local_cluster_util, cluster_cap, global_tenants_row_data, local_tenants_row_data = run_for_spike_count(ms_df_0, pct_of_svc_spiking, default_load_pct)
+        
         print(f"Spiking Services: {pct_of_svc_spiking}, Cluster Improvement: {cluster_imprv:.2f}%, Global Demand Meet: {global_demand_meet_percentage:.2f}%, Local Demand Meet: {local_demand_meet_percentage:.2f}%")
 
         row = {
@@ -166,5 +172,20 @@ def main():
         write_header = not os.path.exists(output_file)
         pd.DataFrame([row]).to_csv(output_file, mode='a', header=write_header, index=False)
 
+        # Also write tenant-level data
+        df_global = pd.DataFrame(global_tenants_row_data, columns=["tenant_name", "tenant_load", "tenant_util"])
+        df_global["default_load_pct"] = default_load_pct
+        df_global["pct_of_svc_spiking"] = pct_of_svc_spiking
+        df_global["lb_type"] = "global"
 
+        df_local = pd.DataFrame(local_tenants_row_data, columns=["tenant_name", "tenant_load", "tenant_util"])
+        df_local["default_load_pct"] = default_load_pct
+        df_local["pct_of_svc_spiking"] = pct_of_svc_spiking
+        df_local["lb_type"] = "local"
+        
+        tenant_data = pd.concat([df_global, df_local], ignore_index=True)
+        tenant_data.to_csv(tenant_output_file, mode='a', header=not os.path.exists(tenant_output_file), index=False)
+
+        os.system(f"curl -d '{n_spike}/ {len(spike_counts)} Done | Spike value: {pct_of_svc_spiking}%' ntfy.sh/mplb")
+        
 main()

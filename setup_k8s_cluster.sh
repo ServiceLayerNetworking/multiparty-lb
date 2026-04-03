@@ -13,16 +13,22 @@ if ! command -v istioctl &> /dev/null; then
 fi
 
 # number of nodes in the cluster
-ALL_NODES=20
+ALL_NODES=10
 # number of control plane nodes
 CP_NODES=1
 # number of worker nodes
-NODES=19
+NODES=7
 
 # number of worker nodes to be used as load balancer nodes
-LB_NODES=4
+LB_NODES=2
 # number of services
 N_SVCS=15
+
+# assert that LB_NODES + NODES + CP_NODES = ALL_NODES
+if [ $((LB_NODES + NODES + CP_NODES)) -ne $ALL_NODES ]; then
+  echo "Error: LB_NODES + NODES + CP_NODES must equal ALL_NODES"
+  exit 1
+fi
 
 # echo "[SCRIPT] Deleting any previous minikube cluster..."
 # minikube delete --all

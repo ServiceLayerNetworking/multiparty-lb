@@ -301,7 +301,7 @@ def get_locally_optimal_load_distribution_fast(
     hosts: List[g.Host],
     tenants: List[g.Tenant],
     workers: List[g.Worker],
-    epsilon: float = 1e-6,
+    epsilon: float = 1e-12,
     max_iterations: int = 10_000) -> Dict[str, Dict[str, float]]:
     
     for worker in workers:
