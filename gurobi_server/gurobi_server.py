@@ -1484,8 +1484,8 @@ def run_from_json(hosts, tenants, workers):
     # previous_w = {'app1-node1': 105.6, 'app1-node2': 95.4, 'app2-node1': 95.4, 'app2-node2': 105.6}
     
     if is_objective_simple:
-        to_return = run_generic_linear_single_objective_topology_only(hosts, tenants, workers)[0]
-        # to_return = run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(hosts, tenants, workers)[0]
+        # to_return = run_generic_linear_single_objective_topology_only(hosts, tenants, workers)[0]
+        to_return = run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(hosts, tenants, workers)[0]
         # to_return = run_objective_simplified_maxmin(hosts, tenants, workers)[0]
     else:
         to_return = run_generic_linear_single_objective_model_nov15_abs_diff(hosts, tenants, workers)[0]

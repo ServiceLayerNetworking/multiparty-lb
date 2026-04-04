@@ -16,11 +16,11 @@ DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
 SLEEP_TIME_AFTER_EACH_RUN = 20
 
-REQUEST_CPU_CONSUMPTION_MS = 250.0 # each request consumes 80 coreMs by default
+REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
 LOG_FOLDER = "logs/debug_15_nodes_Dec2"
 
-GATEWAY_IPs = get_curr_gateway_ips()
+# GATEWAY_IPs = get_curr_gateway_ips()
 
 def build_central_controller():
     curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -213,7 +213,7 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
                 {
                     "url": url,
                     "node": 1,
-                    "app": svc_name,
+                    "app": int(svc_name[3:]),
                     "headers": "{\"Host\":\"" + svc_name + ".mplb.com\"}"
                 }
             ],
@@ -1054,133 +1054,167 @@ def main_exp_state_5():
     #     ])
 
     
+
+
 def main():
     
     prep_for_exps()
-    
-    # get 50 random numbers between 0 and 178339
-    random_states = [
-        66752,
-        73572,
-        41100,
-        30527,
-        23740,
-        3278,
-        72380,
-        55628,
-        173166,
-        46194,
-        76518,
-        84192,
-        177161,
-        79906,
-        15354,
-        21677,
-        112326,
-        74759,
-        90158,
-        80022,
-        90122,
-        138139,
-        4610,
-        17080,
-        9296,
-        93335,
-        44944,
-        70096,
-        8619,
-        122890,
-        6872,
-        66915,
-        64422,
-        172969,
-        69903,
-        130484,
-        31901,
-        129050,
-        80250,
-        164440,
-        18239,
-        108637,
-        70217,
-        167605,
-        140196,
-        150379,
-        134551,
-        99668,
-        48415,
-        116683
-    ]
-    new_random_states = [
-        173719,
-        130141,
-        41695,
-        169571,
-        88056,
-        84408,
-        9466,
-        161757,
-        176691,
-        158031,
-        86101,
-        80711,
-        31655,
-        72616,
-        29334,
-        132126,
-        114315,
-        16210,
-        46304,
-        134901,
-        86750,
-        81587,
-        170450,
-        155222,
-        26111,
-        6940,
-        128644,
-        131117,
-        17680,
-        40995,
-        79662,
-        120935,
-        153032,
-        10341,
-        88768,
-        103542,
-        67153,
-        159847,
-        47983,
-        140527,
-        104108,
-        22320,
-        58037,
-        127271,
-        74228,
-        73432,
-        75895,
-        99389,
-        141033,
-        121706
+
+    state_id = 1
+    svc_loads = [200, 200, 0]
+    svc_to_nodes = {
+        "svc0": ["node0", "node0", "node1"],
+        "svc1": ["node1"],
+        "svc2": ["node2"],
+    }
+    pod_names = [
+        "svc0-node0-0",
+        "svc0-node0-1",
+        "svc0-node1-0",
+        "svc1-node1-0",
+        "svc2-node2-0",
     ]
     
-    all_states = random_states # + new_random_states
-    
-    for random_state in all_states:
-        run_exp_for_cluster_state_id(random_state, lbs=[
-            # "leastrequest_plus",
-            # "leastrequest_plus_rl",
-            # "only_nodal_leastrequest",
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
             # "nodal_leastrequest",
+            # "minimize_diff",
+            "leastrequest_plus_rlpb",
+            # "nodal_leastrequest_rlpb",
         ])
+
+# def main():
+    
+#     prep_for_exps()
+    
+#     # get 50 random numbers between 0 and 178339
+#     random_states = [
+#         66752,
+#         73572,
+#         41100,
+#         30527,
+#         23740,
+#         3278,
+#         72380,
+#         55628,
+#         173166,
+#         46194,
+#         76518,
+#         84192,
+#         177161,
+#         79906,
+#         15354,
+#         21677,
+#         112326,
+#         74759,
+#         90158,
+#         80022,
+#         90122,
+#         138139,
+#         4610,
+#         17080,
+#         9296,
+#         93335,
+#         44944,
+#         70096,
+#         8619,
+#         122890,
+#         6872,
+#         66915,
+#         64422,
+#         172969,
+#         69903,
+#         130484,
+#         31901,
+#         129050,
+#         80250,
+#         164440,
+#         18239,
+#         108637,
+#         70217,
+#         167605,
+#         140196,
+#         150379,
+#         134551,
+#         99668,
+#         48415,
+#         116683
+#     ]
+#     new_random_states = [
+#         173719,
+#         130141,
+#         41695,
+#         169571,
+#         88056,
+#         84408,
+#         9466,
+#         161757,
+#         176691,
+#         158031,
+#         86101,
+#         80711,
+#         31655,
+#         72616,
+#         29334,
+#         132126,
+#         114315,
+#         16210,
+#         46304,
+#         134901,
+#         86750,
+#         81587,
+#         170450,
+#         155222,
+#         26111,
+#         6940,
+#         128644,
+#         131117,
+#         17680,
+#         40995,
+#         79662,
+#         120935,
+#         153032,
+#         10341,
+#         88768,
+#         103542,
+#         67153,
+#         159847,
+#         47983,
+#         140527,
+#         104108,
+#         22320,
+#         58037,
+#         127271,
+#         74228,
+#         73432,
+#         75895,
+#         99389,
+#         141033,
+#         121706
+#     ]
+    
+#     all_states = random_states # + new_random_states
+    
+#     for random_state in all_states:
+#         run_exp_for_cluster_state_id(random_state, lbs=[
+#             # "leastrequest_plus",
+#             # "leastrequest_plus_rl",
+#             # "only_nodal_leastrequest",
+#             # "nodal_leastrequest",
+#         ])
 
 if __name__ == "__main__":
     start_time = time.time()
     
     # main_exp_state_4()
-    main_exp_state_2()
-    main_exp_state_5()
-    main_exp_state_3()
+    # main_exp_state_2()
+    # main_exp_state_5()
+    # main_exp_state_3()
+    main()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")

@@ -1,0 +1,126 @@
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100    20  100    20    0     0   7686      0 --:--:-- --:--:-- --:--:-- 10000
+Objective simplifiedNodes:
+Node 0:
+{0 node0.echutch-296786.mlnetwork.emulab.net 155.98.38.137 32477 map[hostagent-node0-0:{hostagent-node0-0 hostagent-node0 node0.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod651d39eb_17e9_4e83_aea6_a816d7d2ed2e.slice}] 8000 <nil>}
+
+Node 1:
+{1 node1.echutch-296786.mlnetwork.emulab.net 155.98.38.158 31352 map[hostagent-node1-0:{hostagent-node1-0 hostagent-node1 node1.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-podc4effdc1_93cc_4c14_9158_04216e949ed7.slice}] 8000 <nil>}
+
+Node 2:
+{2 node2.echutch-296786.mlnetwork.emulab.net 155.98.38.133 31944 map[hostagent-node2-0:{hostagent-node2-0 hostagent-node2 node2.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod34787ff8_924a_4174_837b_ef26436f8a8a.slice}] 8000 <nil>}
+
+Node 3:
+{3 node3.echutch-296786.mlnetwork.emulab.net 155.98.38.126 32243 map[hostagent-node3-0:{hostagent-node3-0 hostagent-node3 node3.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod3e6c2d28_0d87_4a93_a986_9390e303deb7.slice}] 8000 <nil>}
+
+Node 4:
+{4 node4.echutch-296786.mlnetwork.emulab.net 155.98.38.134 30295 map[hostagent-node4-0:{hostagent-node4-0 hostagent-node4 node4.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod05cc7c03_c900_41a1_b231_cca15c83803b.slice}] 8000 <nil>}
+
+{"time":"2026-04-02T12:59:56.902216192-06:00","level":"ERROR","msg":"Service creation failed (may already exist): services \"echo-server\" already exists"}
+{"time":"2026-04-02T12:59:57.183924196-06:00","level":"ERROR","msg":"Endpoint creation failed (may already exist): endpoints \"echo-server\" already exists"}
+Ingress Gateway URLs: [http://172.24.25.238:8080 http://172.24.25.237:8080 http://172.24.25.236:8080]
+Pods to print: [hostagent-node0-0 hostagent-node1-0 hostagent-node2-0 hostagent-node3-0 hostagent-node4-0]
+{"time":"2026-04-02T12:59:57.396642194-06:00","level":"ERROR","msg":"Echo server listening on port :5656"}
+---------------- Starting new round of LB enforcement...
+---------------- Step 1: Get CPU utils from all nodes
+Waiting for CPU utils from 5 nodes
+Received CPU utils from node 1 after 503.661000 ms
+Received CPU utils from node 0 after 504.047000 ms
+Received CPU utils from node 3 after 504.165000 ms
+Received CPU utils from node 2 after 504.228000 ms
+Received CPU utils from node 4 after 616.136000 ms
+Time taken to get CPU utils from all nodes: 616.181000 ms
+---------------- Done Step 1: Time taken: 616.20 ms
+---------------- Step 2: Get Demand Estimates
+---------------- Done Step 2: Time taken: 0.02 ms
+---------------- Step 3: Get Optimal LB Weights
+Time taken to get weights from Gurobi: 6678 us
+Gurobi Response: {"status": 2, "result": {}}
+LB Weights: 
+---------------- Done Step 3: Time taken: 6.84 ms
+---------------- Step 4: Print stats to console
+Node CPU Utilizations[0]:  utils:hostagent-node0-0:0.433053
+panic: Invalid lbWeightsStr: 
+
+goroutine 15 [running]:
+main.parseLBWeightStr({0x0, 0x0}, 0xc0000c5410)
+	/users/echutch/multiparty-lb/centralcontroller/main.go:990 +0x4d9
+main.getLogFileFormatLBEnforcement({0xc0003d43c0, 0x5, 0x16bbf81?}, {0x0, 0x0}, 0xc0000c5410)
+	/users/echutch/multiparty-lb/centralcontroller/main.go:968 +0x24c
+main.ccWithLBEnforcement(0xc0003719c0, {0xc000759688, 0x5, 0x8}, {0xc0003da900, 0x5, 0x8}, {0xc0003daf80, 0x5, 0x8}, ...)
+	/users/echutch/multiparty-lb/centralcontroller/main.go:550 +0x6b7
+created by main.main in goroutine 1
+	/users/echutch/multiparty-lb/centralcontroller/main.go:362 +0xbad
+Raw Configs: [{[{http://10.103.30.96/?cpu_coreMs=EXP<80> 1 0 {"Host":"svc0.mplb.com"}}] 57.142857142857146 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.7_svc0_hit.log 0} {[{http://10.99.25.97/?cpu_coreMs=EXP<80> 1 1 {"Host":"svc1.mplb.com"}}] 57.142857142857146 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.7_svc1_hit.log 0} {[{http://10.96.182.235/?cpu_coreMs=EXP<0> 1 2 {"Host":"svc2.mplb.com"}}] 4810 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.7_svc2_hit.log 0}]
+Configs: [{[{http://10.103.30.96/?cpu_coreMs=EXP<80> 1 0 {"Host":"svc0.mplb.com"}}] 57.142857142857146 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.7_svc0_hit.log 0} {[{http://10.99.25.97/?cpu_coreMs=EXP<80> 1 1 {"Host":"svc1.mplb.com"}}] 57.142857142857146 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.7_svc1_hit.log 0} {[{http://10.96.182.235/?cpu_coreMs=EXP<0> 1 2 {"Host":"svc2.mplb.com"}}] 4810 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.7_svc2_hit.log 0}]
+Using Least Request load balancer
+Load balancer algorithm: NONE
+Making requests for 60000ms at 4810.00ms interval
+Load balancer algorithm: NONE
+Making requests for 60000ms at 57.14ms interval
+Load balancer algorithm: NONE
+Making requests for 60000ms at 57.14ms interval
+Aborted hit for  [{http://10.99.25.97/?cpu_coreMs=EXP<80> 1 1 {"Host":"svc1.mplb.com"}}]
+Aborted hit for  [{http://10.103.30.96/?cpu_coreMs=EXP<80> 1 0 {"Host":"svc0.mplb.com"}}]
+Aborted hit for  [{http://10.96.182.235/?cpu_coreMs=EXP<0> 1 2 {"Host":"svc2.mplb.com"}}]
+Nodes:
+Node 0:
+{0 node0.echutch-296786.mlnetwork.emulab.net 155.98.38.137 32477 map[hostagent-node0-0:{hostagent-node0-0 hostagent-node0 node0.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod651d39eb_17e9_4e83_aea6_a816d7d2ed2e.slice}] 8000 <nil>}
+
+Node 1:
+{1 node1.echutch-296786.mlnetwork.emulab.net 155.98.38.158 31352 map[hostagent-node1-0:{hostagent-node1-0 hostagent-node1 node1.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-podc4effdc1_93cc_4c14_9158_04216e949ed7.slice}] 8000 <nil>}
+
+Node 2:
+{2 node2.echutch-296786.mlnetwork.emulab.net 155.98.38.133 31944 map[hostagent-node2-0:{hostagent-node2-0 hostagent-node2 node2.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod34787ff8_924a_4174_837b_ef26436f8a8a.slice}] 8000 <nil>}
+
+Node 3:
+{3 node3.echutch-296786.mlnetwork.emulab.net 155.98.38.126 32243 map[hostagent-node3-0:{hostagent-node3-0 hostagent-node3 node3.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod3e6c2d28_0d87_4a93_a986_9390e303deb7.slice}] 8000 <nil>}
+
+Node 4:
+{4 node4.echutch-296786.mlnetwork.emulab.net 155.98.38.134 30295 map[hostagent-node4-0:{hostagent-node4-0 hostagent-node4 node4.echutch-296786.mlnetwork.emulab.net -1 kubepods-burstable.slice/kubepods-burstable-pod05cc7c03_c900_41a1_b231_cca15c83803b.slice}] 8000 <nil>}
+
+{"time":"2026-04-02T13:01:22.103835266-06:00","level":"ERROR","msg":"Service creation failed (may already exist): services \"echo-server\" already exists"}
+{"time":"2026-04-02T13:01:22.368069611-06:00","level":"ERROR","msg":"Endpoint creation failed (may already exist): endpoints \"echo-server\" already exists"}
+Ingress Gateway URLs: [http://172.24.25.238:8080 http://172.24.25.237:8080 http://172.24.25.236:8080]
+Pods to print: [hostagent-node0-0 hostagent-node1-0 hostagent-node2-0 hostagent-node3-0 hostagent-node4-0]
+{"time":"2026-04-02T13:01:22.561689162-06:00","level":"ERROR","msg":"Echo server listening on port :5656"}
+---------------- Starting new round of LB enforcement...
+---------------- Step 1: Get CPU utils from all nodes
+Waiting for CPU utils from 5 nodes
+Received CPU utils from node 0 after 503.670000 ms
+Received CPU utils from node 2 after 503.751000 ms
+Received CPU utils from node 1 after 504.240000 ms
+Received CPU utils from node 3 after 504.366000 ms
+Received CPU utils from node 4 after 620.711000 ms
+Time taken to get CPU utils from all nodes: 620.745000 ms
+---------------- Done Step 1: Time taken: 620.76 ms
+---------------- Step 2: Get Demand Estimates
+---------------- Done Step 2: Time taken: 0.02 ms
+---------------- Step 3: Get Optimal LB Weights
+Time taken to get weights from Gurobi: 5352 us
+Gurobi Response: {"status": 2, "result": {}}
+LB Weights: 
+---------------- Done Step 3: Time taken: 5.50 ms
+---------------- Step 4: Print stats to console
+Node CPU Utilizations[0]:  utils:hostagent-node0-0:0.355233
+panic: Invalid lbWeightsStr: 
+
+goroutine 83 [running]:
+main.parseLBWeightStr({0x0, 0x0}, 0xc000512180)
+	/users/echutch/multiparty-lb/centralcontroller/main.go:990 +0x4d9
+main.getLogFileFormatLBEnforcement({0xc00026c4b0, 0x5, 0x16bbf81?}, {0x0, 0x0}, 0xc000512180)
+	/users/echutch/multiparty-lb/centralcontroller/main.go:968 +0x24c
+main.ccWithLBEnforcement(0xc0003719c0, {0xc0000fca08, 0x5, 0x8}, {0xc000154480, 0x5, 0x8}, {0xc000154780, 0x5, 0x8}, ...)
+	/users/echutch/multiparty-lb/centralcontroller/main.go:550 +0x6b7
+created by main.main in goroutine 1
+	/users/echutch/multiparty-lb/centralcontroller/main.go:362 +0xbad
+Raw Configs: [{[{http://10.103.30.96/?cpu_coreMs=EXP<80> 1 0 {"Host":"svc0.mplb.com"}}] 53.333333333333336 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.75_svc0_hit.log 0} {[{http://10.99.25.97/?cpu_coreMs=EXP<80> 1 1 {"Host":"svc1.mplb.com"}}] 53.333333333333336 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.75_svc1_hit.log 0} {[{http://10.96.182.235/?cpu_coreMs=EXP<0> 1 2 {"Host":"svc2.mplb.com"}}] 4810 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.75_svc2_hit.log 0}]
+Configs: [{[{http://10.103.30.96/?cpu_coreMs=EXP<80> 1 0 {"Host":"svc0.mplb.com"}}] 53.333333333333336 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.75_svc0_hit.log 0} {[{http://10.99.25.97/?cpu_coreMs=EXP<80> 1 1 {"Host":"svc1.mplb.com"}}] 53.333333333333336 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.75_svc1_hit.log 0} {[{http://10.96.182.235/?cpu_coreMs=EXP<0> 1 2 {"Host":"svc2.mplb.com"}}] 4810 [] 60000 /users/echutch/multiparty-lb/online-sweep/logs/debug_15_nodes_Dec2/exponential_exponential_mplb_lr++_rlpb_1_1_0.75_svc2_hit.log 0}]
+Using Least Request load balancer
+Load balancer algorithm: NONE
+Making requests for 60000ms at 4810.00ms interval
+Load balancer algorithm: NONE
+Making requests for 60000ms at 53.33ms interval
+Load balancer algorithm: NONE
+Making requests for 60000ms at 53.33ms interval

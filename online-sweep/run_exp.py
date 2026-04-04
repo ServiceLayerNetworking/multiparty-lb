@@ -90,19 +90,19 @@ def get_topology_str(intended_topology):
     })
     
 LB_NAME = {
-    "nodal_leastrequest": "nlr",
-    "minimize_diff": "md",
-    "leastrequest": "lr",
-    "weighted_random": "wr",
-    "locality_aware_weighted_random": "lawr",
-    "weighted_roundrobin": "wrr",
-    "tmp_nodal_leastrequest": "tnlr",
-    "leastrequest_plus": "lr++",
-    "only_nodal_leastrequest": "onlr",
-    "leastrequest_plus_rl": "lr++_rl",
-    "leastrequest_rl": "lr_rl",
-    "leastrequest_plus_rlpb": "lr++_rlpb",
-    "nodal_leastrequest_rlpb": "nlr_rlpb",
+    "nodal_leastrequest": "nlr",                # Rabbit*
+    "minimize_diff": "md",                      # CLB*
+    "leastrequest": "lr",                       # (PSLB) Least Request (Makes decisions independently for each LB replica)
+    "weighted_random": "wr",                    # Depr.
+    "locality_aware_weighted_random": "lawr",   # Depr.
+    "weighted_roundrobin": "wrr",               # Depr.
+    "tmp_nodal_leastrequest": "tnlr",           # Depr.
+    "leastrequest_plus": "lr++",                # PSLB Least Request ++ (Makes consistent decisions over all LB replicas)
+    "only_nodal_leastrequest": "onlr",          # NLLB
+    "leastrequest_plus_rl": "lr++_rl",          # Depr. (lr++ with admission control of Rabbit)
+    "leastrequest_rl": "lr_rl",                 # Depr.
+    "leastrequest_plus_rlpb": "lr++_rlpb",      # PSLB (Least Request ++ with performance based rate limiting)*
+    "nodal_leastrequest_rlpb": "nlr_rlpb",      # NLLB (Nodal Least Request with performance based rate limiting)*
 }
     
 def get_svc_to_nodes(nodes_to_svc: List[List[int]]) -> Dict[str, List[str]]:
@@ -330,7 +330,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [140, 141, 142]:
+        for iteration in [1]:
         
             for distr in ["exponential"]:
                 
@@ -367,8 +367,8 @@ def run_exp_for_cluster_state_id(state_id: int,
                                                    "nodal_leastrequest",
                                                    "only_nodal_leastrequest",
                                                    "minimize_diff"]):
-    data = read_json_line("../offline-sweep/logs/offline_sweep_Nov26_lb_0.00_ub_1.60_topo_sampling_3.log", state_id)
-    
+    data = read_json_line("../offline-sweep/logs/offline_sweep_spike_Jan7_3node_lb_0.00_ub_1.60_topo_sampling_2.log", state_id)
+    # offline-sweep/logs/offline_sweep_Nov26_lb_0.00_ub_1.60_topo_sampling_3.log
     svc_loads = data["State"]["SvcLoads"]
     svc_loads = [int(svc_load*CORES_PER_NODE) for svc_load in svc_loads]
 
@@ -520,36 +520,63 @@ def _main():
 def main():
     
     prep_for_exps()
+
+    state_id = 1
+    svc_loads = [200, 200, 0]
+    svc_to_nodes = {
+        "svc0": ["node0", "node0", "node1"],
+        "svc1": ["node1"],
+        "svc2": ["node2"],
+    }
+    pod_names = [
+        "svc0-node0-0",
+        "svc0-node0-1",
+        "svc0-node1-0",
+        "svc1-node1-0",
+        "svc2-node2-0",
+    ]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
+            # "nodal_leastrequest",
+            # "minimize_diff",
+            "leastrequest_plus_rlpb",
+            # "nodal_leastrequest_rlpb",
+        ])
     
     # # # test 10 to 15 states
-    start = 298
-    random_states = list(range(start+25, start+50))
-    all_states = random_states
-    # all_states = [327, 334, 338]
-    all_states = [339]
-    print(all_states)
+    # start = 298
+    # random_states = list(range(start+25, start+50))
+    # all_states = random_states
+    # # all_states = [327, 334, 338]
+    # all_states = [339]
+    # print(all_states)
     
     
-    for random_state in all_states:
-        run_exp_for_cluster_state_id(random_state, lbs=[
-            "nodal_leastrequest",
-            "minimize_diff",
-        ])
+    # for random_state in all_states:
+    #     run_exp_for_cluster_state_id(random_state, lbs=[
+    #         "nodal_leastrequest",
+    #         "minimize_diff",
+    #     ])
         
-    os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
+    # os.system("curl -d 'EXPERIMENT ALMOST FINITO' ntfy.sh/mplb")
     
-    for random_state in all_states:
-        run_exp_for_cluster_state_id(random_state, lbs=[
-            "leastrequest_plus_rlpb",
-            "nodal_leastrequest_rlpb",
-        ])
+    # for random_state in all_states:
+    #     run_exp_for_cluster_state_id(random_state, lbs=[
+    #         "leastrequest_plus_rlpb",
+    #         "nodal_leastrequest_rlpb",
+    #     ])
     
     # for random_state in all_states:
     #     run_exp_for_cluster_state_id(random_state, lbs=[
     #         "minimize_diff",
     #     ])
         
-    os.system("curl -d 'EXPERIMENT FINITO' ntfy.sh/mplb")
+    # os.system("curl -d 'EXPERIMENT FINITO' ntfy.sh/mplb")
         
     # for random_state in all_states:
     #     run_exp_for_cluster_state_id(random_state, lbs=[
@@ -561,6 +588,8 @@ def main():
     # #     run_exp_for_cluster_state_id(random_state, lbs=[
     # #         "minimize_diff",
     # #     ])
+
+
 
 if __name__ == "__main__":
     start_time = time.time()
