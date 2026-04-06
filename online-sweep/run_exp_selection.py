@@ -14,13 +14,14 @@ from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips, get_
 DURATION = 60
 DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
-SLEEP_TIME_AFTER_EACH_RUN = 20
+SLEEP_TIME_AFTER_EACH_RUN = 10
 
-REQUEST_CPU_CONSUMPTION_MS = 250.0 # each request consumes 80 coreMs by default
+CORES_PER_NODE = 8
+REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
 
-LOG_FOLDER = "logs/debug_15_nodes_Dec2"
+LOG_FOLDER = "logs/debug_Apr3"
 
-GATEWAY_IPs = get_curr_gateway_ips()
+# GATEWAY_IPs = get_curr_gateway_ips()
 
 def build_central_controller():
     curr_dir = os.path.dirname(os.path.abspath(__file__))
@@ -117,10 +118,10 @@ def get_svc_to_nodes(nodes_to_svc: List[List[int]]) -> Dict[str, List[str]]:
             
     return dict(svc_to_nodes)
 
-def run_cc(q, variation, enforcement):
+def run_cc(q, variation, enforcement, duration=DURATION):
     
     curr_dir = os.path.dirname(os.path.abspath(__file__))
-    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={(DURATION + ADDITIONAL_TIME_FOR_CC_TO_RUN + DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC) * 1000}"
+    cmd = f"../centralcontroller/centralcontroller -logfile {curr_dir}/{LOG_FOLDER}/{variation}_cc.log -enforcement={enforcement} -d={(duration + ADDITIONAL_TIME_FOR_CC_TO_RUN + DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC) * 1000}"
     print(f"Command: {cmd}")
     
     start_time = time.time()
@@ -213,14 +214,15 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
                 {
                     "url": url,
                     "node": 1,
-                    "app": svc_name,
+                    "app": int(svc_name[3:]),
                     "headers": "{\"Host\":\"" + svc_name + ".mplb.com\"}"
                 }
             ],
             "reqIntervalMs": req_interval_ms,
             "durationMs": DURATION * 1000,
             "logFileName": f"{curr_dir}/{LOG_FOLDER}/{variation}_{svc_name}_hit.log",
-            "stallTimeMs": 0
+            "stallTimeMs": 0,
+            "requestIntervalUpdates": []
         })
         
     with open(f"{curr_dir}/{LOG_FOLDER}/{variation}_hit.json", "w") as f:
@@ -360,7 +362,7 @@ def run_exp_for_cluster_state_id(state_id: int,
     data = read_json_line("../offline-sweep/logs/offline_sweep_Apr3_1350.log", state_id+1)
     
     svc_loads = data["State"]["SvcLoads"]
-    svc_loads = [int(svc_load*2) for svc_load in svc_loads]
+    svc_loads = [int(svc_load*CORES_PER_NODE) for svc_load in svc_loads]
 
     svc_to_nodes = {}
     for node_id, n_svcs in enumerate(data["State"]["NodesToSvc"]):
@@ -1052,7 +1054,6 @@ def main_exp_state_5():
     #         "leastrequest_plus_rl",
     #         "minimize_diff"
     #     ])
-
     
 def main():
     
@@ -1174,13 +1175,45 @@ def main():
             # "nodal_leastrequest",
         ])
 
+def run_canonical_unfairness_scenario():
+    
+    prep_for_exps()
+    
+    svc_to_nodes = {
+        "svc0": ["node0", "node0", "node1"],
+        "svc1": ["node1"],
+        "svc2": ["node2"],
+    }
+    pod_names = [
+        "svc0-node0-0",
+        "svc0-node1-0",
+        "svc1-node1-0",
+        "svc2-node2-0",
+    ]
+
+    state_id = 2
+    svc_loads = [
+        150*CORES_PER_NODE,
+        150*CORES_PER_NODE,
+        0*CORES_PER_NODE
+    ]
+    
+    run_exp_for_cluster_state(
+        state_id,
+        svc_loads,
+        svc_to_nodes,
+        pod_names,
+        lbs=[
+            "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
+            "leastrequest_plus_rlpb",
+            "only_nodal_leastrequest",
+        ])
+
 if __name__ == "__main__":
     start_time = time.time()
     
-    # main_exp_state_4()
-    main_exp_state_2()
-    main_exp_state_5()
-    main_exp_state_3()
+    run_canonical_unfairness_scenario()
     
     time_taken = time.time() - start_time
     print(f"Total time taken: {time_taken} seconds")
