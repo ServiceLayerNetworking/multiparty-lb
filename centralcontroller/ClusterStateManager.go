@@ -198,6 +198,8 @@ func getPerAppRPS(reqStats []ReqStat) map[string]float64 {
 
 func getPerAppUtilizations(nodeCPUUtilizations []string) map[string]float64 {
 
+	fmt.Printf("Node CPU Utilizations: %v\n", nodeCPUUtilizations)
+
 	appUtils := make(map[string]float64)
 	for _, cpuUtil := range nodeCPUUtilizations {
 

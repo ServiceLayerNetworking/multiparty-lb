@@ -328,13 +328,13 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [1, 2, 3]:
+        for iteration in [2]:
         
             for distr in ["exponential"]:
                 
                 proc_distr = distr
                 
-                for load_scale_factor in [0.7, 0.75, 0.8, 0.85, 0.9]:
+                for load_scale_factor in [0.8]:
                     
                     scaled_svc_loads = [int(svc_load * load_scale_factor) for svc_load in svc_loads]
                                                     
@@ -1193,8 +1193,8 @@ def run_canonical_unfairness_scenario():
 
     state_id = 2
     svc_loads = [
-        150*CORES_PER_NODE,
-        150*CORES_PER_NODE,
+        800*1.5,
+        800*1,
         0*CORES_PER_NODE
     ]
     
@@ -1204,10 +1204,10 @@ def run_canonical_unfairness_scenario():
         svc_to_nodes,
         pod_names,
         lbs=[
-            "nodal_leastrequest_rlpb",
-            "nodal_leastrequest",
+            # "nodal_leastrequest_rlpb",
+            # "nodal_leastrequest",
             "leastrequest_plus_rlpb",
-            "only_nodal_leastrequest",
+            # "only_nodal_leastrequest",
         ])
 
 if __name__ == "__main__":
