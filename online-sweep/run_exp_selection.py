@@ -329,9 +329,9 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [21, 22]:
+        for iteration in [30, 31]:
         
-            for distr in ["exponential"]:
+            for distr in ["none"]:
                 
                 proc_distr = distr
                 
@@ -1207,8 +1207,8 @@ def run_canonical_unfairness_scenario():
         lbs=[
             "nodal_leastrequest_rlpb",
             "nodal_leastrequest",
-            "leastrequest_plus_rlpb",
-            "only_nodal_leastrequest",
+            # "leastrequest_plus_rlpb",
+            # "only_nodal_leastrequest",
         ])
 
 if __name__ == "__main__":

@@ -17,16 +17,16 @@ ALL_NODES=10
 # number of control plane nodes
 CP_NODES=1
 # number of worker nodes
-NODES=7
+NODES=9
 
 # number of worker nodes to be used as load balancer nodes
 LB_NODES=2
 # number of services
-N_SVCS=15
+N_SVCS=3
 
 # assert that LB_NODES + NODES + CP_NODES = ALL_NODES
-if [ $((LB_NODES + NODES + CP_NODES)) -ne $ALL_NODES ]; then
-  echo "Error: LB_NODES + NODES + CP_NODES must equal ALL_NODES"
+if [ $((NODES + CP_NODES)) -ne $ALL_NODES ]; then
+  echo "Error: NODES + CP_NODES must equal ALL_NODES"
   exit 1
 fi
 
