@@ -8,13 +8,13 @@ import time
 import json
 import sys
 
-from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips, get_gateway_ip
+from set_topology import setup_clutser_with_new_pods, get_curr_gateway_ips, get_gateway_ips
 
 # Everything in seconds:
 DURATION = 60
 DELAY_IN_RUNNING_HIT_AFTER_RUNNING_CC = 5
 ADDITIONAL_TIME_FOR_CC_TO_RUN = 10
-SLEEP_TIME_AFTER_EACH_RUN = 10
+SLEEP_TIME_AFTER_EACH_RUN = 20
 
 CORES_PER_NODE = 8
 REQUEST_CPU_CONSUMPTION_MS = 80.0 # each request consumes 80 coreMs by default
@@ -201,27 +201,28 @@ def run_hit(q, variation, svc_loads, arr_distr, proc_distr):
         
         assert(req_interval_ms > 0)
         
-        # GATEWAY_IPs[svc_name]
-        gateway_ip = get_gateway_ip(svc_name)
+        # gateway_ip = GATEWAY_IPs[svc_name]
+        gateway_ips = get_gateway_ips(svc_name, use_pod_ip=True)
         
-        if proc_distr == "none" or proc_distr == "uniform":
-            url = f"http://{gateway_ip}/?cpu_coreMs={cpu_consumption}"
-        else:
-            url = f"http://{gateway_ip}/?cpu_coreMs=EXP<{cpu_consumption}>"
-        
-        configs.append({
-            "endpoints": [
-                {
+        endpoints = []
+        for gateway_ip in gateway_ips:
+            if proc_distr == "none" or proc_distr == "uniform":
+                url = f"http://{gateway_ip}/?cpu_coreMs={cpu_consumption}"
+            else:
+                url = f"http://{gateway_ip}/?cpu_coreMs=EXP<{cpu_consumption}>"
+            endpoints.append({
                     "url": url,
                     "node": 1,
                     "app": int(svc_name[3:]),
                     "headers": "{\"Host\":\"" + svc_name + ".mplb.com\"}"
-                }
-            ],
+                })
+        
+        configs.append({
+            "endpoints": endpoints,
             "reqIntervalMs": req_interval_ms,
             "durationMs": DURATION * 1000,
             "logFileName": f"{curr_dir}/{LOG_FOLDER}/{variation}_{svc_name}_hit.log",
-            "stallTimeMs": 0,
+            "stallTimeMs": 15000 if svc_name == "svc1" else 0,
             "requestIntervalUpdates": []
         })
         
@@ -328,7 +329,7 @@ def run_exp_for_cluster_state(
         print("Seting the correct objective in the optimizer...")
         set_correct_objective(lb)
     
-        for iteration in [2]:
+        for iteration in [21, 22]:
         
             for distr in ["exponential"]:
                 
@@ -1193,9 +1194,9 @@ def run_canonical_unfairness_scenario():
 
     state_id = 2
     svc_loads = [
-        800*1.5,
-        800*1,
-        0*CORES_PER_NODE
+        1.5 * CORES_PER_NODE * 100,
+        3.0 * CORES_PER_NODE * 100,
+        0 * CORES_PER_NODE * 100
     ]
     
     run_exp_for_cluster_state(
@@ -1204,10 +1205,10 @@ def run_canonical_unfairness_scenario():
         svc_to_nodes,
         pod_names,
         lbs=[
-            # "nodal_leastrequest_rlpb",
-            # "nodal_leastrequest",
+            "nodal_leastrequest_rlpb",
+            "nodal_leastrequest",
             "leastrequest_plus_rlpb",
-            # "only_nodal_leastrequest",
+            "only_nodal_leastrequest",
         ])
 
 if __name__ == "__main__":
