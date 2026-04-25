@@ -214,11 +214,25 @@ do
   sed -i "s/node$i/node0/g" host_agent/pod_svc.yaml
 done
 
-# echo "[SCRIPT] Applying istio configs for hotelReservation..."
+echo "[SCRIPT] Applying istio configs for hotelReservation..."
 kubectl apply -f dst-rules_virtual-svcs/hotelReservation.yaml
 dst-rules_virtual-svcs/virtualservice-headermatch/vs-headermatch -exclude
 kubectl rollout restart statefulset
-kubectl rollout restart deploy istio-ingressgateway -n istio-system
+# kubectl rollout restart deploy istio-ingressgateway -n istio-system
+
+echo "[SCRIPT] Restarting all gateway deployments in istio-ingress..."
+# Get all deployment names in the istio-ingress namespace
+GATEWAY_DEPLOYS=$(kubectl get deploy -n istio-ingress -o jsonpath='{.items[*].metadata.name}')
+
+for deploy in $GATEWAY_DEPLOYS; do
+    echo "Restarting $deploy..."
+    kubectl rollout restart deployment "$deploy" -n istio-ingress
+done
+
+# Optional: Wait for the rollout to complete to ensure the gateways are ready
+for deploy in $GATEWAY_DEPLOYS; do
+    kubectl rollout status deployment "$deploy" -n istio-ingress
+done
 
 # echo "Run these commands to get the frontend and gateway IPs:"
 # echo 'GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath="{.spec.clusterIP}")'
