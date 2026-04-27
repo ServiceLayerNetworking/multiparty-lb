@@ -13,16 +13,16 @@ if ! command -v istioctl &> /dev/null; then
 fi
 
 # number of nodes in the cluster
-ALL_NODES=10
+ALL_NODES=20
 # number of control plane nodes
 CP_NODES=1
 # number of worker nodes
-NODES=9
+NODES=19
 
 # number of worker nodes to be used as load balancer nodes
-LB_NODES=2
+LB_NODES=4
 # number of services
-N_SVCS=3
+N_SVCS=15
 
 # assert that LB_NODES + NODES + CP_NODES = ALL_NODES
 if [ $((NODES + CP_NODES)) -ne $ALL_NODES ]; then

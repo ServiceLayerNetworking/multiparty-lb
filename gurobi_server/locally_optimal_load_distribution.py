@@ -1,4 +1,5 @@
 from collections import defaultdict
+import math
 import numpy as np
 import gurobipy as gp
 from gurobipy import GRB
@@ -243,7 +244,7 @@ def get_locally_optimal_load_distribution_fast_processing_rate_based(
         worker.processing_rate = 1.0
         worker.processed = 0.0
 
-    max_iterations = 10_000
+    max_iterations = int(float('inf'))
 
     # Pre-group workers by tenant and host for faster access
     tenant_to_workers = defaultdict(list)
@@ -363,6 +364,81 @@ def get_locally_optimal_load_distribution_fast(
     return final_output
 
 
+def get_locally_optimal_load_distribution_fast_jsq(
+    hosts: List[g.Host],
+    tenants: List[g.Tenant],
+    workers: List[g.Worker],
+    epsilon: float = 1e-12,
+    max_iterations: int = 100000000000) -> Dict[str, Dict[str, float]]:
+
+    for worker in workers:
+        worker.processing_rate = 1.0
+        worker.processed = 0.0
+        worker.load = 0.0
+
+    tenant_to_workers = defaultdict(list)
+    host_to_workers = defaultdict(dict)
+    for worker in workers:
+        tenant_to_workers[worker.tenant].append(worker)
+        host_to_workers[worker.host][worker.name] = worker
+
+    for i_iteration in range(max_iterations):
+        is_worker_processed_changed = False
+
+        # Step 1: Add load inversely proportional to outstanding (unprocessed) load (JSQ)
+        for tenant in tenants:
+            tenant_workers = tenant_to_workers[tenant.name]
+
+            # Outstanding = cumulative load assigned so far minus what was processed
+            outstanding = [max(0.0, w.load - w.processed) for w in tenant_workers]
+            total_outstanding = sum(outstanding)
+
+            if total_outstanding == 0:
+                new_load = tenant.load / len(tenant_workers)
+                for worker in tenant_workers:
+                    worker.load += new_load
+            else:
+                zero_indices = [i for i, ol in enumerate(outstanding) if ol == 0.0]
+                if zero_indices:
+                    # Workers with no backlog absorb all new load
+                    new_load = tenant.load / len(zero_indices)
+                    zero_set = set(zero_indices)
+                    for i, worker in enumerate(tenant_workers):
+                        if i in zero_set:
+                            worker.load += new_load
+                else:
+                    weights = [1.0 / ol for ol in outstanding]
+                    total_weight = sum(weights)
+                    for worker, weight in zip(tenant_workers, weights):
+                        worker.load += tenant.load * weight / total_weight
+
+        # Step 2: Max-min fair share on cumulative load
+        for host in hosts:
+            workers_on_host = host_to_workers[host.name]
+            worker_loads = {name: worker.load for name, worker in workers_on_host.items()}
+            fair_shares = get_max_min_processing_times(host.cap, worker_loads)
+
+            for name, (processed, time) in fair_shares.items():
+                worker = workers_on_host[name]
+                new_processed = processed
+                if abs(worker.processed - new_processed) > epsilon:
+                    is_worker_processed_changed = True
+                worker.processed = new_processed
+
+        if not is_worker_processed_changed:
+            break
+
+    # Step 3: Collect results
+    results = defaultdict(dict)
+    for worker in workers:
+        results[worker.tenant][worker.name] = worker.processed
+
+    return {
+        "status": GRB.OPTIMAL,
+        "result": dict(results)
+    }
+
+
 # get result from json input (from cc)
 def run_from_json(hosts, tenants, workers):
     hosts = [Host(h["name"], h["cap"]) for h in hosts]
@@ -370,7 +446,7 @@ def run_from_json(hosts, tenants, workers):
     workers = [Worker(w["name"], w["tenant"], w["host"]) for w in workers]
     
     # to_return = get_locally_optimal_load_distribution(hosts, tenants, workers)
-    to_return = get_locally_optimal_load_distribution_fast(hosts, tenants, workers)
+    to_return = get_locally_optimal_load_distribution_fast_jsq(hosts, tenants, workers)
 
     return to_return
 

@@ -1474,6 +1474,29 @@ def run_objective_simplified_maxmin(
         return to_return, m if last_model is not None else None, t_min_ret, t_load_ret, optimization_time
 
 
+
+# run generic model from json input (from cc)
+def run_from_json_nllb(hosts, tenants, workers):
+    hosts = [Host(h["name"], h["cap"]) for h in hosts]
+    tenants = [Tenant(t["name"], t["load"], t["fshareload"]) for t in tenants]
+    workers = [Worker(w["name"], w["tenant"], w["host"]) for w in workers]
+    
+    # global previous_w
+    # previous_w = {'app1-node1': 105.6, 'app1-node2': 95.4, 'app2-node1': 95.4, 'app2-node2': 105.6}
+    
+    if is_objective_simple:
+        to_return = run_generic_linear_single_objective_topology_only(hosts, tenants, workers)[0]
+        # to_return = run_generic_linear_single_objective_model_nov15_abs_diff_simplified_fast(hosts, tenants, workers)[0]
+        # to_return = run_objective_simplified_maxmin(hosts, tenants, workers)[0]
+    else:
+        to_return = run_generic_linear_single_objective_model_nov15_abs_diff(hosts, tenants, workers)[0]
+    
+    # # print(previous_w)
+    print("Objective was simplified:", is_objective_simple)
+    
+    return to_return
+    # return run_generic_model(hosts, tenants, workers)
+
 # run generic model from json input (from cc)
 def run_from_json(hosts, tenants, workers):
     hosts = [Host(h["name"], h["cap"]) for h in hosts]

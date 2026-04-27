@@ -18,9 +18,9 @@ import locally_optimal_load_distribution as gs_l
 import gurobi_server as gs_g
 import generate_random_topology as grt
 
-NUM_NODES = 3
-NUM_SERVICES = 3
-NUM_PODS_PER_NODE = 5
+NUM_NODES = 15
+NUM_SERVICES = 15
+NUM_PODS_PER_NODE = 15
 NODE_LOAD_CAP = 100
 LOAD_ATOMIC_UNIT = 10 # * NUM_NODES
 cluster_cap = NODE_LOAD_CAP * NUM_NODES
@@ -33,7 +33,7 @@ UB_SVC_LOAD = 1.3
 # app latencies
 # threshhold values and the 
 # plots the threshhold values 
-LOGFILE = "logs/offline_sweep_ٕJan4.log"
+LOGFILE = "logs/offline_sweep_ٕApr26.log"
 
 def write_config():
     # Ensure log directory exists
@@ -291,8 +291,8 @@ def random_split_with_caps(T, n, U, rng: np.random.Generator):
 
 def get_load(fshare: float, lb: int, ub: int) -> float:
     # return (np.random.exponential(scale=mean_ms_util) / 100.0) * fshare
-    # return (random.randint(int(lb*100), int(ub*100)) / 100.0) * fshare
-    return (80.0 / 100.0) * fshare
+    return (random.randint(int(lb*100), int(ub*100)) / 100.0) * fshare
+    # return (80.0 / 100.0) * fshare
 
 def generate_cluster_states_fast(k: int, seed: int | None = None):
     """
@@ -884,8 +884,107 @@ def run_offline_exp_spike(
         f.write(json.dumps(output) + "\n")
 
 
+def run_offline_exp_spike_fairness(
+    state: Dict[str, any],
+    hosts=None,
+    tenants=None,
+    workers=None,
+    rng: np.random.Generator = None,
+):
+    """
+    Spike fairness experiment:
+      i.   Assumes each service already has ~50% utilization load.
+      ii.  Finds all pairs of services colocated on at least one node; picks one randomly.
+      iii. For each selected service: sets load = n_nodes_for_svc * NODE_LOAD_CAP.
+      iv.  Runs local and global solvers with the spiked loads and logs results.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    if hosts is None or tenants is None or workers is None:
+        hosts, tenants, workers = parse_cluster_state_for_gs(state)
+
+    for t in tenants:
+        t["load"] = float(t["load"])
+
+    topology = np.array(state["NodesToSvc"])
+    num_nodes, num_services = topology.shape
+
+    # Find all colocated pairs
+    colocated_pairs = []
+    for svc_i, svc_j in combinations(range(num_services), 2):
+        if np.any((topology[:, svc_i] > 0) & (topology[:, svc_j] > 0)):
+            colocated_pairs.append((svc_i, svc_j))
+
+    if not colocated_pairs:
+        print(f"\nNo colocated service pairs found — skipping state.")
+        return
+
+    pair_idx = int(rng.integers(len(colocated_pairs)))
+    svc_i, svc_j = colocated_pairs[pair_idx]
+    selected_indices = [svc_i, svc_j]
+    selected_names = [tenants[i]["name"] for i in selected_indices]
+
+    spiked_tenants = copy.deepcopy(tenants)
+    spike_info = {}
+    for svc_idx in selected_indices:
+        n_nodes = int(np.sum(topology[:, svc_idx] > 0))
+        spiked_load = float(n_nodes * NODE_LOAD_CAP)
+        spike_info[svc_idx] = {"n_nodes": n_nodes, "spiked_load": spiked_load, "base": tenants[svc_idx]["load"]}
+        spiked_tenants[svc_idx]["load"] = spiked_load
+
+    local_result  = gs_l.run_from_json(hosts, spiked_tenants, workers)
+    global_result = gs_g.run_from_json(hosts, spiked_tenants, workers)
+    nodal_result  = gs_g.run_from_json_nllb(hosts, spiked_tenants, workers)
+
+    spike_results_local  = {}
+    spike_results_global = {}
+    spike_results_nodal  = {}
+    for svc_idx in selected_indices:
+        name = tenants[svc_idx]["name"]
+        info = spike_info[svc_idx]
+        spike_results_local[name] = {
+            "base": info["base"],
+            "spiked_load": info["spiked_load"],
+            "n_nodes": info["n_nodes"],
+            "feasible": _solver_feasible(spiked_tenants, local_result),
+            "result": local_result.get("result", {}).get(name, {}),
+        }
+        spike_results_global[name] = {
+            "base": info["base"],
+            "spiked_load": info["spiked_load"],
+            "n_nodes": info["n_nodes"],
+            "feasible": _solver_feasible(spiked_tenants, global_result),
+            "result": global_result.get("result", {}).get(name, {}),
+        }
+        spike_results_nodal[name] = {
+            "base": info["base"],
+            "spiked_load": info["spiked_load"],
+            "n_nodes": info["n_nodes"],
+            "feasible": _solver_feasible(spiked_tenants, nodal_result),
+            "result": nodal_result.get("result", {}).get(name, {}),
+        }
+
+    if "NodesToSvc" in state:
+        state["NodesToSvc"] = np.array(state["NodesToSvc"]).tolist()
+
+    output = {
+        "State": state,
+        "Hosts": hosts,
+        "Tenants": tenants,
+        "Workers": workers,
+        "SelectedServices": selected_names,
+        "SpikeResultsLocal": spike_results_local,
+        "SpikeResultsGlobal": spike_results_global,
+        "SpikeResultsNodal": spike_results_nodal,
+    }
+
+    with open(LOGFILE, "a") as f:
+        f.write(json.dumps(output) + "\n")
+
+
 def run_offline_exp(state: Dict[str, any], hosts=None, tenants=None, workers=None):
-    
+
     if hosts is None or tenants is None or workers is None:
         # parse the state to get Hosts, Tenants, Workers
         hosts, tenants, workers = parse_cluster_state_for_gs(state)
@@ -975,9 +1074,9 @@ def run_offline_sweep_spike():
     
     for topo_sample_strategy in [2]:
     
-        for ub in [1.60]:  # np.arange(1.2, 2.0+0.01, 0.10):
+        for ub in [0.80]:  # np.arange(1.2, 2.0+0.01, 0.10):
             
-            lb = 0.00
+            lb = 0.80
                         
             LOGFILE = f"logs/offline_sweep_spike_Jan7_3node_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
             
@@ -1010,6 +1109,30 @@ def run_offline_sweep_spike():
                 print(f"Done with state {i+1}/{len(states)}")
 
 
+def run_offline_sweep_spike_fairness():
+
+    global LOGFILE
+
+    topo_sample_strategy = 2
+    lb = 0.80
+    ub = 0.80
+    k = 10000
+    seed = None
+
+    LOGFILE = f"logs/offline_sweep_spike_fairness_Apr26_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
+    with open(LOGFILE, "w") as f:
+        f.write("")
+
+    states = generate_cluster_states_fast_wo_total_cluster_load(
+        k=k, lb=lb, ub=ub, topo_sample_strategy=topo_sample_strategy, seed=seed)
+
+    rng = np.random.default_rng(seed)
+
+    for i, state in enumerate(states):
+        run_offline_exp_spike_fairness(state, rng=rng)
+        print(f"Done with state {i+1}/{len(states)}")
+
+
 def replay_offline_sweep(scale_factor: float = 0.8):
     """
     Replay the offline sweep from the log file.
@@ -1038,10 +1161,11 @@ def replay_offline_sweep(scale_factor: float = 0.8):
 if __name__ == "__main__":
     # write_config()
     # run_offline_sweep()
-    
-    run_offline_sweep_spike()
-    
+    # run_offline_sweep_spike()
+
+    run_offline_sweep_spike_fairness()
+
     # print(arr := sample_topology_3(15, 15, np.random.default_rng(None), l=10.0))
-    
+
     # print("Sum per service:", np.sum(arr, axis=0))
     # print("Sum per node:", np.sum(arr, axis=1))
