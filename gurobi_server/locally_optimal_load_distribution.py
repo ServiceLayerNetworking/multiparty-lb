@@ -39,6 +39,8 @@ class Worker:
         self.load: float = 0.0
         self.processing_rate: float = 1.0
         self.processed: float = 0.0
+        self.weight: float = 0.0
+        self.prev_weight: float = -1.0
         
     def __str__(self):
         return f"{self.name}: load={self.load} processing_rate={self.processing_rate}"
@@ -368,13 +370,15 @@ def get_locally_optimal_load_distribution_fast_jsq(
     hosts: List[g.Host],
     tenants: List[g.Tenant],
     workers: List[g.Worker],
-    epsilon: float = 1e-12,
+    epsilon: float = 0.01,
     max_iterations: int = 100000000000) -> Dict[str, Dict[str, float]]:
 
     for worker in workers:
         worker.processing_rate = 1.0
         worker.processed = 0.0
         worker.load = 0.0
+        worker.weight = 0.0
+        worker.prev_weight = -1.0
 
     tenant_to_workers = defaultdict(list)
     host_to_workers = defaultdict(dict)
@@ -383,10 +387,8 @@ def get_locally_optimal_load_distribution_fast_jsq(
         host_to_workers[worker.host][worker.name] = worker
 
     for i_iteration in range(max_iterations):
-        
+
         print(f"Iteration #{i_iteration}")
-        
-        is_worker_processed_changed = False
 
         # Step 1: Add load inversely proportional to outstanding (unprocessed) load (JSQ)
         for tenant in tenants:
@@ -397,23 +399,29 @@ def get_locally_optimal_load_distribution_fast_jsq(
             total_outstanding = sum(outstanding)
 
             if total_outstanding == 0:
-                new_load = tenant.load / len(tenant_workers)
+                assigned = tenant.load / len(tenant_workers)
                 for worker in tenant_workers:
-                    worker.load += new_load
+                    worker.load += assigned
+                    worker.weight = assigned
             else:
                 zero_indices = [i for i, ol in enumerate(outstanding) if ol == 0.0]
                 if zero_indices:
                     # Workers with no backlog absorb all new load
-                    new_load = tenant.load / len(zero_indices)
+                    assigned = tenant.load / len(zero_indices)
                     zero_set = set(zero_indices)
                     for i, worker in enumerate(tenant_workers):
                         if i in zero_set:
-                            worker.load += new_load
+                            worker.load += assigned
+                            worker.weight = assigned
+                        else:
+                            worker.weight = 0.0
                 else:
-                    weights = [1.0 / ol for ol in outstanding]
-                    total_weight = sum(weights)
-                    for worker, weight in zip(tenant_workers, weights):
-                        worker.load += tenant.load * weight / total_weight
+                    raw_weights = [1.0 / ol for ol in outstanding]
+                    total_weight = sum(raw_weights)
+                    for worker, w in zip(tenant_workers, raw_weights):
+                        assigned = tenant.load * w / total_weight
+                        worker.load += assigned
+                        worker.weight = assigned
 
         # Step 2: Max-min fair share on cumulative load
         for host in hosts:
@@ -422,19 +430,25 @@ def get_locally_optimal_load_distribution_fast_jsq(
             fair_shares = get_max_min_processing_times(host.cap, worker_loads)
 
             for name, (processed, time) in fair_shares.items():
-                worker = workers_on_host[name]
-                new_processed = processed
-                if abs(worker.processed - new_processed) > epsilon:
-                    is_worker_processed_changed = True
-                worker.processed = new_processed
+                workers_on_host[name].processed = processed
 
-        if not is_worker_processed_changed:
+        # Break when weights have converged
+        if all(abs(w.weight - w.prev_weight) <= epsilon for w in workers):
             break
+        else:
+            max_delta = max(abs(w.weight - w.prev_weight) for w in workers)
+            print(f"Max weight delta: {max_delta}")
+            # print how many workers have changed weight
+            num_changed = sum(1 for w in workers if abs(w.weight - w.prev_weight) > epsilon)
+            print(f"Number of workers with changed weight: {num_changed}/{len(workers)}")
 
-    # Step 3: Collect results
+        for worker in workers:
+            worker.prev_weight = worker.weight
+
+    # Step 3: Collect results — weights * tenant load
     results = defaultdict(dict)
     for worker in workers:
-        results[worker.tenant][worker.name] = worker.processed
+        results[worker.tenant][worker.name] = worker.weight
 
     return {
         "status": GRB.OPTIMAL,
@@ -448,8 +462,8 @@ def run_from_json(hosts, tenants, workers):
     tenants = [Tenant(t["name"], t["load"]) for t in tenants]
     workers = [Worker(w["name"], w["tenant"], w["host"]) for w in workers]
     
-    # to_return = get_locally_optimal_load_distribution(hosts, tenants, workers)
-    to_return = get_locally_optimal_load_distribution_fast_jsq(hosts, tenants, workers)
+    to_return = get_locally_optimal_load_distribution_fast(hosts, tenants, workers)
+    # to_return = get_locally_optimal_load_distribution_fast_jsq(hosts, tenants, workers)
 
     return to_return
 

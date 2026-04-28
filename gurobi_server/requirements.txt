@@ -4,3 +4,6 @@ numpy
 gurobipy
 flask
 kubernetes
+pandas
+matplotlib
+seaborn

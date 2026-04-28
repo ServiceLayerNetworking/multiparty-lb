@@ -86,7 +86,8 @@ def get_state(ms_df_: pd.DataFrame, pct_of_svc_spiking: int, default_load_pct: f
 
 def run_with_timeout(ms_df_0, pct_of_svc_spiking, default_load_pct):
     hosts, tenants, workers, node_caps = get_state(ms_df_0, pct_of_svc_spiking, default_load_pct=default_load_pct)
-    return hosts, tenants, workers, node_caps, gs_g.run_from_json(hosts, tenants, workers)
+    # return hosts, tenants, workers, node_caps, gs_g.run_from_json(hosts, tenants, workers)
+    return hosts, tenants, workers, node_caps, None #gs_g.run_from_json(hosts, tenants, workers)
 
 
 def get_results_stats(tenants, results):
@@ -121,14 +122,16 @@ def run_for_spike_count(ms_df_0: pd.DataFrame, pct_of_svc_spiking: int, default_
 
     cluster_cap = sum(node_caps.values())
 
-    global_cluster_util, global_n_tenants_demand_met, global_tenants_row_data = get_results_stats(tenants, global_result)
-    global_demand_meet_percentage = (global_n_tenants_demand_met / len(tenants)) * 100
-    print(f"Global - Cluster Util: {global_cluster_util:.2f}, Tenants Demand Met: {global_n_tenants_demand_met}/{len(tenants)} ({global_demand_meet_percentage:.2f}%)")
-
     local_result = gs_l.run_from_json(hosts, tenants, workers)
     local_cluster_util, local_n_tenants_demand_met, local_tenants_row_data = get_results_stats(tenants, local_result)
     local_demand_meet_percentage = (local_n_tenants_demand_met / len(tenants)) * 100
     print(f"Local - Cluster Util: {local_cluster_util:.2f}, Tenants Demand Met: {local_n_tenants_demand_met}/{len(tenants)} ({local_demand_meet_percentage:.2f}%)")
+    
+    global_result = local_result if global_result is None else global_result
+    
+    global_cluster_util, global_n_tenants_demand_met, global_tenants_row_data = get_results_stats(tenants, global_result)
+    global_demand_meet_percentage = (global_n_tenants_demand_met / len(tenants)) * 100
+    print(f"Global - Cluster Util: {global_cluster_util:.2f}, Tenants Demand Met: {global_n_tenants_demand_met}/{len(tenants)} ({global_demand_meet_percentage:.2f}%)")
 
     cluster_imprv = (global_cluster_util - local_cluster_util) / local_cluster_util * 100 if local_cluster_util > 0 else 0
 
