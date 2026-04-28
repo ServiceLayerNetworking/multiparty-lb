@@ -140,16 +140,17 @@ def main():
     ms_df_0 = pd.read_csv('ms_df_timestamp_0.csv')
 
     data = []
-    output_file_name = "alibaba_cluster_exp_spike_results_comprehensive_old_obj"
+    output_file_name = "alibaba_cluster_exp_spike_results_comprehensive_old_obj_new_local"
     output_file = f"{output_file_name}.csv"
     tenant_output_file = f"{output_file_name}_tenants.csv"
 
     # spike_counts = [0, 0.01, 0.1, 0.2, 0.5]
     # spike_counts = [0.1, 0.5, 0.75, 1, 2, 3, 10, 20, 50, 100]
-    spike_counts = [0.1, 0.5, 0.75, 1, 2, 3, 10, 20, 50, 100]
+    # spike_counts = [0.1, 0.5, 0.75, 1, 2, 3, 10, 20, 50, 100]
+    spike_counts = [3.0]
     print(spike_counts)
 
-    default_load_pct = 80.0
+    default_load_pct = 50.0
 
     for n_spike, pct_of_svc_spiking in enumerate(spike_counts):
         print(f"Running for pct_of_svc_spiking={pct_of_svc_spiking}...")

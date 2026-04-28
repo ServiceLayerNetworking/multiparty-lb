@@ -383,6 +383,9 @@ def get_locally_optimal_load_distribution_fast_jsq(
         host_to_workers[worker.host][worker.name] = worker
 
     for i_iteration in range(max_iterations):
+        
+        print(f"Iteration #{i_iteration}")
+        
         is_worker_processed_changed = False
 
         # Step 1: Add load inversely proportional to outstanding (unprocessed) load (JSQ)
