@@ -1119,7 +1119,7 @@ def run_offline_sweep_spike_fairness():
     k = 10000
     seed = None
 
-    LOGFILE = f"logs/offline_sweep_spike_fairness_Apr26_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
+    LOGFILE = f"logs/offline_sweep_spike_fairness_Apr28_lb_{lb:.2f}_ub_{ub:.2f}_topo_sampling_{topo_sample_strategy}.log"
     with open(LOGFILE, "w") as f:
         f.write("")
 

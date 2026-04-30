@@ -233,7 +233,7 @@ def run_fairness_exp_for_cluster_state(
     print(f"Running fairness experiment w/ state {state_id}, loads={svc_loads}, pods={pod_names} at {time.ctime(time_started)}")
 
     for lb in lbs:
-        for iteration in [0, 1]:
+        for iteration in [2, 3, 4]:
             
             print(f"Running fairness experiment w/ state {state_id} && lb {LB_NAME[lb]} && iteration {iteration}...")
 
