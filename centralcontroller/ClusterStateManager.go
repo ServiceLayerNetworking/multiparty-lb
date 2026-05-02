@@ -53,7 +53,8 @@ func getSvcNamesFromPodCPUUtilizations(nodeCPUUtilizations []string) []string {
 		for _, cpuUtilStr := range cpuUtilStrs {
 			util := strings.Split(cpuUtilStr, ":")
 			podName := util[0]
-			svcName := strings.Split(podName, "-")[0] // get "svc0" from "svc0-1"
+			parts := strings.Split(podName, "-")
+			svcName := strings.Join(parts[:len(parts)-1], "-") // get "svc0" from "svc0-1"
 			if svcName == "hostagent" {
 				continue
 			}
