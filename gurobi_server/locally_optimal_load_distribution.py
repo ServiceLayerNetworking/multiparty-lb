@@ -127,7 +127,7 @@ def get_max_min_processing_times(total_time: float, job_times: Dict[str, float])
         
         # if we're over the total time
         else:
-            
+
             # what time did we have left after the last job finished processing?
             time_left = total_time - prev_curr_time
             
@@ -136,7 +136,7 @@ def get_max_min_processing_times(total_time: float, job_times: Dict[str, float])
             
             # current time is the total time
             curr_time = total_time
-        
+
         # add the job to the job stats
         job_stats[job_name] = (per_job_curr_time, curr_time)
 
@@ -366,6 +366,178 @@ def get_locally_optimal_load_distribution_fast(
     return final_output
 
 
+def get_locally_optimal_load_distribution_outstanding_work_fast(
+    hosts: List[g.Host],
+    tenants: List[g.Tenant],
+    workers: List[g.Worker],
+    epsilon: float = 1e-3,
+    queue_tolerance: float = 1e-12,
+    max_iterations: int = 10_000,
+) -> Dict[str, Dict[str, float]]:
+    """Approximate endpoint least-outstanding routing's fluid equilibrium.
+
+    ``get_locally_optimal_load_distribution_fast`` routes in proportion to the
+    amount each endpoint processed in its preceding iteration.  The deployed
+    least-request policy instead chooses an endpoint with the least outstanding
+    work for that service.  This function models that policy as a Wardrop
+    equilibrium:
+
+    * a tenant can send positive flow only to endpoints whose outstanding work
+      is minimum among that tenant's endpoints; and
+    * every host processes its endpoint loads with the same max-min fair-share
+      calculation used by the existing fast implementation.
+
+    Endpoint outstanding work is coupled by max-min sharing at its host, so it
+    does not have the separable convex potential used by the nodal model.  We
+    solve the fixed point with the method of successive averages (MSA).  Each
+    iteration computes endpoint queues, makes an all-or-nothing least-queue
+    assignment, and averages that assignment into the current routing with
+    step size ``1 / iteration``.  The reported relative Wardrop gap is zero
+    exactly when all positive flow uses minimum-outstanding endpoints (up to
+    ``queue_tolerance``).
+    """
+
+    if epsilon <= 0:
+        raise ValueError("epsilon must be positive")
+    if queue_tolerance < 0:
+        raise ValueError("queue_tolerance must be non-negative")
+    if max_iterations <= 0:
+        raise ValueError("max_iterations must be positive")
+
+    tenant_to_workers = defaultdict(list)
+    host_to_workers = defaultdict(dict)
+    for worker in workers:
+        worker.load = 0.0
+        worker.processed = 0.0
+        tenant_to_workers[worker.tenant].append(worker)
+        host_to_workers[worker.host][worker.name] = worker
+
+    tenant_by_name = {tenant.name: tenant for tenant in tenants}
+    if len(tenant_by_name) != len(tenants):
+        raise ValueError("Tenant names must be unique")
+    if len({host.name for host in hosts}) != len(hosts):
+        raise ValueError("Host names must be unique")
+    if len({worker.name for worker in workers}) != len(workers):
+        raise ValueError("Worker names must be unique")
+
+    host_names = {host.name for host in hosts}
+    for host in hosts:
+        if not math.isfinite(float(host.cap)) or float(host.cap) < 0:
+            raise ValueError(f"Invalid capacity for host {host.name}: {host.cap}")
+    for tenant in tenants:
+        if not math.isfinite(float(tenant.load)) or float(tenant.load) < 0:
+            raise ValueError(f"Invalid load for tenant {tenant.name}: {tenant.load}")
+        if not tenant_to_workers[tenant.name]:
+            raise ValueError(f"Tenant {tenant.name} has no workers")
+    for worker in workers:
+        if worker.tenant not in tenant_by_name:
+            raise ValueError(
+                f"Worker {worker.name} has unknown tenant {worker.tenant}"
+            )
+        if worker.host not in host_names:
+            raise ValueError(f"Worker {worker.name} has unknown host {worker.host}")
+
+    # Equal routing is the deployed policy's tie behavior when every queue is
+    # initially empty and gives MSA a feasible starting point.
+    for tenant in tenants:
+        tenant_workers = tenant_to_workers[tenant.name]
+        equal_load = float(tenant.load) / len(tenant_workers)
+        for worker in tenant_workers:
+            worker.load = equal_load
+
+    converged = False
+    relative_gap = math.inf
+    iterations = 0
+
+    for iteration in range(1, max_iterations + 1):
+        iterations = iteration
+
+        # Apply host-local max-min processing to the current offered loads.
+        for host in hosts:
+            workers_on_host = host_to_workers[host.name]
+            fair_shares = get_max_min_processing_times(
+                float(host.cap),
+                {name: worker.load for name, worker in workers_on_host.items()},
+            )
+            for name, (processed, _completion_time) in fair_shares.items():
+                workers_on_host[name].processed = processed
+
+        target_load = {}
+        absolute_gap = 0.0
+        normalizer = 0.0
+
+        for tenant in tenants:
+            tenant_workers = tenant_to_workers[tenant.name]
+            outstanding = {
+                worker.name: max(0.0, worker.load - worker.processed)
+                for worker in tenant_workers
+            }
+            minimum = min(outstanding.values())
+            least_outstanding = [
+                worker
+                for worker in tenant_workers
+                if outstanding[worker.name] <= minimum + queue_tolerance
+            ]
+            equal_target = float(tenant.load) / len(least_outstanding)
+            selected_names = {worker.name for worker in least_outstanding}
+
+            for worker in tenant_workers:
+                target_load[worker.name] = (
+                    equal_target if worker.name in selected_names else 0.0
+                )
+                excess_queue = max(0.0, outstanding[worker.name] - minimum)
+                absolute_gap += worker.load * excess_queue
+                normalizer += worker.load * outstanding[worker.name]
+
+        relative_gap = absolute_gap / max(1.0, normalizer)
+        if relative_gap <= epsilon:
+            converged = True
+            break
+
+        step_size = 1.0 / (iteration + 1.0)
+        for worker in workers:
+            worker.load += step_size * (target_load[worker.name] - worker.load)
+
+    # The final MSA update, if any, has not yet been processed.
+    for host in hosts:
+        workers_on_host = host_to_workers[host.name]
+        fair_shares = get_max_min_processing_times(
+            float(host.cap),
+            {name: worker.load for name, worker in workers_on_host.items()},
+        )
+        for name, (processed, _completion_time) in fair_shares.items():
+            workers_on_host[name].processed = processed
+
+    # Recompute the residual for the exact routing point being returned.  This
+    # matters when the last allowed iteration performed an MSA update.
+    absolute_gap = 0.0
+    normalizer = 0.0
+    for tenant in tenants:
+        tenant_workers = tenant_to_workers[tenant.name]
+        outstanding = [
+            max(0.0, worker.load - worker.processed)
+            for worker in tenant_workers
+        ]
+        minimum = min(outstanding)
+        for worker, queue in zip(tenant_workers, outstanding):
+            absolute_gap += worker.load * max(0.0, queue - minimum)
+            normalizer += worker.load * queue
+    relative_gap = absolute_gap / max(1.0, normalizer)
+    converged = relative_gap <= epsilon
+
+    results = defaultdict(dict)
+    for worker in workers:
+        results[worker.tenant][worker.name] = worker.processed
+
+    return {
+        "status": GRB.OPTIMAL if converged else GRB.ITERATION_LIMIT,
+        "result": dict(results),
+        "converged": converged,
+        "iterations": iterations,
+        "relative_gap": relative_gap,
+    }
+
+
 def get_locally_optimal_load_distribution_fast_jsq(
     hosts: List[g.Host],
     tenants: List[g.Tenant],
@@ -457,15 +629,30 @@ def get_locally_optimal_load_distribution_fast_jsq(
 
 
 # get result from json input (from cc)
-def run_from_json(hosts, tenants, workers):
+def run_from_json(hosts, tenants, workers, algorithm="processed"):
     hosts = [Host(h["name"], h["cap"]) for h in hosts]
     tenants = [Tenant(t["name"], t["load"]) for t in tenants]
     workers = [Worker(w["name"], w["tenant"], w["host"]) for w in workers]
-    
-    to_return = get_locally_optimal_load_distribution_fast(hosts, tenants, workers)
-    # to_return = get_locally_optimal_load_distribution_fast_jsq(hosts, tenants, workers)
+
+    if algorithm == "processed":
+        to_return = get_locally_optimal_load_distribution_fast(hosts, tenants, workers)
+    elif algorithm == "outstanding":
+        to_return = get_locally_optimal_load_distribution_outstanding_work_fast(
+            hosts, tenants, workers
+        )
+    else:
+        raise ValueError(
+            f"Unknown local load-distribution algorithm {algorithm!r}; "
+            "expected 'processed' or 'outstanding'"
+        )
 
     return to_return
+
+
+def run_from_json_outstanding(hosts, tenants, workers):
+    """JSON adapter for endpoint least-outstanding fluid routing."""
+
+    return run_from_json(hosts, tenants, workers, algorithm="outstanding")
 
 if __name__ == '__main__':
     
@@ -482,18 +669,23 @@ if __name__ == '__main__':
             print("Input:", input)
             
             hosts, tenants, workers = input[0], input[1], input[2]
-            output = run_from_json(hosts, tenants, workers)
+            algorithm = sys.argv[3] if len(sys.argv) > 3 else "processed"
+            output = run_from_json(hosts, tenants, workers, algorithm=algorithm)
             
             time_taken = time() - start_time
             print(f"{time_taken*1000:.2f} ms")
             
             output_json = dumps(output)
             
-            with open(filename + "_local_opt_output", "w") as f:
+            suffix = (
+                "_local_outstanding_opt_output"
+                if algorithm == "outstanding"
+                else "_local_opt_output"
+            )
+            with open(filename + suffix, "w") as f:
                 f.write(output_json)
-            
+
         else:
-            print("Invalid argument, use -f to run sample json")
+            print("Invalid argument, use -f <filename> [processed|outstanding]")
     else:
-        print("No argument provided, use -f to run sample json")
-        
+        print("No argument provided, use -f <filename> [processed|outstanding]")

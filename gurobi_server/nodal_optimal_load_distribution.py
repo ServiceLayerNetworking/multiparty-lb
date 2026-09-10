@@ -3,15 +3,17 @@ from json import dumps
 from time import time
 from typing import Dict, List, Tuple
 import json
+import math
 import sys
 
+import gurobipy as gp
 from gurobipy import GRB
 
 
 class Host:
     def __init__(self, name: str, cap: float):
         self.name = name
-        self.cap = cap
+        self.cap = float(cap)
         self.worker_ids: List[int] = []
 
     def __str__(self):
@@ -21,7 +23,7 @@ class Host:
 class Tenant:
     def __init__(self, name: str, load: float):
         self.name = name
-        self.load = load
+        self.load = float(load)
 
     def __str__(self):
         return f"{self.name}: load={self.load}"
@@ -69,90 +71,193 @@ def get_max_min_processing_times(
     return job_stats
 
 
+def _validate_inputs(
+    hosts: List[Host],
+    tenants: List[Tenant],
+    workers: List[Worker],
+) -> Tuple[Dict[str, Host], Dict[str, Tenant]]:
+    host_by_name = {host.name: host for host in hosts}
+    tenant_by_name = {tenant.name: tenant for tenant in tenants}
+
+    if len(host_by_name) != len(hosts):
+        raise ValueError("Host names must be unique")
+    if len(tenant_by_name) != len(tenants):
+        raise ValueError("Tenant names must be unique")
+    if len({worker.name for worker in workers}) != len(workers):
+        raise ValueError("Worker names must be unique")
+
+    for host in hosts:
+        if not math.isfinite(host.cap) or host.cap < 0:
+            raise ValueError(f"Invalid capacity for host {host.name}: {host.cap}")
+    for tenant in tenants:
+        if not math.isfinite(tenant.load) or tenant.load < 0:
+            raise ValueError(f"Invalid load for tenant {tenant.name}: {tenant.load}")
+
+    tenant_worker_counts = defaultdict(int)
+    for worker in workers:
+        if worker.host not in host_by_name:
+            raise ValueError(f"Worker {worker.name} has unknown host {worker.host}")
+        if worker.tenant not in tenant_by_name:
+            raise ValueError(
+                f"Worker {worker.name} has unknown tenant {worker.tenant}"
+            )
+        tenant_worker_counts[worker.tenant] += 1
+
+    missing_workers = [
+        tenant.name for tenant in tenants if tenant_worker_counts[tenant.name] == 0
+    ]
+    if missing_workers:
+        raise ValueError(f"Tenants without workers: {missing_workers[:5]}")
+
+    return host_by_name, tenant_by_name
+
+
 def get_nodal_optimal_load_distribution_fast(
     hosts: List[Host],
     tenants: List[Tenant],
     workers: List[Worker],
-    epsilon: float = 1e-12,
-    max_iterations: int = 10_000,
+    queue_tolerance: float = 1e-7,
 ) -> Dict[str, Dict[str, float]]:
-    """Compute the fixed point of node-aggregated proportional routing.
+    """Compute a fluid equilibrium for node-level least-outstanding routing.
 
-    This mirrors ``get_locally_optimal_load_distribution_fast`` except for the
-    routing signal.  PSLB gives each endpoint a weight equal to the work that
-    endpoint processed in the previous iteration.  NLLB gives each endpoint a
-    weight equal to the total work processed by every endpoint on its host.
+    Let ``x[t, w]`` be the fraction of tenant ``t`` traffic routed to worker
+    ``w`` and let the offered work at host ``h`` be the sum of the corresponding
+    tenant loads.  A host's fluid backlog is the positive part of offered work
+    minus capacity.  NLLB sends a request to a reachable endpoint whose host has
+    the least aggregate outstanding work.  Its steady-state (Wardrop)
+    equilibrium therefore minimizes the Beckmann potential
 
-    All endpoints on one host therefore expose the same node-level signal.  If
-    a tenant has multiple endpoints on that host, each endpoint inherits that
-    signal, which matches endpoint selection using a node-aggregated metric.
-    When every reachable node has processed zero work, the tenant load is split
-    equally among its endpoints, as in the PSLB implementation.
+        1/2 * sum_h backlog[h]^2.
 
-    After routing, every host processes its assigned endpoint loads using the
-    same per-worker max-min fair sharing routine as the PSLB implementation.
-    The route/process steps repeat until no worker's processed load changes by
-    more than ``epsilon`` or ``max_iterations`` is reached.
+    The first convex optimization finds the unique optimal host-backlog vector.
+    Routing can be non-unique when multiple endpoints have the same node signal,
+    so a second optimization fixes that backlog vector (within numerical
+    tolerance) and minimizes the squared routing fractions.  This reproduces
+    equal random tie splitting without changing the least-outstanding
+    equilibrium.
+
+    Finally, each host applies the same per-worker max-min processor sharing as
+    ``get_locally_optimal_load_distribution_fast``.  The returned values are
+    processed work per worker, matching the PSLB solver's output schema.
     """
 
-    for worker in workers:
-        worker.processed = 0.0
+    if queue_tolerance <= 0:
+        raise ValueError("queue_tolerance must be positive")
 
-    tenant_to_workers = defaultdict(list)
+    host_by_name, tenant_by_name = _validate_inputs(hosts, tenants, workers)
+
+    tenant_to_worker_indices = defaultdict(list)
+    host_to_worker_indices = defaultdict(list)
+    for worker_index, worker in enumerate(workers):
+        tenant_to_worker_indices[worker.tenant].append(worker_index)
+        host_to_worker_indices[worker.host].append(worker_index)
+
+    model = gp.Model("nodal_least_outstanding_equilibrium")
+    model.Params.OutputFlag = 0
+
+    route_fraction = model.addVars(
+        len(workers),
+        lb=0.0,
+        ub=1.0,
+        vtype=GRB.CONTINUOUS,
+        name="route_fraction",
+    )
+    backlog = model.addVars(
+        [host.name for host in hosts],
+        lb=0.0,
+        vtype=GRB.CONTINUOUS,
+        name="backlog",
+    )
+
+    for tenant in tenants:
+        model.addConstr(
+            gp.quicksum(
+                route_fraction[index]
+                for index in tenant_to_worker_indices[tenant.name]
+            )
+            == 1.0,
+            name=f"tenant_route_{tenant.name}",
+        )
+
+    host_load = {}
+    for host in hosts:
+        host_load[host.name] = gp.quicksum(
+            tenant_by_name[workers[index].tenant].load * route_fraction[index]
+            for index in host_to_worker_indices[host.name]
+        )
+        model.addConstr(
+            backlog[host.name] >= host_load[host.name] - host.cap,
+            name=f"host_backlog_{host.name}",
+        )
+
+    model.setObjective(
+        0.5
+        * gp.quicksum(
+            backlog[host.name] * backlog[host.name] for host in hosts
+        ),
+        GRB.MINIMIZE,
+    )
+    model.optimize()
+
+    if model.Status != GRB.OPTIMAL:
+        return _empty_result(model.Status, workers)
+
+    # Barrier can leave a tiny positive value in an otherwise-unconstrained
+    # zero-backlog auxiliary variable.  Physical backlog is defined by the
+    # optimized offered load, so derive it from load minus capacity instead of
+    # copying the auxiliary variable's numerical residue.
+    optimal_backlog = {
+        host.name: max(
+            0.0,
+            float(host_load[host.name].getValue()) - host.cap,
+        )
+        for host in hosts
+    }
+
+    # Preserve the primary equilibrium while selecting equal endpoint splitting
+    # among its otherwise-equivalent routing solutions.
+    for host in hosts:
+        value = optimal_backlog[host.name]
+        allowed_error = queue_tolerance * max(1.0, host.cap, value)
+        model.addConstr(
+            host_load[host.name] <= host.cap + value + allowed_error,
+            name=f"preserve_host_load_upper_{host.name}",
+        )
+        if value > allowed_error:
+            model.addConstr(
+                host_load[host.name]
+                >= host.cap + value - allowed_error,
+                name=f"preserve_host_load_lower_{host.name}",
+            )
+
+    model.setObjective(
+        gp.quicksum(
+            route_fraction[index] * route_fraction[index]
+            for index in range(len(workers))
+        ),
+        GRB.MINIMIZE,
+    )
+    model.optimize()
+
+    if model.Status != GRB.OPTIMAL:
+        return _empty_result(model.Status, workers)
+
+    for worker_index, worker in enumerate(workers):
+        tenant_load = tenant_by_name[worker.tenant].load
+        worker.load = tenant_load * max(0.0, float(route_fraction[worker_index].X))
+
     host_to_workers = defaultdict(dict)
     for worker in workers:
-        tenant_to_workers[worker.tenant].append(worker)
         host_to_workers[worker.host][worker.name] = worker
 
-    for i_iteration in range(max_iterations):
-        is_worker_processed_changed = False
-
-        print(f"Iteration #{i_iteration}")
-
-        # Use one aggregate processing signal for every endpoint on a host.
-        host_processed = {
-            host.name: sum(
-                worker.processed
-                for worker in host_to_workers[host.name].values()
-            )
-            for host in hosts
-        }
-
-        # Distribute each tenant's load among its endpoints in proportion to
-        # the aggregate work processed on their respective hosts.
-        for tenant in tenants:
-            tenant_workers = tenant_to_workers[tenant.name]
-            total_processing = sum(
-                host_processed[worker.host] for worker in tenant_workers
-            )
-
-            if total_processing > 0:
-                for worker in tenant_workers:
-                    worker.load = tenant.load * (
-                        host_processed[worker.host] / total_processing
-                    )
-            else:
-                equal_load = tenant.load / len(tenant_workers)
-                for worker in tenant_workers:
-                    worker.load = equal_load
-
-        # Preserve the PSLB model's per-worker max-min fair processing at each
-        # host.  Only the preceding routing signal differs.
-        for host in hosts:
-            workers_on_host = host_to_workers[host.name]
-            worker_loads = {
-                name: worker.load for name, worker in workers_on_host.items()
-            }
-            fair_shares = get_max_min_processing_times(host.cap, worker_loads)
-
-            for name, (new_processed, _time_to_process_load) in fair_shares.items():
-                worker = workers_on_host[name]
-                if abs(worker.processed - new_processed) > epsilon:
-                    is_worker_processed_changed = True
-                worker.processed = new_processed
-
-        if not is_worker_processed_changed:
-            break
+    for host in hosts:
+        workers_on_host = host_to_workers[host.name]
+        fair_shares = get_max_min_processing_times(
+            host.cap,
+            {name: worker.load for name, worker in workers_on_host.items()},
+        )
+        for name, (processed, _completion_time) in fair_shares.items():
+            workers_on_host[name].processed = processed
 
     results = defaultdict(dict)
     for worker in workers:
@@ -160,6 +265,16 @@ def get_nodal_optimal_load_distribution_fast(
 
     return {
         "status": GRB.OPTIMAL,
+        "result": dict(results),
+    }
+
+
+def _empty_result(status: int, workers: List[Worker]):
+    results = defaultdict(dict)
+    for worker in workers:
+        results[worker.tenant][worker.name] = 0.0
+    return {
+        "status": status,
         "result": dict(results),
     }
 
