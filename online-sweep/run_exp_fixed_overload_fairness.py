@@ -471,10 +471,15 @@ def workload_snapshot(scenario: Dict[str, Any]) -> Dict[str, Any]:
             continue
         pod_name = pod["metadata"]["name"]
         node_name = pod.get("spec", {}).get("nodeName")
+        short_node_name = node_name.split(".", 1)[0] if node_name else node_name
         if not is_ready(pod):
             unready.append(pod_name)
-        actual_by_service[service].append(node_name)
-        pods[pod_name] = {"service": service, "node": node_name}
+        actual_by_service[service].append(short_node_name)
+        pods[pod_name] = {
+            "service": service,
+            "node": node_name,
+            "short_node": short_node_name,
+        }
     if unready:
         raise RuntimeError(f"workload pods are not ready: {sorted(unready)}")
 
