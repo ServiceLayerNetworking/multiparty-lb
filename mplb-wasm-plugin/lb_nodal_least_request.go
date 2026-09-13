@@ -28,8 +28,11 @@ func getNextDstEndpointNodalLeastRequest(
 		return -1, err
 	}
 
-	// perform least request
-	selectedEndpoint := doNodalLR(dst, outstandingReqs)
+	// Choose nodes by outstanding CPU work rather than treating every request
+	// as equally expensive. Keep this local switch so the request-count behavior
+	// remains available for controlled comparisons.
+	leastLoad := true
+	selectedEndpoint := doNodalLR(dst, outstandingReqs, leastLoad)
 
 	// // Increment the active request count for the selected server
 	// (*outstandingReqs)[selectedEndpoint]++
@@ -249,7 +252,7 @@ func getTopology() (map[string][]int, error) {
 	return topo, nil
 }
 
-func doNodalLR(dst string, outstandingReqs *[]int) int {
+func doNodalLR(dst string, outstandingReqs *[]int, leastLoad bool) int {
 
 	// get the topology from wasm shared data
 	svcNodes, err := getTopology()
@@ -268,41 +271,68 @@ func doNodalLR(dst string, outstandingReqs *[]int) int {
 		} else {
 			n_endpoints := len(svcNodes[service])
 			currSvcOutstandingReqs, _, err := getOutstandingRequests(service, n_endpoints)
-			proxywasm.LogCriticalf("[%s:%d] Outstanding requests for svc %s: %v",
-				dst, n_endpoints, service, *currSvcOutstandingReqs)
 			if err != nil {
 				proxywasm.LogCriticalf(
 					"Couldn't get outstanding requests for endpoint %s: %v",
-					dst, err)
+					service, err)
 				return 0
 			}
+			proxywasm.LogCriticalf("[%s:%d] Outstanding requests for svc %s: %v",
+				dst, n_endpoints, service, *currSvcOutstandingReqs)
 			svcOutstandingReqs[service] = currSvcOutstandingReqs
 		}
 	}
 
-	nodeOutstandingReqs := make(map[int]int)
+	requestWeights := make(map[string]float64, len(svcNodes))
+	for service := range svcNodes {
+		requestWeights[service] = 1.0
+	}
 
-	for appName, appNodes := range svcNodes {
-		for appEndpointID, nodeID := range appNodes {
-			_, exists := nodeOutstandingReqs[nodeID]
-			if !exists {
-				nodeOutstandingReqs[nodeID] = (*svcOutstandingReqs[appName])[appEndpointID]
-			} else {
-				nodeOutstandingReqs[nodeID] += (*svcOutstandingReqs[appName])[appEndpointID]
+	mode := "requests"
+	if leastLoad {
+		mode = "load"
+		for service := range svcNodes {
+			cpuConsumptionPerReq, err := readCPUConsumptionPerReq(service)
+			if err != nil {
+				// Do not mix CPU-weighted and unit-weighted services in the same
+				// node score. During controller startup, fall back consistently to
+				// request counts until every service has a valid CPU estimate.
+				proxywasm.LogCriticalf(
+					"Couldn't use least outstanding load because service %s has no valid CPU-per-request estimate: %v; falling back to request counts",
+					service, err)
+				mode = "requests-fallback"
+				for fallbackService := range requestWeights {
+					requestWeights[fallbackService] = 1.0
+				}
+				break
 			}
+			requestWeights[service] = cpuConsumptionPerReq
 		}
 	}
 
-	proxywasm.LogCriticalf("[%s] Node outstanding requests: %v", dst, nodeOutstandingReqs)
-
-	dstNodeOutstandingRequests := make([]int, len(svcNodes[dst]))
-	for i, nodeID := range svcNodes[dst] {
-		dstNodeOutstandingRequests[i] = nodeOutstandingReqs[nodeID]
+	nodeOutstandingLoads, err := aggregateNodeOutstandingLoads(
+		svcNodes, svcOutstandingReqs, requestWeights)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't calculate node outstanding loads for %s: %v", dst, err)
+		return 0
 	}
 
-	proxywasm.LogCriticalf("[%s] Dst node outstanding reqs: %v", dst, dstNodeOutstandingRequests)
+	proxywasm.LogCriticalf("[%s] Node outstanding %s: %v", dst, mode, nodeOutstandingLoads)
 
-	selectedEndpoint := doLR(&dstNodeOutstandingRequests)
+	dstNodes, ok := svcNodes[dst]
+	if !ok || len(dstNodes) == 0 {
+		proxywasm.LogCriticalf("No topology endpoints found for destination %s", dst)
+		return 0
+	}
+
+	dstNodeOutstandingLoads := make([]float64, len(dstNodes))
+	for i, nodeID := range dstNodes {
+		dstNodeOutstandingLoads[i] = nodeOutstandingLoads[nodeID]
+	}
+
+	proxywasm.LogCriticalf("[%s] Dst node outstanding %s: %v", dst, mode, dstNodeOutstandingLoads)
+
+	selectedEndpoint := getNodalLeastLoadedEndpoint(&dstNodeOutstandingLoads)
 
 	proxywasm.LogCriticalf("[%s] Selected endpoint: %d", dst, selectedEndpoint)
 
@@ -350,6 +380,40 @@ func doNodalLR(dst string, outstandingReqs *[]int) int {
 	// return selectedEndpoint
 }
 
+// aggregateNodeOutstandingLoads sums outstanding work in one pass over all
+// service endpoints. requestWeights contains either 1.0 for request-count mode
+// or the service's estimated CPU consumption per request for load mode.
+func aggregateNodeOutstandingLoads(
+	svcNodes map[string][]int,
+	svcOutstandingReqs map[string]*[]int,
+	requestWeights map[string]float64) (map[int]float64, error) {
+
+	nodeOutstandingLoads := make(map[int]float64)
+
+	for service, nodes := range svcNodes {
+		outstandingReqs, ok := svcOutstandingReqs[service]
+		if !ok || outstandingReqs == nil {
+			return nil, fmt.Errorf("missing outstanding requests for service %s", service)
+		}
+		if len(*outstandingReqs) != len(nodes) {
+			return nil, fmt.Errorf(
+				"service %s has %d outstanding-request entries for %d endpoints",
+				service, len(*outstandingReqs), len(nodes))
+		}
+
+		requestWeight, ok := requestWeights[service]
+		if !ok || requestWeight <= 0 || math.IsNaN(requestWeight) || math.IsInf(requestWeight, 0) {
+			return nil, fmt.Errorf("invalid request weight for service %s: %f", service, requestWeight)
+		}
+
+		for endpointID, nodeID := range nodes {
+			nodeOutstandingLoads[nodeID] += float64((*outstandingReqs)[endpointID]) * requestWeight
+		}
+	}
+
+	return nodeOutstandingLoads, nil
+}
+
 func getNodalLeastLoadedEndpoint(outstandingLoads *[]float64) int {
 
 	var selectedEndpoint int
@@ -371,15 +435,26 @@ func getNodalLeastLoadedEndpoint(outstandingLoads *[]float64) int {
 	return selectedEndpoint
 }
 
-func getCPUConsumptionPerReq(dstSvc string) float64 {
+func readCPUConsumptionPerReq(dstSvc string) (float64, error) {
 	buf, _, err := proxywasm.GetSharedData(svcCPUConsumptionPerReqKey(dstSvc))
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't get CPU consumption per request for %s: %v", dstSvc, err)
-		return math.MaxInt
+		return 0, fmt.Errorf("get CPU consumption per request for %s: %w", dstSvc, err)
 	}
 	cpuConsumption, err := strconv.ParseFloat(string(buf), 64)
 	if err != nil {
-		proxywasm.LogCriticalf("Couldn't parse CPU consumption per request for %s: %v", dstSvc, err)
+		return 0, fmt.Errorf("parse CPU consumption per request for %s: %w", dstSvc, err)
+	}
+	if cpuConsumption <= 0 || math.IsNaN(cpuConsumption) || math.IsInf(cpuConsumption, 0) {
+		return 0, fmt.Errorf("invalid CPU consumption per request for %s: %f", dstSvc, cpuConsumption)
+	}
+
+	return cpuConsumption, nil
+}
+
+func getCPUConsumptionPerReq(dstSvc string) float64 {
+	cpuConsumption, err := readCPUConsumptionPerReq(dstSvc)
+	if err != nil {
+		proxywasm.LogCriticalf("Couldn't get CPU consumption per request for %s: %v", dstSvc, err)
 		return math.MaxInt
 	}
 
