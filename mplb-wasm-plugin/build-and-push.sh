@@ -5,8 +5,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
 REPO_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+PLUGIN_TREE="$(git -C "$REPO_ROOT" rev-parse "$REPO_COMMIT:mplb-wasm-plugin")"
 IMAGE_REPOSITORY="ghcr.io/talha-waheed/mplb-plugin"
-TAG_SUFFIX="lb4-${REPO_COMMIT:0:12}"
+TAG_SUFFIX="lb4-${PLUGIN_TREE:0:12}"
 PUSH=false
 STRATEGIES=(
     "nodal_leastrequest"
@@ -23,7 +24,7 @@ Build immutable WASM images without modifying main.go or wasm-out/.
 Options:
   --push                  Push each image after building it.
   --repository REPOSITORY Override the image repository.
-  --tag-suffix SUFFIX     Override lb4-<12-character-git-commit>.
+  --tag-suffix SUFFIX     Override lb4-<12-character-plugin-tree>.
   --strategies CSV        Build a comma-separated strategy subset.
   -h, --help              Show this help.
 EOF
@@ -102,6 +103,7 @@ cp "$SCRIPT_DIR"/*.go "$SCRIPT_DIR"/go.mod "$SCRIPT_DIR"/go.sum \
 mkdir -p "$BUILD_DIR/wasm-out"
 
 echo "Source commit: $REPO_COMMIT"
+echo "Plugin tree: $PLUGIN_TREE"
 echo "Tag suffix: $TAG_SUFFIX"
 
 for strategy in "${STRATEGIES[@]}"; do

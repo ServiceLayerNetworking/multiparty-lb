@@ -134,7 +134,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--image-tag-suffix",
-        help="Defaults to lb4-<12-character Git commit>.",
+        help="Defaults to lb4-<12-character committed mplb-wasm-plugin tree>.",
     )
     parser.add_argument(
         "--objective-url", default="http://localhost:4876/simplify_objective"
@@ -724,6 +724,8 @@ def run_one_experiment(
     hit_started = 0.0
     hit_ended = 0.0
     controller_ended = 0.0
+    controller_exit_code = None
+    controller_exit_classification = "not_started"
     try:
         with controller_stdout.open("w") as controller_output:
             print("Command:", " ".join(controller_command), flush=True)
@@ -746,10 +748,26 @@ def run_one_experiment(
             hit_ended = time.time()
             controller_process.wait(timeout=args.controller_tail_seconds + 30)
             controller_ended = time.time()
-            if controller_process.returncode != 0:
-                raise RuntimeError(
-                    f"central controller exited with {controller_process.returncode}"
+            controller_exit_code = controller_process.returncode
+            controller_exit_classification = "clean"
+            if controller_exit_code != 0:
+                controller_output_text = controller_stdout.read_text(errors="replace")
+                known_shutdown_race = (
+                    controller_exit_code == 2
+                    and "Time is up. Exiting..." in controller_output_text
+                    and "panic: invalid response from host agent" in controller_output_text
                 )
+                if known_shutdown_race:
+                    controller_exit_classification = "known_shutdown_race"
+                    print(
+                        "Central controller hit its known host-agent disconnect race "
+                        "after the configured end time; accepting the completed window.",
+                        flush=True,
+                    )
+                else:
+                    raise RuntimeError(
+                        f"central controller exited with {controller_exit_code}"
+                    )
     finally:
         if controller_process is not None and controller_process.poll() is None:
             controller_process.terminate()
@@ -780,6 +798,8 @@ def run_one_experiment(
         **metadata,
         "completed_at": datetime.now(timezone.utc).isoformat(),
         "elapsed_seconds": time.time() - started_at,
+        "controller_exit_code": controller_exit_code,
+        "controller_exit_classification": controller_exit_classification,
         "hit_log_sizes": log_sizes,
         "status": "success",
     }
@@ -829,7 +849,10 @@ def main() -> int:
     scenario_indices = parse_scenario_indices(args.scenario_indices, args.smoke)
 
     repo_commit = command_output(["git", "rev-parse", "HEAD"], cwd=REPO_ROOT)
-    tag_suffix = args.image_tag_suffix or f"lb4-{repo_commit[:12]}"
+    plugin_tree = command_output(
+        ["git", "rev-parse", "HEAD:mplb-wasm-plugin"], cwd=REPO_ROOT
+    )
+    tag_suffix = args.image_tag_suffix or f"lb4-{plugin_tree[:12]}"
     output_dir = prepare_output_dir(args)
     scenario_manifest = build_scenario_manifest(args)
     scenarios_by_index = {
@@ -872,6 +895,7 @@ def main() -> int:
         "schema_version": 1,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "repo_commit": repo_commit,
+        "plugin_tree": plugin_tree,
         "image_repository": args.image_repository,
         "image_tag_suffix": tag_suffix,
         "requested_scenario_indices": scenario_indices,
