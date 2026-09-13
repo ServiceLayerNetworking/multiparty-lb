@@ -19,8 +19,10 @@ CP_NODES=1
 # number of worker nodes
 NODES=19
 
-# number of worker nodes to be used as load balancer nodes
-LB_NODES=4
+# Experiment-wide number of ingress-gateway replicas per service. Each replica
+# gets its own load-balancer node through required same-service pod anti-affinity.
+LB_REPLICAS=4
+LB_NODES=$LB_REPLICAS
 # number of services
 N_SVCS=15
 
@@ -98,7 +100,7 @@ if [ "$NODES" -gt 5 ]; then
   done
 fi
 
-python3 generate_istio_gateways.py $N_SVCS > dst-rules_virtual-svcs/istio-multi-gateways.yaml
+python3 generate_istio_gateways.py "$N_SVCS" --replicas "$LB_REPLICAS" > dst-rules_virtual-svcs/istio-multi-gateways.yaml
 
 istioctl install -y -f ~/multiparty-lb/dst-rules_virtual-svcs/istio-multi-gateways.yaml
 kubectl label namespace default istio-injection=enabled --overwrite

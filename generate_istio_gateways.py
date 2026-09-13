@@ -12,8 +12,7 @@ def main():
     p.add_argument("--namespace", default="istio-ingress", help="Gateway namespace")
     p.add_argument("--profile", default="default", help="Istio profile")
     p.add_argument("--service-type", default="LoadBalancer", help="K8s Service type")
-    p.add_argument("--min-replicas", type=int, default=3, help="HPA minReplicas")
-    p.add_argument("--max-replicas", type=int, default=3, help="HPA maxReplicas")
+    p.add_argument("--replicas", type=int, required=True, help="Fixed replicas per service gateway")
     p.add_argument("--cpu", default="500m", help="CPU request")
     p.add_argument("--memory", default="1024Mi", help="Memory request")
     p.add_argument("--label-key", default="istio", help="Label key used under 'label:'")
@@ -22,6 +21,8 @@ def main():
 
     if args.count <= 0:
         sys.exit("count must be >= 1")
+    if args.replicas <= 0:
+        sys.exit("replicas must be >= 1")
 
     header = f"""apiVersion: install.istio.io/v1alpha3
 kind: IstioOperator
@@ -43,8 +44,8 @@ spec:
           service:
             type: {args.service_type}
           hpaSpec:
-            minReplicas: {args.min_replicas}
-            maxReplicas: {args.max_replicas}
+            minReplicas: {args.replicas}
+            maxReplicas: {args.replicas}
           resources:
             requests:
               cpu: {args.cpu}
@@ -56,6 +57,12 @@ spec:
                 - matchExpressions:
                   - key: {args.node_affinity_key}
                     operator: Exists
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+              - labelSelector:
+                  matchLabels:
+                    {args.label_key}: ingressgateway-svc{i}
+                topologyKey: kubernetes.io/hostname
 """
 
     blocks = []
