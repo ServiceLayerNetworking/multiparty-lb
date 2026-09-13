@@ -45,7 +45,6 @@ const (
 	DEFAULT_MAX_RPS_ALLOWED                            = 105
 	USE_DEFAULT_MAX_RPS_ALLOWED                        = false
 	RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED = 0
-	NUM_OF_LB_REPLICAS                                 = 4 // Must match LB_REPLICAS in setup_k8s_cluster.sh.
 	USE_CONCURRENT_CONNECTIONS_IN_RATE_LIMITER         = true
 	RATE_LIMITER_ENFORCEMENT_INTERVAL_MS               = 3000
 

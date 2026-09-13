@@ -153,7 +153,16 @@ func getPerfBasedAllowedRPS(dstSvc string) int {
 		return math.MaxInt
 	}
 
-	return int(rpsAllowed+RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED) / NUM_OF_LB_REPLICAS
+	return getAggregateRPSLimit(rpsAllowed)
+}
+
+// getAggregateRPSLimit returns a service-wide limit. Every ingress replica
+// reconstructs RATE_LIMITER_TIMESTAMPS_QUEUE from the controller-broadcast
+// request events, so each replica already observes the aggregate service rate.
+// Dividing this limit by the number of ingress replicas would count the
+// replicas twice and reduce the delivered service rate by that factor.
+func getAggregateRPSLimit(rpsAllowed float64) int {
+	return int(rpsAllowed + RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED)
 }
 
 func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
@@ -220,7 +229,7 @@ func getMaxRPSGivenTheCPUAllocated(dstSvc string) int {
 		return math.MaxInt
 	}
 
-	return (int(cpuAllocated/cpuConsumption) + RATE_LIMITER_NUM_OF_REQ_ALLOWED_OVER_CPU_ALLOCATED) / NUM_OF_LB_REPLICAS
+	return getAggregateRPSLimit(cpuAllocated / cpuConsumption)
 }
 
 // getRecentlySentRequestTimeStampsReadOnly returns the count of timestamps within the enforcement interval
